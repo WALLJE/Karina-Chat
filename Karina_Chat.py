@@ -69,7 +69,7 @@ if "koerper_befund" not in st.session_state:
 
 if st.button("🩺 Untersuchung durchführen"):
     untersuchung_prompt = """
-Erstelle einen typischen körperlichen Untersuchungsbefund bei einer Patientin mit Morbus Crohn mit Ileitis terminalis. Verwende Fachsprache, z. B. zu Druckschmerz, Perkussion, Auskultation, Haut, Leber, Peritonismus usw..
+Erstelle einen typischen körperlichen Untersuchungsbefund bei einer Patientin mit Morbus Crohn mit Ileitis terminalis. Verwende Fachsprache, aber vermeide jede Form von diagnostischer Interpretation oder Hinweis auf konkrete Erkrankungen (z. B. 'deutet auf Crohn hin' o. ä.).
 
 Strukturiere den Befund bitte in Abschnitte wie:
 
@@ -80,13 +80,13 @@ Strukturiere den Befund bitte in Abschnitte wie:
 **Haut:**  
 **Extremitäten:**  
 
-Formuliere sachlich und medizinisch korrekt – wie im Arztbrief oder klinischen Bericht.
+Formuliere sachlich, beschreibend und medizinisch korrekt – wie in einem klinischen Untersuchungsprotokoll. Vermeide Wertungen, Hypothesen oder diagnostische Zuordnungen.
 """
     with st.spinner("Untersuchungsbefund wird erstellt..."):
         response = client.chat.completions.create(
             model="gpt-4",
             messages=[{"role": "user", "content": untersuchung_prompt}],
-            temperature=0.5
+            temperature=0.9
         )
         st.session_state.koerper_befund = response.choices[0].message.content
 
