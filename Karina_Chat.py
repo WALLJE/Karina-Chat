@@ -2,17 +2,17 @@ import streamlit as st
 from openai import OpenAI
 import os
 
-# ✅ API-Key setzen
+# API-Key setzen
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-# 🧠 System-Prompt
+#System-Prompt
 SYSTEM_PROMPT = """
 Patientensimulation (Morbus Crohn)
 [...gekürzt für Klarheit...]
 """
 
 # Titel und Instruktion
-st.title("🩺 Patientensimulation: Gespräch mit Karina")
+st.title("Patientensimulation: Gespräch mit Karina")
 st.info("""
  **Hinweis zur Simulation:**
 In dieser Patientensimulation sprechen Sie mit der virtuellen Patientin Karina.
@@ -21,19 +21,19 @@ Geben Sie Ihre Fragen unten ein und klicken Sie auf 'Absenden'.
 Am Ende können Sie eine Evaluation erhalten und das Protokoll herunterladen.
 """)
 
-# 🌐 Chat-Verlauf starten
+# Chat-Verlauf starten
 if "messages" not in st.session_state:
     st.session_state.messages = [
         {"role": "system", "content": SYSTEM_PROMPT},
         {"role": "assistant", "content": "Guten Tag, ich bin froh, dass ich mich heute bei Ihnen vorstellen kann."}
     ]
 
-# 💬 Chat anzeigen
+# Chat anzeigen
 for msg in st.session_state.messages[1:]:
     sender = "👩 Karina" if msg["role"] == "assistant" else "🧑 Du"
     st.markdown(f"**{sender}:** {msg['content']}")
 
-# 📥 Eingabeformular
+# Eingabeformular
 with st.form(key="eingabe_formular", clear_on_submit=True):
     user_input = st.text_input("Deine Frage an Karina:")
     submit_button = st.form_submit_button(label="Absenden")
@@ -50,9 +50,9 @@ if submit_button and user_input:
         st.session_state.messages.append({"role": "assistant", "content": reply})
     st.rerun()
 
-# 🔬 Weiterführende Diagnostik
+# Weiterführende Diagnostik
 st.markdown("---")
-st.subheader("🔬 Weiterführende Diagnostik und Entscheidungstraining")
+st.subheader("Weiterführende Diagnostik und Entscheidungstraining")
 
 if "diagnostik_step" not in st.session_state:
     st.session_state.diagnostik_step = 0
@@ -71,7 +71,7 @@ if st.session_state.diagnostik_step == 0:
 
 # Befunde generieren
 if st.session_state.diagnostik_step == 1:
-    st.markdown("### 🧾 Befunde zur gewählten Diagnostik")
+    st.markdown("### Befunde zur gewählten Diagnostik")
     diagnostik_eingabe = st.session_state.get("user_diagnostics", "")
     ddx_eingabe = st.session_state.get("user_ddx2", "")
 
@@ -109,10 +109,10 @@ Formuliere sachlich und im Stil eines Arztbriefs oder Befundberichts.
 
 # Diagnose und Therapie
 if "befunde" in st.session_state and "final_step" not in st.session_state:
-    st.markdown("### 🩺 Diagnose und Therapieentscheidung")
+    st.markdown("### Diagnose und Therapieentscheidung")
     with st.form("diagnose_therapie"):
-        final_diagnose = st.text_input("🩺 Ihre endgültige Diagnose:")
-        therapie_vorschlag = st.text_area("💊 Ihr Therapievorschlag:")
+        final_diagnose = st.text_input("Ihre endgültige Diagnose:")
+        therapie_vorschlag = st.text_area("Ihr Therapievorschlag:")
         submitted_final = st.form_submit_button("✅ Entscheidung abschließen")
 
     if submitted_final:
@@ -139,22 +139,22 @@ if "final_step" in st.session_state:
         feedback_prompt_final = f"""
 Ein Medizinstudierender hat eine vollständige virtuelle Fallbesprechung mit einer Patientin durchgeführt. Du bist ein erfahrener medizinischer Prüfer.
 
-🗣️ Gesprächsverlauf:
+Gesprächsverlauf:
 {karina_verlauf}
 
-🩻 Vorgeschlagene Differentialdiagnosen:
+Vorgeschlagene Differentialdiagnosen:
 {ddx_text}
 
-🔬 Gewünschte Diagnostik:
+Gewünschte Diagnostik:
 {diag_text}
 
-📄 Generierte Befunde:
+Generierte Befunde:
 {befund_text}
 
-✅ Finale Diagnose:
+Finale Diagnose:
 {finale_diag}
 
-💊 Therapievorschlag:
+Therapievorschlag:
 {therapie}
 
 Bitte gib ein strukturiertes, medizinisch-wissenschaftlich fundiertes Feedback:
@@ -165,7 +165,7 @@ Bitte gib ein strukturiertes, medizinisch-wissenschaftlich fundiertes Feedback:
 4. Ist die finale Diagnose nachvollziehbar?
 5. Ist der Therapievorschlag leitliniengerecht und begründet?
 
-⚖️ Berücksichtige zusätzlich:
+⚖Berücksichtige zusätzlich:
 - ökologische Aspekte (z. B. CO₂-Bilanz, Strahlenbelastung, Ressourcenverbrauch)
 - ökonomische Sinnhaftigkeit (Kosten-Nutzen-Verhältnis)
 
@@ -180,12 +180,12 @@ Strukturiere dein Feedback klar, hilfreich und differenziert – wie ein Komment
             final_feedback = eval_response.choices[0].message.content
         st.session_state.final_feedback = final_feedback
         st.success("✅ Evaluation erstellt")
-        st.markdown("### 📎 Abschlussfeedback:")
+        st.markdown("### Abschlussfeedback:")
         st.markdown(final_feedback)
 
 # Downloadbereich
 st.markdown("---")
-st.subheader("📜 Download des Chatprotokolls und Feedback")
+st.subheader("Download des Chatprotokolls und Feedback")
 if "final_feedback" in st.session_state:
     protokoll = ""
     for msg in st.session_state.messages[1:]:
