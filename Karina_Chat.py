@@ -14,11 +14,21 @@ Patientensimulation (Morbus Crohn)
 # Titel und Instruktion
 st.title("Patientensimulation: Gespräch mit Karina")
 st.info("""
- **Hinweis zur Simulation:**
-In dieser Patientensimulation sprechen Sie mit der virtuellen Patientin Karina.
-Bitte führen Sie eine strukturierte Anamnese wie im ärztlichen Alltag.
-Geben Sie Ihre Fragen unten ein und klicken Sie auf 'Absenden'.
-Am Ende können Sie eine Evaluation erhalten und das Protokoll herunterladen.
+**Instruktionen für Studierende:**
+
+Sie führen ein strukturiertes Anamnesegespräch mit der virtuellen Patientin Karina.
+Geben Sie zum Beginn Ihre Fragen an die Patientin unten ein. Ziel ist es, durch gezieltes Nachfragen eine Verdachtsdiagnose zu stellen und sinnvolle weitere Diagnostik zu planen.
+
+Bitte beachten Sie:
+- Karina antwortet nur auf das, was direkt gefragt wird.
+- Medizinische Fachsprache versteht sie nicht unbedingt – erklären Sie unklare Begriffe.
+- Nach längeren Gesprächspausen wird Karina ungeduldig oder besorgt.
+
+Wenn Sie genug anemnestische Informationen erhoben haben:
+- Führen Sie eine körperliche Untersuchung durch (per Button unten).
+- Danach: Nennen Sie Ihre Differentialdiagnosen und die gewünschte Diagnostik.
+- Sie erhalten typische Befunde und sollen dann eine Diagnose und Therapie festlegen.
+- Danach folgt ein strukturiertes Feedback zu Ihrem Vorgehen.
 """)
 
 # Chat-Verlauf starten
@@ -50,6 +60,40 @@ if submit_button and user_input:
         st.session_state.messages.append({"role": "assistant", "content": reply})
     st.rerun()
 
+# Körperliche Untersuchung
+st.markdown("---")
+st.subheader("Körperliche Untersuchung")
+
+if "koerper_befund" not in st.session_state:
+    st.session_state.koerper_befund = None
+
+if st.button("🩺 Untersuchung durchführen"):
+    untersuchung_prompt = """
+Erstelle einen typischen körperlichen Untersuchungsbefund bei einer Patientin mit Morbus Crohn mit Ileitis terminalis. Verwende Fachsprache, z. B. zu Druckschmerz, Perkussion, Auskultation, Haut, Leber, Peritonismus usw..
+
+Strukturiere den Befund bitte in Abschnitte wie:
+
+**Allgemeinzustand:**  
+**Abdomen:**  
+**Leber/Milz:**  
+**Auskultation Herz/Lunge:**  
+**Haut:**  
+**Extremitäten:**  
+
+Formuliere sachlich und medizinisch korrekt – wie im Arztbrief oder klinischen Bericht.
+"""
+    with st.spinner("Untersuchungsbefund wird erstellt..."):
+        response = client.chat.completions.create(
+            model="gpt-4",
+            messages=[{"role": "user", "content": untersuchung_prompt}],
+            temperature=0.5
+        )
+        st.session_state.koerper_befund = response.choices[0].message.content
+
+if st.session_state.koerper_befund:
+    st.success("✅ Untersuchungsbefund erstellt")
+    st.markdown(st.session_state.koerper_befund)
+
 # Weiterführende Diagnostik
 st.markdown("---")
 st.subheader("Weiterführende Diagnostik und Entscheidungstraining")
@@ -57,20 +101,23 @@ st.subheader("Weiterführende Diagnostik und Entscheidungstraining")
 if "diagnostik_step" not in st.session_state:
     st.session_state.diagnostik_step = 0
 
-if st.session_state.diagnostik_step == 0:
-    with st.form("weiterdiagnostik"):
-        ddx_input2 = st.text_area("Differentialdiagnosen", key="ddx_input2")
-        diag_input = st.text_area("Diagnostische Maßnahmen", key="diag_input2")
-        submitted = st.form_submit_button("Diagnostik abschicken")
+if not st.session_state.koerper_befund:
+    st.info("ℹ️ Bitte führen Sie zuerst die körperliche Untersuchung durch, bevor Sie mit der Diagnostik fortfahren.")
+else:
+    if st.session_state.diagnostik_step == 0:
+        with st.form("weiterdiagnostik"):
+            ddx_input2 = st.text_area("Differentialdiagnosen", key="ddx_input2")
+            diag_input = st.text_area("Diagnostische Maßnahmen", key="diag_input2")
+            submitted = st.form_submit_button("Diagnostik abschicken")
 
-    if submitted:
-        st.session_state.user_ddx2 = ddx_input2
-        st.session_state.user_diagnostics = diag_input
-        st.session_state.diagnostik_step = 1
-        st.rerun()
+        if submitted:
+            st.session_state.user_ddx2 = ddx_input2
+            st.session_state.user_diagnostics = diag_input
+            st.session_state.diagnostik_step = 1
+            st.rerun()
 
 # Befunde generieren
-if st.session_state.diagnostik_step == 1:
+if st.session_state.get("diagnostik_step") == 1:
     st.markdown("### Befunde zur gewählten Diagnostik")
     diagnostik_eingabe = st.session_state.get("user_diagnostics", "")
     ddx_eingabe = st.session_state.get("user_ddx2", "")
@@ -142,6 +189,9 @@ Ein Medizinstudierender hat eine vollständige virtuelle Fallbesprechung mit ein
 Gesprächsverlauf:
 {karina_verlauf}
 
+Körperlicher Untersuchungsbefund:
+{st.session_state.koerper_befund}
+
 Vorgeschlagene Differentialdiagnosen:
 {ddx_text}
 
@@ -191,7 +241,12 @@ if "final_feedback" in st.session_state:
     for msg in st.session_state.messages[1:]:
         rolle = "Karina" if msg["role"] == "assistant" else "Du"
         protokoll += f"{rolle}: {msg['content']}\n\n"
-    protokoll += "\n---\n📄 Abschlussfeedback:\n"
+
+    if "koerper_befund" in st.session_state:
+        protokoll += "---\n🩺 Körperlicher Untersuchungsbefund:\n"
+        protokoll += st.session_state.koerper_befund + "\n\n"
+
+    protokoll += "---\n📄 Abschlussfeedback:\n"
     protokoll += st.session_state.final_feedback
     st.download_button(
         label="⬇️ Gespräch & Feedback herunterladen",
