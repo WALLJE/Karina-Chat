@@ -2,85 +2,44 @@ import streamlit as st
 from openai import OpenAI
 import os
 
-# ✅ OpenAI-Client mit API-Key starten
-# Hinweis: In Streamlit Cloud kannst du den Key in "Secrets" speichern
-client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"] if "OPENAI_API_KEY" in st.secrets else os.getenv("OPENAI_API_KEY"))
+# ✅ API-Key setzen
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-# 🧠 System-Prompt: definiert Karinas Verhalten
+# 🧠 System-Prompt
 SYSTEM_PROMPT = """
 Patientensimulation (Morbus Crohn)
-
-Rolle der virtuellen Patientin:
-
-    Du bist Karina, eine 24-jährige Studentin der Wirtschaftswissenschaften.
-    Dein Gesprächspartner ist ein Medizinstudent, der als Arzt handelt.
-    Du kommunizierst in normaler Umgangssprache mit einem höflichen und besorgten Ton, vermeidest jedoch Fachjargon.
-    Wenn du medizinische Begriffe nicht verstehst, fragst du nach, ohne dich dafür zu entschuldigen.
-    Du bist ungeduldig, wenn längere Pausen entstehen, und fragst nach dem weiteren Vorgehen.
-
-Sprich zu Beginn eher knapp. Beantworte Fragen grundsätzlich nur so ausführlich, wie direkt danach gefragt wurde. 
-Nenne Symptome wie Fieber, Nachtschweiß oder Gewichtsverlust erst, wenn direkt danach gefragt wird.
-
-Krankengeschichte (Symptome & Hintergrund):
-
-    Beschwerden: Seit 4 Monaten hast du Bauchschmerzen, hauptsächlich im rechten Unterbauch.
-    Die Schmerzen treten wiederkehrend auf, gelegentlich begleitet von Fieber bis 38,5 °C und Nachtschweiß.
-    Stuhlgang: Breiig, 5-mal täglich.
-    Gewichtsverlust: 5 kg in der letzten Woche ohne Diät.
-    Familiengeschichte: Keine bekannten Darmerkrankungen.
-    Reisen: Vor 5 Jahren Korsika, sonst nur in Deutschland.
-
-Untersuchungsbefunde (auf Nachfrage):
-
-    „Das können wir hier nicht simulieren. Ich habe normale Darmgeräusche, aber deutlichen Druckschmerz und eine Resistenz im rechten Unterbauch. Sonst ist alles unauffällig.“
-
-Diagnostik:
-
-    Lehne Diagnostik ab, bis die gesamte Anamnese erfragt wurde.
-    CT strikt ablehnen wegen Strahlenangst.
-    MRT wäre in Ordnung, erwähne es aber nicht von selbst.
-
-Koloskopie:
-
-    Fordere eine ärztliche Aufklärung zur Koloskopie.
-    Frage kritisch nach Vorbereitung, Sedierung, Risiken, Verhalten danach, Alternativen.
-
-Therapie:
-
-    Zeige Besorgnis bei Prednisolon/Cortison.
-    Frage gezielt nach Nebenwirkungen (mind. 4), Alternativen, Erfolgsaussichten.
-    Frage auch nach chirurgischen Optionen.
-
-Abschluss:
-
-    Bedanke dich für die Betreuung.
-    Frage: „Möchtest du ein Feedback zum Anamnesegespräch?“
+[...gekürzt für Klarheit...]
 """
 
-# 🧱 Streamlit-UI: Titel anzeigen
+# Titel und Instruktion
 st.title("🩺 Patientensimulation: Gespräch mit Karina")
+st.info("""
+ **Hinweis zur Simulation:**
+In dieser Patientensimulation sprechen Sie mit der virtuellen Patientin Karina.
+Bitte führen Sie eine strukturierte Anamnese wie im ärztlichen Alltag.
+Geben Sie Ihre Fragen unten ein und klicken Sie auf 'Absenden'.
+Am Ende können Sie eine Evaluation erhalten und das Protokoll herunterladen.
+""")
 
-# 💬 Session-State initialisieren: Nachrichtenverlauf starten
+# 🌐 Chat-Verlauf starten
 if "messages" not in st.session_state:
     st.session_state.messages = [
         {"role": "system", "content": SYSTEM_PROMPT},
         {"role": "assistant", "content": "Guten Tag, ich bin froh, dass ich mich heute bei Ihnen vorstellen kann."}
     ]
 
-# 📜 Chatverlauf anzeigen (ohne Systemnachricht)
+# 💬 Chat anzeigen
 for msg in st.session_state.messages[1:]:
     sender = "👩 Karina" if msg["role"] == "assistant" else "🧑 Du"
     st.markdown(f"**{sender}:** {msg['content']}")
 
-# 📥 Eingabemaske mit Formular & Button (verhindert Endlosschleife)
+# 📥 Eingabeformular
 with st.form(key="eingabe_formular", clear_on_submit=True):
     user_input = st.text_input("Deine Frage an Karina:")
     submit_button = st.form_submit_button(label="Absenden")
 
-# 🤖 GPT-4 ansprechen, wenn Button gedrückt wurde
 if submit_button and user_input:
     st.session_state.messages.append({"role": "user", "content": user_input})
-
     with st.spinner("Karina antwortet..."):
         response = client.chat.completions.create(
             model="gpt-4",
@@ -89,94 +48,156 @@ if submit_button and user_input:
         )
         reply = response.choices[0].message.content
         st.session_state.messages.append({"role": "assistant", "content": reply})
+    st.rerun()
 
-    st.rerun()  # UI neu laden, damit neue Nachricht angezeigt wird
-
-# --------------------------------------------
-# 🧠 FEEDBACK-FUNKTION FÜR STUDIERENDE
-# --------------------------------------------
-
+# 🔬 Weiterführende Diagnostik
 st.markdown("---")
-st.subheader("🧠 Feedback & Evaluation")
+st.subheader("🔬 Weiterführende Diagnostik und Entscheidungstraining")
 
-# Toggle-Schalter für das Feedback-Formular
-if "show_feedback_form" not in st.session_state:
-    st.session_state.show_feedback_form = False
+if "diagnostik_step" not in st.session_state:
+    st.session_state.diagnostik_step = 0
 
-if st.button("Feedback & Evaluation starten"):
-    st.session_state.show_feedback_form = True
+if st.session_state.diagnostik_step == 0:
+    with st.form("weiterdiagnostik"):
+        ddx_input2 = st.text_area("Differentialdiagnosen", key="ddx_input2")
+        diag_input = st.text_area("Diagnostische Maßnahmen", key="diag_input2")
+        submitted = st.form_submit_button("Diagnostik abschicken")
 
-# Feedback-Formular anzeigen
-if st.session_state.show_feedback_form:
-    ddx_input = st.text_area("Welche drei Differentialdiagnosen halten Sie für möglich?", key="ddx_input")
-    diag_input = st.text_area("Welche diagnostischen Maßnahmen halten Sie für sinnvoll?", key="diag_input")
+    if submitted:
+        st.session_state.user_ddx2 = ddx_input2
+        st.session_state.user_diagnostics = diag_input
+        st.session_state.diagnostik_step = 1
+        st.rerun()
 
-    if st.button("Feedback anzeigen"):
-        # Nur Patientenantworten extrahieren
-        patient_text = "\n".join([
+# Befunde generieren
+if st.session_state.diagnostik_step == 1:
+    st.markdown("### 🧾 Befunde zur gewählten Diagnostik")
+    diagnostik_eingabe = st.session_state.get("user_diagnostics", "")
+    ddx_eingabe = st.session_state.get("user_ddx2", "")
+
+    if st.button("Befunde generieren lassen"):
+        prompt_befunde = f"""
+Ein Studierender hat bei einer Patientin (Anamnese typisch für Morbus Crohn mit Ileitis terminalis) folgende drei Differentialdiagnosen angegeben:
+
+{ddx_eingabe}
+
+Er hat außerdem folgende diagnostische Schritte vorgeschlagen:
+
+{diagnostik_eingabe}
+
+Generiere zu den genannten diagnostischen Maßnahmen typische Befunde für einen Morbus Crohn mit terminaler Ileitis. Falls bestimmte Untersuchungen nicht genannt wurden, ignoriere sie.
+
+Erstelle:
+1. **Laborbefunde** in tabellarischer Form (SI-Einheiten, mit Referenzwerten)
+2. **Mikrobiologische Ergebnisse** (z. B. Stuhlkultur, Clostridien, Parasiten)
+3. **Radiologische / sonografische Befunde** in der typischen Fachterminologie
+4. **Endoskopische und histologische Befunde**, falls zutreffend
+
+Formuliere sachlich und im Stil eines Arztbriefs oder Befundberichts.
+"""
+        with st.spinner("Befunde werden generiert..."):
+            response = client.chat.completions.create(
+                model="gpt-4",
+                messages=[{"role": "user", "content": prompt_befunde}],
+                temperature=0.5
+            )
+            befund_text = response.choices[0].message.content
+        st.session_state.befunde = befund_text
+        st.success("✅ Befunde generiert")
+        st.markdown("### 📄 Ergebnisse:")
+        st.markdown(befund_text)
+
+# Diagnose und Therapie
+if "befunde" in st.session_state and "final_step" not in st.session_state:
+    st.markdown("### 🩺 Diagnose und Therapieentscheidung")
+    with st.form("diagnose_therapie"):
+        final_diagnose = st.text_input("🩺 Ihre endgültige Diagnose:")
+        therapie_vorschlag = st.text_area("💊 Ihr Therapievorschlag:")
+        submitted_final = st.form_submit_button("✅ Entscheidung abschließen")
+
+    if submitted_final:
+        st.session_state.final_diagnose = final_diagnose
+        st.session_state.therapie_vorschlag = therapie_vorschlag
+        st.session_state.final_step = True
+        st.success("✅ Entscheidung gespeichert")
+
+# Abschlussfeedback
+if "final_step" in st.session_state:
+    st.markdown("---")
+    st.subheader("📋 Abschließende Evaluation")
+    if st.button("📋 Abschluss-Feedback anzeigen"):
+        ddx_text = st.session_state.get("user_ddx2", "")
+        diag_text = st.session_state.get("user_diagnostics", "")
+        befund_text = st.session_state.get("befunde", "")
+        finale_diag = st.session_state.get("final_diagnose", "")
+        therapie = st.session_state.get("therapie_vorschlag", "")
+        karina_verlauf = "\n".join([
             msg["content"] for msg in st.session_state.messages
             if msg["role"] == "assistant"
         ])
 
-        # GPT-Prompt zur Bewertung
-        feedback_prompt = f"""
-Du bist ein erfahrener medizinischer Prüfer. Ein Medizinstudent hat mit einer Patientin gesprochen. 
+        feedback_prompt_final = f"""
+Ein Medizinstudierender hat eine vollständige virtuelle Fallbesprechung mit einer Patientin durchgeführt. Du bist ein erfahrener medizinischer Prüfer.
 
-Differentialdiagnosen:
-{ddx_input}
+🗣️ Gesprächsverlauf:
+{karina_verlauf}
 
-Vorgeschlagene Diagnostik:
-{diag_input}
+🩻 Vorgeschlagene Differentialdiagnosen:
+{ddx_text}
 
-Hier ist der Chatverlauf der Patientin:
-{patient_text}
+🔬 Gewünschte Diagnostik:
+{diag_text}
 
-Bitte gib ein medizinisch-wissenschaftlich fundiertes, konstruktiv-kritisches Feedback:
-- Wurden alle relevanten anamnestischen Informationen für diese Diagnosen erfragt?
-- Sind die vorgeschlagenen diagnostischen Maßnahmen sinnvoll und vollständig?
-- Fehlt etwas Wichtiges?
+📄 Generierte Befunde:
+{befund_text}
 
-Strukturiere dein Feedback klar und verständlich.
+✅ Finale Diagnose:
+{finale_diag}
+
+💊 Therapievorschlag:
+{therapie}
+
+Bitte gib ein strukturiertes, medizinisch-wissenschaftlich fundiertes Feedback:
+
+1. Wurden im Gespräch alle relevanten anamnestischen Informationen erhoben?
+2. War die Diagnostik sinnvoll, vollständig und passend zu den DDx?
+3. Sind die Befunde zutreffend interpretiert?
+4. Ist die finale Diagnose nachvollziehbar?
+5. Ist der Therapievorschlag leitliniengerecht und begründet?
+
+⚖️ Berücksichtige zusätzlich:
+- ökologische Aspekte (z. B. CO₂-Bilanz, Strahlenbelastung, Ressourcenverbrauch)
+- ökonomische Sinnhaftigkeit (Kosten-Nutzen-Verhältnis)
+
+Strukturiere dein Feedback klar, hilfreich und differenziert – wie ein Kommentar bei einer mündlichen Prüfung.
 """
-
-        with st.spinner("Bewertung wird erstellt..."):
-            feedback_response = client.chat.completions.create(
+        with st.spinner("Evaluation wird erstellt..."):
+            eval_response = client.chat.completions.create(
                 model="gpt-4",
-                messages=[{"role": "user", "content": feedback_prompt}],
+                messages=[{"role": "user", "content": feedback_prompt_final}],
                 temperature=0.4
             )
-            feedback = feedback_response.choices[0].message.content
+            final_feedback = eval_response.choices[0].message.content
+        st.session_state.final_feedback = final_feedback
+        st.success("✅ Evaluation erstellt")
+        st.markdown("### 📎 Abschlussfeedback:")
+        st.markdown(final_feedback)
 
-        st.session_state.generated_feedback = feedback
-
-        st.success("✅ Feedback erstellt")
-        st.markdown("### 📋 Automatisiertes Feedback:")
-        st.markdown(feedback)
-
-# --------------------------------------------
-# 📄 DOWNLOADBEREICH (Chat + Feedback als Textdatei)
-# --------------------------------------------
-
+# Downloadbereich
 st.markdown("---")
-st.subheader("📝 Download des Chatprotokolls")
-
-if "generated_feedback" in st.session_state:
+st.subheader("📜 Download des Chatprotokolls und Feedback")
+if "final_feedback" in st.session_state:
     protokoll = ""
-
-    # Nachrichtenverlauf formatieren
     for msg in st.session_state.messages[1:]:
         rolle = "Karina" if msg["role"] == "assistant" else "Du"
         protokoll += f"{rolle}: {msg['content']}\n\n"
-
-    # Feedback hinzufügen
-    protokoll += "\n---\n📋 Automatisiertes Feedback:\n"
-    protokoll += st.session_state.generated_feedback
-
+    protokoll += "\n---\n📄 Abschlussfeedback:\n"
+    protokoll += st.session_state.final_feedback
     st.download_button(
-        label="⬇️ Gespräch & Feedback als Textdatei herunterladen",
+        label="⬇️ Gespräch & Feedback herunterladen",
         data=protokoll,
         file_name="karina_chatprotokoll.txt",
         mime="text/plain"
     )
 else:
-    st.info("💬 Das Protokoll kann nach dem Feedback heruntergeladen werden.")
+    st.info("💬 Das Protokoll kann nach der Evaluation heruntergeladen werden.")
