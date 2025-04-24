@@ -8,16 +8,6 @@ import random
 # API-Key setzen
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-# Version 4.0
-
-import streamlit as st
-from openai import OpenAI, RateLimitError
-import os
-import random
-
-# API-Key setzen
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-
 
 # Zufällige Erkrankung und Name auswählen
 if "diagnose_szenario" not in st.session_state:
