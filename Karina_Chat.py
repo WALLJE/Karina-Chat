@@ -2,7 +2,7 @@ import streamlit as st
 from openai import OpenAI
 import os
 
-#Version 24.04.2025
+#Version 24.04.2025 V1
 
 # API-Key setzen
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
