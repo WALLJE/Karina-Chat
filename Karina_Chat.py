@@ -184,10 +184,8 @@ if st.session_state.koerper_befund:
         st.session_state.user_diagnostics = diag_input2
         st.success("✅ Angaben gespeichert")
         st.markdown("**Zusammenfassung Ihrer Eingaben:**")
-        st.markdown(f"**Differentialdiagnosen:**
-{ddx_input2}")
-        st.markdown(f"**Diagnostische Maßnahmen:**
-{diag_input2}")
+        st.markdown(f"**Differentialdiagnosen:**\n{ddx_input2}")
+        st.markdown(f"**Diagnostische Maßnahmen:**\n{diag_input2}")
 
     st.markdown("---")
     st.subheader("Diagnostische Befunde")
