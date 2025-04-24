@@ -2,8 +2,6 @@ import streamlit as st
 from openai import OpenAI
 import os
 
-# 24.4. Walldorf
-
 # API-Key setzen
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
@@ -118,7 +116,7 @@ Erstelle einen typischen körperlichen Untersuchungsbefund bei einer Patientin m
 Strukturiere den Befund bitte in Abschnitte wie:
 
 **Allgemeinzustand:**  
-**Abdomen:**  
+**Abdomen:**   
 **Auskultation Herz/Lunge:**  
 **Haut:**  
 **Extremitäten:**  
@@ -290,27 +288,48 @@ if "final_feedback" in st.session_state:
     protokoll = ""
 
     if "user_ddx2" in st.session_state:
-        protokoll += "---🧠 Differentialdiagnosen:\\n"
-        protokoll += st.session_state.user_ddx2 + "\\n"
+        protokoll += "---
+🧠 Differentialdiagnosen:
+"
+        protokoll += st.session_state.user_ddx2 + "
+
+"
 
     if "user_diagnostics" in st.session_state:
-        protokoll += "---\\n🔬 Gewünschte Diagnostik:\\n"
-        protokoll += st.session_state.user_diagnostics + "\\n"
+        protokoll += "---
+🔬 Gewünschte Diagnostik:
+"
+        protokoll += st.session_state.user_diagnostics + "
+
+"
 
     if "befunde" in st.session_state:
-        protokoll += "---\\n📄 Generierte Befunde:\\n"
-        protokoll += st.session_state.befunde + "\\n \\n"
-        
+        protokoll += "---
+📄 Generierte Befunde:
+"
+        protokoll += st.session_state.befunde + "
+
+"
+
     for msg in st.session_state.messages[1:]:
         rolle = "Karina" if msg["role"] == "assistant" else "Du"
-        protokoll += f"{rolle}: {msg['content']}\n\n"
+        protokoll += f"{rolle}: {msg['content']}
+
+"
 
     if "koerper_befund" in st.session_state:
-        protokoll += "---\n🩺 Körperlicher Untersuchungsbefund:\n"
-        protokoll += st.session_state.koerper_befund + "\n\n"
+        protokoll += "---
+🩺 Körperlicher Untersuchungsbefund:
+"
+        protokoll += st.session_state.koerper_befund + "
 
-    protokoll += "---\n📄 Abschlussfeedback:\n"
+"
+
+    protokoll += "---
+📄 Abschlussfeedback:
+"
     protokoll += st.session_state.final_feedback
+
     st.download_button(
         label="⬇️ Gespräch & Feedback herunterladen",
         data=protokoll,
