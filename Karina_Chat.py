@@ -299,8 +299,7 @@ if "befunde" in st.session_state:
     protokoll += st.session_state.befunde + "\n"
 
 protokoll += "\n---\n📄 Abschlussfeedback:\n"
-protokoll += st.session_state.final_feedback + "
-"
+protokoll += st.session_state.final_feedback + "\n"
 
     st.download_button(
         label="⬇️ Gespräch & Feedback herunterladen",
