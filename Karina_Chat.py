@@ -2,6 +2,8 @@ import streamlit as st
 from openai import OpenAI
 import os
 
+#Version 24.04.2025
+
 # API-Key setzen
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
@@ -27,7 +29,7 @@ Bitte beachten Sie:
 Wenn Sie genug anemnestische Informationen erhoben haben:
 - Führen Sie eine körperliche Untersuchung durch (per Button unten).
 - Danach: Nennen Sie Ihre Differentialdiagnosen und die gewünschte Diagnostik.
-- Sie erhalten typische Befunde und sollen dann eine Diagnose und Therapie festlegen.
+- Sie erhalten typische Befunde und sollen dann eine Diagnose und ein Therapiekonzept festlegen.
 - Danach folgt ein strukturiertes Feedback zu Ihrem Vorgehen.
 """)
 
@@ -44,7 +46,7 @@ for msg in st.session_state.messages[1:]:
     st.markdown(f"**{sender}:** {msg['content']}")
 
 # Eingabeformular
-with st.form(key="eingabe_formular", clear_on_submit=True):
+with st.form(key="eingabe_formular", clear_on_submit=False):
     user_input = st.text_input("Deine Frage an Karina:")
     submit_button = st.form_submit_button(label="Absenden")
 
@@ -107,7 +109,7 @@ else:
     if st.session_state.diagnostik_step == 0:
         with st.form("weiterdiagnostik"):
             ddx_input2 = st.text_area("Differentialdiagnosen", key="ddx_input2")
-            diag_input = st.text_area("Diagnostische Maßnahmen", key="diag_input2")
+            diag_input = st.text_area("Diagnostische Maßnahmen (nur konkret gewünschte Untersuchungen)", key="diag_input2")
             submitted = st.form_submit_button("Diagnostik abschicken")
 
         if submitted:
@@ -124,23 +126,16 @@ if st.session_state.get("diagnostik_step") == 1:
 
     if st.button("Befunde generieren lassen"):
         prompt_befunde = f"""
-Ein Studierender hat bei einer Patientin (Anamnese typisch für Morbus Crohn mit Ileitis terminalis) folgende drei Differentialdiagnosen angegeben:
-
-{ddx_eingabe}
-
-Er hat außerdem folgende diagnostische Schritte vorgeschlagen:
+Ein Medizinstudierender hat bei einer Patientin folgende diagnostische Maßnahmen konkret angefordert:
 
 {diagnostik_eingabe}
 
-Generiere zu den genannten diagnostischen Maßnahmen typische Befunde für einen Morbus Crohn mit terminaler Ileitis. Falls bestimmte Untersuchungen nicht genannt wurden, ignoriere sie.
+Erstelle ausschließlich Befunde zu den genannten Untersuchungen – in SI-Einheiten bei Laborwerten. Ignoriere alle nicht genannten Verfahren.
 
-Erstelle:
-1. **Laborbefunde** in tabellarischer Form (SI-Einheiten, mit Referenzwerten)
-2. **Mikrobiologische Ergebnisse** (z. B. Stuhlkultur, Clostridien, Parasiten)
-3. **Radiologische / sonografische Befunde** in der typischen Fachterminologie
-4. **Endoskopische und histologische Befunde**, falls zutreffend
+Ergänze vor den Befunden folgenden Hinweis:
+""Diese Befunde wurden automatisiert durch eine KI (GPT-4) erstellt. Sie dienen der Simulation und können unvollständig oder fehlerhaft sein."
 
-Formuliere sachlich und im Stil eines Arztbriefs oder Befundberichts.
+Gib danach die Befunde strukturiert und sachlich wieder – z. B. als Laborbericht, Befundtext oder Tabelle, je nach Untersuchungsart.
 """
         with st.spinner("Befunde werden generiert..."):
             response = client.chat.completions.create(
@@ -156,10 +151,10 @@ Formuliere sachlich und im Stil eines Arztbriefs oder Befundberichts.
 
 # Diagnose und Therapie
 if "befunde" in st.session_state and "final_step" not in st.session_state:
-    st.markdown("### Diagnose und Therapieentscheidung")
+    st.markdown("### Diagnose und Therapiekonzept")
     with st.form("diagnose_therapie"):
         final_diagnose = st.text_input("Ihre endgültige Diagnose:")
-        therapie_vorschlag = st.text_area("Ihr Therapievorschlag:")
+        therapie_vorschlag = st.text_area("Ihr Therapiekonzept:")
         submitted_final = st.form_submit_button("✅ Entscheidung abschließen")
 
     if submitted_final:
@@ -186,6 +181,8 @@ if "final_step" in st.session_state:
         feedback_prompt_final = f"""
 Ein Medizinstudierender hat eine vollständige virtuelle Fallbesprechung mit einer Patientin durchgeführt. Du bist ein erfahrener medizinischer Prüfer.
 
+Beurteile nur die Anteile, die vom Studierenden selbst erbracht oder vorgeschlagen wurden (z. B. Gespräch, Diagnosen, Therapievorschläge) – nicht die Qualität der von GPT erstellten Befunde.
+
 Gesprächsverlauf:
 {karina_verlauf}
 
@@ -204,16 +201,14 @@ Generierte Befunde:
 Finale Diagnose:
 {finale_diag}
 
-Therapievorschlag:
+Therapiekonzept:
 {therapie}
 
 Bitte gib ein strukturiertes, medizinisch-wissenschaftlich fundiertes Feedback:
 
 1. Wurden im Gespräch alle relevanten anamnestischen Informationen erhoben?
 2. War die Diagnostik sinnvoll, vollständig und passend zu den DDx?
-3. Sind die Befunde zutreffend interpretiert?
-4. Ist die finale Diagnose nachvollziehbar?
-5. Ist der Therapievorschlag leitliniengerecht und begründet?
+3. Wurde ein nachvollziehbares, leitliniengerechtes Therapiekonzept vorgeschlagen?
 
 ⚖Berücksichtige zusätzlich:
 - ökologische Aspekte (z. B. CO₂-Bilanz, Strahlenbelastung, Ressourcenverbrauch)
