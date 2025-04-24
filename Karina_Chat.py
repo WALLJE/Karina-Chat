@@ -7,20 +7,29 @@ import random
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 
-# Zufällige Erkrankung auswählen
+# Zufällige Erkrankung und Name auswählen
 if "diagnose_szenario" not in st.session_state:
     st.session_state.diagnose_szenario = random.choice([
         "Morbus Crohn",
         "Reizdarmsyndrom",
         "Appendizitis"
     ])
+
+# Zufälliger Patientenname und Alter
+if "patient_name" not in st.session_state:
+    st.session_state.patient_name = random.choice([
+        "Karina", "Leonie", "Sophie", "Laura", "Anna", "Mara"
+    ])
+
+if "patient_age" not in st.session_state:
+    st.session_state.patient_age = random.randint(20, 34)
   
 #System-Prompt
 if st.session_state.diagnose_szenario == "Morbus Crohn":
     SYSTEM_PROMPT = """
 Patientensimulation – Morbus Crohn
 
-Du bist Karina, eine 24-jährige Studentin der Wirtschaftswissenschaften.
+Du bist {st.session_state.patient_name}, eine {st.session_state.patient_age}-jährige Studentin der Wirtschaftswissenschaften.
 Beantworte Fragen grundsätzlich knapp und gib nur so viele Informationen preis, wie direkt erfragt wurden. 
 Du leidest seit mehreren Monaten unter Bauchschmerzen im rechten Unterbauch. Diese treten schubweise auf. Gelegentlich hast du Fieber bis 38,5 °C und Nachtschweiß. Dein Stuhlgang ist breiig, und du musst 3–5 × täglich auf die Toilette. Du hast in der letzten Woche 3 kg ungewollt abgenommen.
 Erzähle davon aber nur, wenn ausdrücklich danach gefragt wird.
@@ -46,15 +55,24 @@ Erzähle das nur auf gezielte Nachfrage. Reisen: Nur in Deutschland.
 """
 
 # Titel und Instruktion
-st.title("Patientensimulation: Gespräch mit Karina")
-st.info("""
+st.title(f"Virtuelle Fallbesprechung: {st.session_state.diagnose_szenario}")
+st.info(f"""
 **Instruktionen für Studierende:**
 
-Sie führen ein strukturiertes Anamnesegespräch mit der virtuellen Patientin Karina.
+Sie führen ein strukturiertes Anamnesegespräch mit der virtuellen Patientin {st.session_state.patient_name}.
 Geben Sie zum Beginn Ihre Fragen an die Patientin unten ein. Ziel ist es, durch gezieltes Nachfragen eine Verdachtsdiagnose zu stellen und sinnvolle weitere Diagnostik zu planen.
 
 Bitte beachten Sie:
-- Karina antwortet nur auf das, was direkt gefragt wird.
+- {st.session_state.patient_name} antwortet nur auf das, was direkt gefragt wird.
+- Medizinische Fachsprache versteht sie nicht unbedingt – erklären Sie unklare Begriffe.
+- Nach längeren Gesprächspausen wird {st.session_state.patient_name} ungeduldig oder besorgt.
+
+Wenn Sie genug anemnestische Informationen erhoben haben:
+- Führen Sie eine körperliche Untersuchung durch (per Button unten).
+- Danach: Nennen Sie Ihre Differentialdiagnosen und die gewünschte Diagnostik.
+- Sie erhalten typische Befunde und sollen dann eine Diagnose und ein Therapiekonzept festlegen.
+- Danach folgt ein strukturiertes Feedback zu Ihrem Vorgehen.
+""") nur auf das, was direkt gefragt wird.
 - Medizinische Fachsprache versteht sie nicht unbedingt – erklären Sie unklare Begriffe.
 - Nach längeren Gesprächspausen wird Karina ungeduldig oder besorgt.
 
@@ -74,7 +92,7 @@ if "messages" not in st.session_state:
 
 # Chat anzeigen
 for msg in st.session_state.messages[1:]:
-    sender = "👩 Karina" if msg["role"] == "assistant" else "🧑 Du"
+    sender = f"👩 {st.session_state.patient_name}" if msg["role"] == "assistant" else "🧑 Du"
     st.markdown(f"**{sender}:** {msg['content']}")
 
 # Eingabeformular
@@ -151,12 +169,12 @@ Ein Medizinstudierender hat folgende diagnostische Maßnahmen konkret angeforder
 
 {diagnostik_eingabe}
 
-Erstelle ausschließlich Befunde zu den genannten Untersuchungen – in SI-Einheiten bei Laborwerten. Ignoriere alle nicht genannten Verfahren, erstelle also z. B. keinen Koloskopiebefund, wenn dieser nicht als Maßnahme angefordert wurde.
+Erstelle ausschließlich Befunde zu den genannten Untersuchungen. Nutze die zufällig simulierte Diagnose ({diagnose_szenario}), um klinisch typische Befundlagen zu generieren. in SI-Einheiten bei Laborwerten. Ignoriere alle nicht genannten Verfahren, erstelle also z. B. keinen Koloskopiebefund, wenn dieser nicht als Maßnahme angefordert wurde.
 
 Ergänze vor den Befunden folgenden Hinweis:
 "Diese Befunde wurden automatisiert durch eine KI (GPT-4) erstellt. Sie dienen der Simulation und können unvollständig oder fehlerhaft sein."
 
-Nutze die zufällig simulierte Diagnose ({diagnose_szenario}), um klinisch typische Befundlagen zu generieren. Gib die Befunde sachlich und strukturiert wieder – z. B. als Laborbericht, Befundtext oder Tabelle, je nach Untersuchungsart. Verwende keine Interpretationen oder Diagnosen.
+Gib die Befunde sachlich und strukturiert wieder – z. B. als Laborbericht, Befundtext oder Tabelle, je nach Untersuchungsart. Verwende keine Interpretationen oder Diagnosen.
 
 Ergänze keine nicht angeforderten Untersuchungen.
 """
@@ -195,7 +213,9 @@ if "befunde" in st.session_state and "final_step" not in st.session_state:
 if "final_step" in st.session_state:
     st.markdown("---")
     st.subheader("Abschlussbewertung zur ärztlichen Entscheidungsfindung")
-    if st.button("📋 Abschluss-Feedback anzeigen"):
+    st.markdown(f"**Hinweis:** Der Fall basierte auf der zufällig gewählten Diagnose: *{st.session_state.diagnose_szenario}*.")
+
+if st.button("📋 Abschluss-Feedback anzeigen"):
         ddx_text = st.session_state.get("user_ddx2", "")
         diag_text = st.session_state.get("user_diagnostics", "")
         befund_text = st.session_state.get("befunde", "")
