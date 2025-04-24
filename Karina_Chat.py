@@ -154,6 +154,7 @@ if st.session_state.koerper_befund:
     if "diagnostik_step" not in st.session_state:
         st.session_state.diagnostik_step = 0
 
+# Memo: kann warhscheinlich alles gelöscht werden 24.4.
   #  if st.session_state.diagnostik_step < 1:
   #      st.markdown("---")
   #      st.subheader("🧠 Differentialdiagnosen und gewünschte Diagnostik")
