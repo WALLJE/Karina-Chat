@@ -179,7 +179,7 @@ if st.session_state.koerper_befund:
 if st.session_state.get("koerper_befund"):
     if st.session_state.diagnostik_step < 1:
         st.markdown("---")
-        st.subheader("🧠 Differentialdiagnosen und gewünschte Diagnostik")
+        st.subheader("Differentialdiagnosen und gewünschte Diagnostik")
         with st.form("weiterdiagnostik_formular_step0"):
             ddx_input_neu = st.text_area("Welche drei Differentialdiagnosen halten Sie für möglich?", key="ddx_input_neu")
             diag_input_neu = st.text_area("Welche konkreten diagnostischen Maßnahmen möchten Sie ergreifen?", key="diag_input_neu")
@@ -198,7 +198,7 @@ if st.session_state.get("koerper_befund"):
     st.markdown("---")
     st.subheader("Diagnostische Befunde")
 
-    if "user_diagnostics" in st.session_state and st.button("🧪 Befunde generieren lassen"):
+    if "user_diagnostics" in st.session_state and st.button("🧪 Befunde abrufen"):
         diagnostik_eingabe = st.session_state.user_diagnostics
         diagnose_szenario = st.session_state.diagnose_szenario
 
