@@ -90,7 +90,7 @@ for msg in st.session_state.messages[1:]:
 
 # Eingabeformular
 with st.form(key="eingabe_formular", clear_on_submit=True):
-    user_input = st.text_input("Deine Frage an Karina:")
+    user_input = st.text_input("Deine Frage an {st.session_state.patient_name}:")
     submit_button = st.form_submit_button(label="Absenden")
 
 if submit_button and user_input:
