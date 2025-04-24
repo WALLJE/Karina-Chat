@@ -209,7 +209,15 @@ Ein Medizinstudierender hat folgende diagnostische Maßnahmen konkret angeforder
 
 {diagnostik_eingabe}
 
-Erstelle ausschließlich Befunde zu den genannten Untersuchungen. Nutze die zufällig simulierte Diagnose ({diagnose_szenario}), um klinisch typische Befundlagen zu generieren. Gib Laborwerte immer als **Tabelle** aus mit drei Spalten: Parameter – Wert – Referenz (mit SI-Einheit **nur in der Referenzspalte**, z. B. "2–8 mmol/l").
+Erstelle ausschließlich Befunde zu den genannten Untersuchungen. Nutze die zufällig simulierte Diagnose ({diagnose_szenario}), um klinisch typische Befundlagen zu generieren. 
+
+**Laborbefunde**: Gib die Laborwerte ausschließlich als Tabelle aus. Nutze drei Spalten:  
+   **Parameter** | **Wert** | **Referenzbereich (SI-Einheiten)**  
+   Verwende z. B.:  
+   CRP – 18 – <5 mg/l  
+   Calprotectin – 370 – <50 µg/g  
+
+   Gib ** die Einheit nur im Referenzbereich an**, nicht in der Wert-Spalte.
 
 Ergänze vor den Befunden folgenden Hinweis:
 "Diese Befunde wurden automatisiert durch eine KI (GPT-4) erstellt. Sie dienen der Simulation und können unvollständig oder fehlerhaft sein."
