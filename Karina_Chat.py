@@ -27,7 +27,7 @@ if "patient_age" not in st.session_state:
 #System-Prompt
 if st.session_state.diagnose_szenario == "Morbus Crohn":
     SYSTEM_PROMPT = """
-Patientensimulation – Morbus Crohn
+Patientensimulation - Morbus Crohn
 
 Du bist {st.session_state.patient_name}, eine {st.session_state.patient_age}-jährige Studentin der Wirtschaftswissenschaften.
 Beantworte Fragen grundsätzlich knapp und gib nur so viele Informationen preis, wie direkt erfragt wurden. 
