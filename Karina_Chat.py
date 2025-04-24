@@ -1,3 +1,5 @@
+# Version 4.0
+
 import streamlit as st
 from openai import OpenAI, RateLimitError
 import os
@@ -160,7 +162,7 @@ Ein Medizinstudierender hat folgende diagnostische Maßnahmen konkret angeforder
 
 {diagnostik_eingabe}
 
-Erstelle ausschließlich Befunde zu den genannten Untersuchungen. Nutze die zufällig simulierte Diagnose ({diagnose_szenario}), um klinisch typische Befundlagen zu generieren. in SI-Einheiten bei Laborwerten. Ignoriere alle nicht genannten Verfahren, erstelle also z. B. keinen Koloskopiebefund, wenn dieser nicht als Maßnahme angefordert wurde.
+Erstelle ausschließlich Befunde zu den genannten Untersuchungen. Nutze die zufällig simulierte Diagnose ({diagnose_szenario}), um klinisch typische Befundlagen zu generieren. Gib Laborwerte immer als **Tabelle** aus mit drei Spalten: Parameter – Wert – Referenz (mit SI-Einheit **nur in der Referenzspalte**, z. B. "2–8 mmol/l").
 
 Ergänze vor den Befunden folgenden Hinweis:
 "Diese Befunde wurden automatisiert durch eine KI (GPT-4) erstellt. Sie dienen der Simulation und können unvollständig oder fehlerhaft sein."
