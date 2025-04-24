@@ -1,4 +1,4 @@
-# Version 4.4
+# Version 4.0
 
 import streamlit as st
 from openai import OpenAI, RateLimitError
@@ -177,12 +177,12 @@ if st.session_state.get("koerper_befund"):
         st.markdown("---")
         st.subheader("🧠 Differentialdiagnosen und gewünschte Diagnostik")
         with st.form("weiterdiagnostik_formular_step0"):
-            ddx_input2 = st.text_area("Welche drei Differentialdiagnosen halten Sie für möglich?", key="ddx_input2")
-            diag_input = st.text_area("Welche konkreten diagnostischen Maßnahmen möchten Sie ergreifen?", key="diag_input2")
+            ddx_input_neu = st.text_area("Welche drei Differentialdiagnosen halten Sie für möglich?", key="ddx_input_neu")
+            diag_input_neu = st.text_area("Welche konkreten diagnostischen Maßnahmen möchten Sie ergreifen?", key="diag_input_neu")
             submitted_diag = st.form_submit_button("Eingaben speichern")
         if submitted_diag:
-            st.session_state.user_ddx2 = ddx_input2
-            st.session_state.user_diagnostics = diag_input
+            st.session_state.user_ddx2 = ddx_input_neu
+            st.session_state.user_diagnostics = diag_input_neu
             st.session_state.diagnostik_step = 1
             st.rerun()
     else:
