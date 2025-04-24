@@ -72,15 +72,6 @@ Wenn Sie genug anemnestische Informationen erhoben haben:
 - Danach: Nennen Sie Ihre Differentialdiagnosen und die gewünschte Diagnostik.
 - Sie erhalten typische Befunde und sollen dann eine Diagnose und ein Therapiekonzept festlegen.
 - Danach folgt ein strukturiertes Feedback zu Ihrem Vorgehen.
-""") nur auf das, was direkt gefragt wird.
-- Medizinische Fachsprache versteht sie nicht unbedingt – erklären Sie unklare Begriffe.
-- Nach längeren Gesprächspausen wird Karina ungeduldig oder besorgt.
-
-Wenn Sie genug anemnestische Informationen erhoben haben:
-- Führen Sie eine körperliche Untersuchung durch (per Button unten).
-- Danach: Nennen Sie Ihre Differentialdiagnosen und die gewünschte Diagnostik.
-- Sie erhalten typische Befunde und sollen dann eine Diagnose und ein Therapiekonzept festlegen.
-- Danach folgt ein strukturiertes Feedback zu Ihrem Vorgehen.
 """)
 
 # Chat-Verlauf starten
