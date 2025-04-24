@@ -2,7 +2,7 @@ import streamlit as st
 from openai import OpenAI
 import os
 
-#24.4.25 Walldorf
+# 24.4. Walldorf
 
 # API-Key setzen
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
@@ -88,7 +88,7 @@ for msg in st.session_state.messages[1:]:
     st.markdown(f"**{sender}:** {msg['content']}")
 
 # Eingabeformular
-with st.form(key="eingabe_formular", clear_on_submit=False):
+with st.form(key="eingabe_formular", clear_on_submit=True):
     user_input = st.text_input("Deine Frage an Karina:")
     submit_button = st.form_submit_button(label="Absenden")
 
@@ -115,14 +115,15 @@ if st.button("🩺 Untersuchung durchführen"):
     untersuchung_prompt = """
 Erstelle einen typischen körperlichen Untersuchungsbefund bei einer Patientin mit Morbus Crohn mit Ileitis terminalis. Verwende Fachsprache, aber vermeide jede Form von diagnostischer Interpretation oder Hinweis auf konkrete Erkrankungen (z. B. 'deutet auf Crohn hin' o. ä.).
 
-Strukturiere den Befund bitte in Abschnitte zum Beispiel wie:
+Strukturiere den Befund bitte in Abschnitte wie:
 
 **Allgemeinzustand:**  
 **Abdomen:**  
-**Leber/Milz:**  
 **Auskultation Herz/Lunge:**  
 **Haut:**  
 **Extremitäten:**  
+
+Gib ausschließlich körperliche Befunde an – vermeide Laborwerte oder technische Zusatzuntersuchungen.
 
 Formuliere sachlich, beschreibend und medizinisch korrekt – wie in einem klinischen Untersuchungsprotokoll. Vermeide Wertungen, Hypothesen oder diagnostische Zuordnungen.
 """
@@ -158,7 +159,19 @@ else:
             st.session_state.user_ddx2 = ddx_input2
             st.session_state.user_diagnostics = diag_input
             st.session_state.diagnostik_step = 1
+            st.session_state.zusammenfassung = f"""
+**📝 Zusammenfassung Ihrer Angaben:**
+
+- **Differentialdiagnosen:**
+{ddx_input2.strip()}
+
+- **Gewünschte Diagnostik:**
+{diag_input.strip()}
+"""
             st.rerun()
+
+if "zusammenfassung" in st.session_state:
+    st.markdown(st.session_state.zusammenfassung)
 
 # Befunde generieren
 if st.session_state.get("diagnostik_step") == 1:
@@ -172,12 +185,12 @@ Ein Medizinstudierender hat bei einer Patientin folgende diagnostische Maßnahme
 
 {diagnostik_eingabe}
 
-Erstelle ausschließlich Befunde zu den genannten Untersuchungen – in SI-Einheiten bei Laborwerten. Ignoriere alle nicht genannten Verfahren, also erstelle keine Koloskopiebefund, wenn eine Kolsokopie nicht angefordert wurde.
+Erstelle ausschließlich Befunde zu den genannten Untersuchungen – in SI-Einheiten bei Laborwerten. Ignoriere alle nicht genannten Verfahren, erstelle also keinen Koloskopiebefunde, wenn dieser nicht als Maßnahme angefordert wurde.
 
 Ergänze vor den Befunden folgenden Hinweis:
 ""Diese Befunde wurden automatisiert durch eine KI (GPT-4) erstellt. Sie dienen der Simulation und können unvollständig oder fehlerhaft sein."
 
-Gib danach die Befunde strukturiert und sachlich wieder – z. B. als Laborbericht, Befundtext oder Tabelle, je nach angeforderter Untersuchung.
+Gib danach die Befunde strukturiert und sachlich wieder – z. B. als Laborbericht, Befundtext oder Tabelle, je nach Untersuchungsart.Ergänze keine nicht angeforderten Untersuchungen.
 """
         with st.spinner("Befunde werden generiert..."):
             response = client.chat.completions.create(
@@ -256,7 +269,7 @@ Bitte gib ein strukturiertes, medizinisch-wissenschaftlich fundiertes Feedback:
 - ökologische Aspekte (z. B. CO₂-Bilanz, Strahlenbelastung, Ressourcenverbrauch)
 - ökonomische Sinnhaftigkeit (Kosten-Nutzen-Verhältnis)
 
-Strukturiere dein Feedback klar, hilfreich und differenziert – wie ein Kommentar bei einer mündlichen Prüfung.
+Strukturiere dein Feedback klar, hilfreich und differenziert – wie ein persönlicher Kommentar bei einer mündlichen Prüfung, schreibe in der zweiten Person.
 """
         with st.spinner("Evaluation wird erstellt..."):
             eval_response = client.chat.completions.create(
@@ -275,6 +288,30 @@ st.markdown("---")
 st.subheader("Download des Chatprotokolls und Feedback")
 if "final_feedback" in st.session_state:
     protokoll = ""
+
+    if "user_ddx2" in st.session_state:
+        protokoll += "---
+🧠 Differentialdiagnosen:
+"
+        protokoll += st.session_state.user_ddx2 + "
+
+"
+
+    if "user_diagnostics" in st.session_state:
+        protokoll += "---
+🔬 Gewünschte Diagnostik:
+"
+        protokoll += st.session_state.user_diagnostics + "
+
+"
+
+    if "befunde" in st.session_state:
+        protokoll += "---
+📄 Generierte Befunde:
+"
+        protokoll += st.session_state.befunde + "
+
+"
     for msg in st.session_state.messages[1:]:
         rolle = "Karina" if msg["role"] == "assistant" else "Du"
         protokoll += f"{rolle}: {msg['content']}\n\n"
