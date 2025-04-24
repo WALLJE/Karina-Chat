@@ -1,4 +1,4 @@
-# Version 4.0
+# Version 4.1
 
 import streamlit as st
 from openai import OpenAI, RateLimitError
