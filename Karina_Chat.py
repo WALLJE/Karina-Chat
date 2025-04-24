@@ -1,4 +1,4 @@
-# Version 4.0
+# Version 4.5
 
 import streamlit as st
 from openai import OpenAI, RateLimitError
@@ -67,21 +67,24 @@ Geben Sie zum Beginn Ihre Fragen an die Patientin unten ein. Ziel ist es, durch 
 Bitte beachten Sie:
 - {st.session_state.patient_name} antwortet nur auf das, was direkt gefragt wird.
 - Medizinische Fachsprache versteht sie nicht unbedingt – erklären Sie unklare Begriffe.
-- Nach längeren Gesprächspausen wird {st.session_state.patient_name} ungeduldig oder besorgt.
 
 Wenn Sie genug anemnestische Informationen erhoben haben:
 - Führen Sie eine körperliche Untersuchung durch (per Button unten).
 - Danach: Nennen Sie Ihre Differentialdiagnosen und die gewünschte Diagnostik.
-- Sie erhalten typische Befunde und sollen dann eine Diagnose und ein Therapiekonzept festlegen.
-- Danach folgt ein strukturiertes Feedback zu Ihrem Vorgehen.
+- Sie erhalten typische Befunde und sollen dann eine Diagnose und ein Therapiekonzept festlegen. Erläurtern Sie die Therapie gern ausführlich.
+- Danach erhalten Sie ein strukturiertes Feedback zu Ihrem Vorgehen.
 """)
 
 # Chat-Verlauf starten
 if "messages" not in st.session_state:
+    eintritt = f"{st.session_state.patient_name} ({st.session_state.patient_age} Jahre) betritt den Raum."
+    start_text = "Guten Tag, ich bin froh, dass ich mich heute bei Ihnen vorstellen kann."
     st.session_state.messages = [
         {"role": "system", "content": SYSTEM_PROMPT},
-        {"role": "assistant", "content": "Guten Tag, ich bin froh, dass ich mich heute bei Ihnen vorstellen kann."}
+        {"role": "assistant", "content": eintritt},
+        {"role": "assistant", "content": start_text}
     ]
+
 
 # Chat anzeigen
 for msg in st.session_state.messages[1:]:
@@ -249,7 +252,7 @@ if "befunde" in st.session_state and "final_step" not in st.session_state:
 if "final_step" in st.session_state:
     st.markdown("---")
     st.subheader("Abschlussbewertung zur ärztlichen Entscheidungsfindung")
-    st.markdown(f"**Hinweis:** Der Fall basierte auf der zufällig gewählten Diagnose: *{st.session_state.diagnose_szenario}*.")
+    st.markdown(f"Der Fall basierte auf der zufällig gewählten Diagnose: *{st.session_state.diagnose_szenario}*.")
 
 if st.button("📋 Abschluss-Feedback anzeigen"):
         ddx_text = st.session_state.get("user_ddx2", "")
@@ -297,7 +300,7 @@ Bitte gib ein strukturiertes, medizinisch-wissenschaftlich fundiertes Feedback:
 3. Ist die finale Diagnose nachvollziehbar, insbesondere im Hinblick auf Differenzierung zu anderen Möglichkeiten?
 4. Ist das Therapiekonzept leitliniengerecht, plausibel und auf die Diagnose abgestimmt?
 
-⚖ Berücksichtige zusätzlich:
+Berücksichtige zusätzlich:
 - ökologische Aspekte (z. B. CO₂-Bilanz, Strahlenbelastung, Ressourcenverbrauch)
 - ökonomische Sinnhaftigkeit (Kosten-Nutzen-Verhältnis)
 
