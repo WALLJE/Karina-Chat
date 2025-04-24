@@ -303,9 +303,9 @@ if "final_feedback" in st.session_state:
         rolle = "Karina" if msg["role"] == "assistant" else "Du"
         protokoll += f"{rolle}: {msg['content']}\\n"
 
-   if "koerper_befund" in st.session_state:
-    protokoll += "---\\n🩺 Körperlicher Untersuchungsbefund:\\n"
-    protokoll += st.session_state.koerper_befund + "\\n"
+    if "koerper_befund" in st.session_state:
+        protokoll += "---\\n🩺 Körperlicher Untersuchungsbefund:\\n"
+        protokoll += st.session_state.koerper_befund + "\\n"
 
 
     protokoll += "---\\n📄 Abschlussfeedback:\\n"
