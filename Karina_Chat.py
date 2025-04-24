@@ -290,28 +290,17 @@ if "final_feedback" in st.session_state:
     protokoll = ""
 
     if "user_ddx2" in st.session_state:
-        protokoll += "---
-🧠 Differentialdiagnosen:
-"
-        protokoll += st.session_state.user_ddx2 + "
-
-"
+        protokoll += "---🧠 Differentialdiagnosen:\\n"
+        protokoll += st.session_state.user_ddx2 + "\\n"
 
     if "user_diagnostics" in st.session_state:
-        protokoll += "---
-🔬 Gewünschte Diagnostik:
-"
-        protokoll += st.session_state.user_diagnostics + "
-
-"
+        protokoll += "---\\n🔬 Gewünschte Diagnostik:\\n"
+        protokoll += st.session_state.user_diagnostics + "\\n"
 
     if "befunde" in st.session_state:
-        protokoll += "---
-📄 Generierte Befunde:
-"
-        protokoll += st.session_state.befunde + "
-
-"
+        protokoll += "---\\n📄 Generierte Befunde:\\n"
+        protokoll += st.session_state.befunde + "\\n \\n"
+        
     for msg in st.session_state.messages[1:]:
         rolle = "Karina" if msg["role"] == "assistant" else "Du"
         protokoll += f"{rolle}: {msg['content']}\n\n"
