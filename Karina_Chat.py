@@ -1,4 +1,4 @@
-# Version 4.2
+# Version 4.4
 
 import streamlit as st
 from openai import OpenAI, RateLimitError
@@ -168,24 +168,30 @@ if st.session_state.koerper_befund:
     if st.session_state.diagnostik_step >= 1:
         st.markdown("---")
         st.subheader("🧠 Zusammenfassung Ihrer Eingaben")
+        st.markdown(f"**Differentialdiagnosen:**
+{st.session_state.user_ddx2}")
+        st.markdown(f"**Diagnostische Maßnahmen:**
+{st.session_state.user_diagnostics}")
+
+# Modul für Diagnosen und Diagnostik
+if st.session_state.get("koerper_befund"):
+    if st.session_state.diagnostik_step < 1:
+        st.markdown("---")
+        st.subheader("🧠 Differentialdiagnosen und gewünschte Diagnostik")
+        with st.form("weiterdiagnostik_formular_step0"):
+            ddx_input2 = st.text_area("Welche drei Differentialdiagnosen halten Sie für möglich?", key="ddx_input2")
+            diag_input = st.text_area("Welche konkreten diagnostischen Maßnahmen möchten Sie ergreifen?", key="diag_input2")
+            submitted_diag = st.form_submit_button("Eingaben speichern")
+        if submitted_diag:
+            st.session_state.user_ddx2 = ddx_input2
+            st.session_state.user_diagnostics = diag_input
+            st.session_state.diagnostik_step = 1
+            st.rerun()
+    else:
+        st.markdown("---")
+        st.subheader("📝 Ihre Eingaben:")
         st.markdown(f"**Differentialdiagnosen:**\n{st.session_state.user_ddx2}")
         st.markdown(f"**Diagnostische Maßnahmen:**\n{st.session_state.user_diagnostics}")
-
-    # Modul für Diagnosen und Diagnostik
-    st.markdown("---")
-    st.subheader("🧠 Differentialdiagnosen und gewünschte Diagnostik")
-    with st.form("weiterdiagnostik_formular"):
-        ddx_input2 = st.text_area("Welche drei Differentialdiagnosen halten Sie für möglich?", key="ddx_input2")
-        diag_input2 = st.text_area("Welche konkreten diagnostischen Maßnahmen möchten Sie ergreifen?", key="diag_input2")
-        submitted_diag = st.form_submit_button("Eingaben speichern")
-
-    if submitted_diag:
-        st.session_state.user_ddx2 = ddx_input2
-        st.session_state.user_diagnostics = diag_input2
-        st.success("✅ Angaben gespeichert")
-        st.markdown("**Zusammenfassung Ihrer Eingaben:**")
-        st.markdown(f"**Differentialdiagnosen:**\n{ddx_input2}")
-        st.markdown(f"**Diagnostische Maßnahmen:**\n{diag_input2}")
 
     st.markdown("---")
     st.subheader("Diagnostische Befunde")
