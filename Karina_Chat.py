@@ -115,7 +115,7 @@ if st.button("🩺 Untersuchung durchführen"):
     untersuchung_prompt = """
 Erstelle einen typischen körperlichen Untersuchungsbefund bei einer Patientin mit Morbus Crohn mit Ileitis terminalis. Verwende Fachsprache, aber vermeide jede Form von diagnostischer Interpretation oder Hinweis auf konkrete Erkrankungen (z. B. 'deutet auf Crohn hin' o. ä.).
 
-Strukturiere den Befund bitte in Abschnitte wie:
+Strukturiere den Befund bitte in Abschnitte zum Beispiel wie:
 
 **Allgemeinzustand:**  
 **Abdomen:**  
@@ -130,7 +130,7 @@ Formuliere sachlich, beschreibend und medizinisch korrekt – wie in einem klini
         response = client.chat.completions.create(
             model="gpt-4",
             messages=[{"role": "user", "content": untersuchung_prompt}],
-            temperature=0.9
+            temperature=0.5
         )
         st.session_state.koerper_befund = response.choices[0].message.content
 
@@ -172,12 +172,12 @@ Ein Medizinstudierender hat bei einer Patientin folgende diagnostische Maßnahme
 
 {diagnostik_eingabe}
 
-Erstelle ausschließlich Befunde zu den genannten Untersuchungen – in SI-Einheiten bei Laborwerten. Ignoriere alle nicht genannten Verfahren.
+Erstelle ausschließlich Befunde zu den genannten Untersuchungen – in SI-Einheiten bei Laborwerten. Ignoriere alle nicht genannten Verfahren, also erstelle keine Koloskopiebefund, wenn eine Kolsokopie nicht angefordert wurde.
 
 Ergänze vor den Befunden folgenden Hinweis:
 ""Diese Befunde wurden automatisiert durch eine KI (GPT-4) erstellt. Sie dienen der Simulation und können unvollständig oder fehlerhaft sein."
 
-Gib danach die Befunde strukturiert und sachlich wieder – z. B. als Laborbericht, Befundtext oder Tabelle, je nach Untersuchungsart.
+Gib danach die Befunde strukturiert und sachlich wieder – z. B. als Laborbericht, Befundtext oder Tabelle, je nach angeforderter Untersuchung.
 """
         with st.spinner("Befunde werden generiert..."):
             response = client.chat.completions.create(
