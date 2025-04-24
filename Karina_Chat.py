@@ -1,4 +1,4 @@
-# Version 4.1
+# Version 4.2
 
 import streamlit as st
 from openai import OpenAI, RateLimitError
@@ -168,10 +168,8 @@ if st.session_state.koerper_befund:
     if st.session_state.diagnostik_step >= 1:
         st.markdown("---")
         st.subheader("🧠 Zusammenfassung Ihrer Eingaben")
-        st.markdown(f"**Differentialdiagnosen:**
-{st.session_state.user_ddx2}")
-        st.markdown(f"**Diagnostische Maßnahmen:**
-{st.session_state.user_diagnostics}")
+        st.markdown(f"**Differentialdiagnosen:**\n{st.session_state.user_ddx2}")
+        st.markdown(f"**Diagnostische Maßnahmen:**\n{st.session_state.user_diagnostics}")
 
     # Modul für Diagnosen und Diagnostik
     st.markdown("---")
