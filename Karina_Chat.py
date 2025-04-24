@@ -1,56 +1,48 @@
 import streamlit as st
-from openai import OpenAI
+from openai import OpenAI, RateLimitError
 import os
+import random
 
 # API-Key setzen
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
+
+# Zufällige Erkrankung auswählen
+if "diagnose_szenario" not in st.session_state:
+    st.session_state.diagnose_szenario = random.choice([
+        "Morbus Crohn",
+        "Reizdarmsyndrom",
+        "Appendizitis"
+    ])
+  
 #System-Prompt
-SYSTEM_PROMPT = """
-Patientensimulation (Morbus Crohn)
-Rolle der virtuellen Patientin
+if st.session_state.diagnose_szenario == "Morbus Crohn":
+    SYSTEM_PROMPT = """
+Patientensimulation – Morbus Crohn
 
 Du bist Karina, eine 24-jährige Studentin der Wirtschaftswissenschaften.
 Beantworte Fragen grundsätzlich knapp und gib nur so viele Informationen preis, wie direkt erfragt wurden. 
-Erzähle keine vollständige Krankengeschichte auf eine allgemeine Einstiegsfrage hin. 
-Halte dich zurück mit Details und nenne z. B. Beschwerden wie Fieber, Gewichtsverlust oder Stuhlveränderungen nur, wenn ausdrücklich danach gefragt wird.
-Dein Gesprächspartner ist ein Medizinstudent, der als Arzt handelt.
-Du kommunizierst in normaler Umgangssprache mit einem höflichen und besorgten Ton, vermeidest jedoch Fachjargon.
-Wenn du medizinische Begriffe nicht verstehst, fragst du nach, ohne dich dafür zu entschuldigen.
-Du bist ungeduldig, wenn längere Pausen entstehen, und fragst nach dem weiteren Vorgehen.
-
-Krankengeschichte (Symptome & Hintergrund)
-
-Beschwerden: Seit 4 Monaten hast du Bauchschmerzen, hauptsächlich im rechten Unterbauch.
-Die Schmerzen treten wiederkehrend auf, gelegentlich begleitet von Fieber bis 38,5 °C und Nachtschweiß.
-Stuhlgang: Breiig, 5-mal täglich.
-Gewichtsverlust: 5 kg in der letzten Woche ohne Diät.
-Familiengeschichte: Keine bekannten Darmerkrankungen (kreative Freiheiten für andere familiäre Erkrankungen erlaubt).
+Du leidest seit mehreren Monaten unter Bauchschmerzen im rechten Unterbauch. Diese treten schubweise auf. Gelegentlich hast du Fieber bis 38,5 °C und Nachtschweiß. Dein Stuhlgang ist breiig, und du musst 3–5 × täglich auf die Toilette. Du hast in der letzten Woche 3 kg ungewollt abgenommen.
+Erzähle davon aber nur, wenn ausdrücklich danach gefragt wird.
 Reisen: Vor 5 Jahren Korsika, sonst nur in Deutschland.
+"""
+elif st.session_state.diagnose_szenario == "Reizdarmsyndrom":
+    SYSTEM_PROMPT = """
+Patientensimulation – Reizdarmsyndrom
 
-#entfällt aktuell 24.04.25
-#Diagnostische Diskussion
-#
-#Lehne Diagnostik ab, bis der Medizinstudent die gesamte Anamnese erfragt hat.
-#Sei kritisch gegenüber einer Computertomographie (CT) wegen der Strahlenbelastung. Zeige dich besorgt und lehne diese Option entschieden ab.
-#Magnetresonanztomographie (MRT) akzeptierst du nur, wenn es angesprochen wird.
-#
-#Koloskopie
-#
-#Lass dir die Koloskopie wie bei einem ärztlichen Aufklärungsgespräch erklären.
-#Frage kritisch nach Vorbereitung, Sedierung, Risiken, Verhalten danach, Alternativen und Nebenwirkungen.
-#
-#Therapie
-#
-#Zeige Besorgnis bei der Nennung von Prednisolon oder Cortison.
-#Frage nach Nebenwirkungen und lass dir vier relevante Nebenwirkungen erläutern.
-#Bestehe auf einer Erklärung zu Erfolgsprognosen und Alternativen.
-#Frage nach zwei alternativen Medikamenten mit Vor- und Nachteilen sowie einer möglichen chirurgischen Therapie.
+Du bist Karina, eine 24-jährige Studentin der Wirtschaftswissenschaften.
+Beantworte Fragen grundsätzlich knapp und gib nur so viele Informationen preis, wie direkt erfragt wurden. 
+Du hast seit über 6 Monaten immer wieder Bauchschmerzen, mal rechts, mal links, aber nie in der Mitte. Diese bessern sich meist nach dem Stuhlgang. Manchmal hast du weichen Stuhl, manchmal Verstopfung. Es besteht kein Fieber und kein Gewichtsverlust. Dein Allgemeinbefinden ist gut, du bist aber beunruhigt, weil es chronisch ist.
+Erzähle das nur auf Nachfrage. Reisen: In den letzten Jahren nur in Deutschland, vor Jahren mal in der Türkei, da hattest Du eine Magen-Darm-Infektion.
+"""
+elif st.session_state.diagnose_szenario == "Appendizitis":
+    SYSTEM_PROMPT = """
+Patientensimulation – Appendizitis
 
-#Abschluss
-
-#Bedanke dich für die Beratung.
-#Wenn Feedback gewünscht wird, kommentiere Empathie, Genauigkeit und Zielgerichtetheit der Diagnostik.
+Du bist Karina, eine 24-jährige Studentin der Wirtschaftswissenschaften.
+Beantworte Fragen grundsätzlich knapp und gib nur so viele Informationen preis, wie direkt erfragt wurden. 
+Seit etwa einem Tag hast du zunehmende Bauchschmerzen, die erst um den Nabel herum begannen und nun im rechten Unterbauch lokalisiert sind. Dir ist übel, du hattest keinen Appetit. Du hattest heute Fieber bis 38,3 °C. Du machst dir Sorgen. Der letzte Stuhlgang war gestern, normal.
+Erzähle das nur auf gezielte Nachfrage. Reisen: Nur in Deutschland.
 """
 
 # Titel und Instruktion
@@ -93,13 +85,16 @@ with st.form(key="eingabe_formular", clear_on_submit=True):
 if submit_button and user_input:
     st.session_state.messages.append({"role": "user", "content": user_input})
     with st.spinner("Karina antwortet..."):
-        response = client.chat.completions.create(
-            model="gpt-4",
-            messages=st.session_state.messages,
-            temperature=0.6
-        )
-        reply = response.choices[0].message.content
-        st.session_state.messages.append({"role": "assistant", "content": reply})
+        try:
+            response = client.chat.completions.create(
+                model="gpt-4",
+                messages=st.session_state.messages,
+                temperature=0.6
+            )
+            reply = response.choices[0].message.content
+            st.session_state.messages.append({"role": "assistant", "content": reply})
+        except RateLimitError:
+            st.error("🚫 Die Anfrage konnte nicht verarbeitet werden, da die OpenAI-API derzeit überlastet ist. Bitte versuchen Sie es in einigen Minuten erneut.")
     st.rerun()
 
 # Körperliche Untersuchung
@@ -110,10 +105,12 @@ if "koerper_befund" not in st.session_state:
     st.session_state.koerper_befund = None
 
 if st.button("🩺 Untersuchung durchführen"):
-    untersuchung_prompt = """
-Erstelle einen typischen körperlichen Untersuchungsbefund bei einer Patientin mit Morbus Crohn mit Ileitis terminalis. Verwende Fachsprache, aber vermeide jede Form von diagnostischer Interpretation oder Hinweis auf konkrete Erkrankungen (z. B. 'deutet auf Crohn hin' o. ä.).
+    untersuchung_prompt = f"""
+Die Patientin hat eine zufällig simulierte Erkrankung. Diese lautet: {st.session_state.diagnose_szenario}.
 
-Strukturiere den Befund bitte in Abschnitte wie:
+Erstelle einen körperlichen Untersuchungsbefund, der zu dieser Erkrankung passt, ohne sie explizit zu nennen oder zu diagnostizieren. Passe die Befundlage so an, dass sie klinisch konsistent ist, aber nicht interpretierend oder hinweisgebend wirkt.
+
+Strukturiere den Befund bitte in folgende Abschnitte:
 
 **Allgemeinzustand:**  
 **Abdomen:**   
@@ -121,87 +118,65 @@ Strukturiere den Befund bitte in Abschnitte wie:
 **Haut:**  
 **Extremitäten:**  
 
-Gib ausschließlich körperliche Befunde an – vermeide Laborwerte oder technische Zusatzuntersuchungen.
+Gib ausschließlich körperliche Untersuchungsbefunde an – keine Bildgebung, Labordiagnostik oder Zusatzverfahren. Vermeide jede Form von Bewertung, Hypothese oder Krankheitsnennung.
 
-Formuliere sachlich, beschreibend und medizinisch korrekt – wie in einem klinischen Untersuchungsprotokoll. Vermeide Wertungen, Hypothesen oder diagnostische Zuordnungen.
+Formuliere neutral, präzise und sachlich – so, wie es in einem klinischen Untersuchungsprotokoll stehen würde.
 """
     with st.spinner("Untersuchungsbefund wird erstellt..."):
-        response = client.chat.completions.create(
-            model="gpt-4",
-            messages=[{"role": "user", "content": untersuchung_prompt}],
-            temperature=0.5
-        )
-        st.session_state.koerper_befund = response.choices[0].message.content
+        try:
+            response = client.chat.completions.create(
+                model="gpt-4",
+                messages=[{"role": "user", "content": untersuchung_prompt}],
+                temperature=0.5
+            )
+            st.session_state.koerper_befund = response.choices[0].message.content
+        except RateLimitError:
+            st.error("🚫 Die Untersuchung konnte nicht erstellt werden. Die OpenAI-API ist derzeit überlastet.")
 
 if st.session_state.koerper_befund:
     st.success("✅ Untersuchungsbefund erstellt")
     st.markdown(st.session_state.koerper_befund)
 
-# Weiterführende Diagnostik
-st.markdown("---")
-st.subheader("Weiterführende Diagnostik und Entscheidungstraining")
+    st.markdown("---")
+    st.subheader("Diagnostische Befunde")
 
-if "diagnostik_step" not in st.session_state:
-    st.session_state.diagnostik_step = 0
+    if "user_diagnostics" in st.session_state and st.button("🧪 Befunde generieren lassen"):
+        diagnostik_eingabe = st.session_state.user_diagnostics
+        diagnose_szenario = st.session_state.diagnose_szenario
 
-if not st.session_state.koerper_befund:
-    st.info("ℹ️ Bitte führen Sie zuerst die körperliche Untersuchung durch, bevor Sie mit der Diagnostik fortfahren.")
-else:
-    if st.session_state.diagnostik_step == 0:
-        with st.form("weiterdiagnostik"):
-            ddx_input2 = st.text_area("Differentialdiagnosen", key="ddx_input2")
-            diag_input = st.text_area("Diagnostische Maßnahmen (nur konkret gewünschte Untersuchungen)", key="diag_input2")
-            submitted = st.form_submit_button("Diagnostik abschicken")
-
-        if submitted:
-            st.session_state.user_ddx2 = ddx_input2
-            st.session_state.user_diagnostics = diag_input
-            st.session_state.diagnostik_step = 1
-            st.session_state.zusammenfassung = f"""
-**📝 Zusammenfassung Ihrer Angaben:**
-
-- **Differentialdiagnosen:**
-{ddx_input2.strip()}
-
-- **Gewünschte Diagnostik:**
-{diag_input.strip()}
-"""
-            st.rerun()
-
-if "zusammenfassung" in st.session_state:
-    st.markdown(st.session_state.zusammenfassung)
-
-# Befunde generieren
-if st.session_state.get("diagnostik_step") == 1:
-    st.markdown("### Befunde zur gewählten Diagnostik")
-    diagnostik_eingabe = st.session_state.get("user_diagnostics", "")
-    ddx_eingabe = st.session_state.get("user_ddx2", "")
-
-    if st.button("Befunde generieren lassen"):
         prompt_befunde = f"""
-Ein Medizinstudierender hat bei einer Patientin folgende diagnostische Maßnahmen konkret angefordert:
+Die Patientin hat laut Szenario das Krankheitsbild **{diagnose_szenario}**.
+
+Ein Medizinstudierender hat folgende diagnostische Maßnahmen konkret angefordert:
 
 {diagnostik_eingabe}
 
-Erstelle ausschließlich Befunde zu den genannten Untersuchungen – in SI-Einheiten bei Laborwerten. Ignoriere alle nicht genannten Verfahren, erstelle also keinen Koloskopiebefunde, wenn dieser nicht als Maßnahme angefordert wurde.
+Erstelle ausschließlich Befunde zu den genannten Untersuchungen – in SI-Einheiten bei Laborwerten. Ignoriere alle nicht genannten Verfahren, erstelle also z. B. keinen Koloskopiebefund, wenn dieser nicht als Maßnahme angefordert wurde.
 
 Ergänze vor den Befunden folgenden Hinweis:
-""Diese Befunde wurden automatisiert durch eine KI (GPT-4) erstellt. Sie dienen der Simulation und können unvollständig oder fehlerhaft sein."
+"Diese Befunde wurden automatisiert durch eine KI (GPT-4) erstellt. Sie dienen der Simulation und können unvollständig oder fehlerhaft sein."
 
-Gib danach die Befunde strukturiert und sachlich wieder – z. B. als Laborbericht, Befundtext oder Tabelle, je nach Untersuchungsart.Ergänze keine nicht angeforderten Untersuchungen.
+Nutze die zufällig simulierte Diagnose ({diagnose_szenario}), um klinisch typische Befundlagen zu generieren. Gib die Befunde sachlich und strukturiert wieder – z. B. als Laborbericht, Befundtext oder Tabelle, je nach Untersuchungsart. Verwende keine Interpretationen oder Diagnosen.
+
+Ergänze keine nicht angeforderten Untersuchungen.
 """
-        with st.spinner("Befunde werden generiert..."):
-            response = client.chat.completions.create(
-                model="gpt-4",
-                messages=[{"role": "user", "content": prompt_befunde}],
-                temperature=0.5
-            )
-            befund_text = response.choices[0].message.content
-        st.session_state.befunde = befund_text
-        st.success("✅ Befunde generiert")
-        st.markdown("### 📄 Ergebnisse:")
-        st.markdown(befund_text)
 
+        with st.spinner("Befunde werden generiert..."):
+            try:
+                response = client.chat.completions.create(
+                    model="gpt-4",
+                    messages=[{"role": "user", "content": prompt_befunde}],
+                    temperature=0.5
+                )
+                befund_text = response.choices[0].message.content
+                st.session_state.befunde = befund_text
+            except RateLimitError:
+                st.error("🚫 Befunde konnten nicht generiert werden. Die OpenAI-API ist aktuell überlastet.")
+
+        if "befunde" in st.session_state:
+            st.success("✅ Befunde generiert")
+            st.markdown("### 📄 Ergebnisse:")
+            st.markdown(st.session_state.befunde)
 # Diagnose und Therapie
 if "befunde" in st.session_state and "final_step" not in st.session_state:
     st.markdown("### Diagnose und Therapiekonzept")
@@ -219,7 +194,7 @@ if "befunde" in st.session_state and "final_step" not in st.session_state:
 # Abschlussfeedback
 if "final_step" in st.session_state:
     st.markdown("---")
-    st.subheader("📋 Abschließende Evaluation")
+    st.subheader("Abschlussbewertung zur ärztlichen Entscheidungsfindung")
     if st.button("📋 Abschluss-Feedback anzeigen"):
         ddx_text = st.session_state.get("user_ddx2", "")
         diag_text = st.session_state.get("user_diagnostics", "")
@@ -234,7 +209,9 @@ if "final_step" in st.session_state:
         feedback_prompt_final = f"""
 Ein Medizinstudierender hat eine vollständige virtuelle Fallbesprechung mit einer Patientin durchgeführt. Du bist ein erfahrener medizinischer Prüfer.
 
-Beurteile nur die Anteile, die vom Studierenden selbst erbracht oder vorgeschlagen wurden (z. B. Gespräch, Diagnosen, Therapievorschläge) – nicht die Qualität der von GPT erstellten Befunde.
+Die zugrunde liegende Erkrankung im Szenario lautet: **{st.session_state.diagnose_szenario}**. Nutze dieses Wissen, um die Entscheidungen des Studierenden in Bezug auf Verdachtsdiagnose, Diagnostik und Therapie angemessen zu beurteilen.
+
+Beurteile ausschließlich die Leistungen des Studierenden – nicht die Qualität automatisch generierter Inhalte wie GPT-Befunde.
 
 Gesprächsverlauf:
 {karina_verlauf}
@@ -260,10 +237,11 @@ Therapiekonzept:
 Bitte gib ein strukturiertes, medizinisch-wissenschaftlich fundiertes Feedback:
 
 1. Wurden im Gespräch alle relevanten anamnestischen Informationen erhoben?
-2. War die Diagnostik sinnvoll, vollständig und passend zu den DDx?
-3. Wurde ein nachvollziehbares, leitliniengerechtes Therapiekonzept vorgeschlagen?
+2. War die gewählte Diagnostik nachvollziehbar, vollständig und passend zur Szenariodiagnose **{st.session_state.diagnose_szenario}**?
+3. Ist die finale Diagnose nachvollziehbar, insbesondere im Hinblick auf Differenzierung zu anderen Möglichkeiten?
+4. Ist das Therapiekonzept leitliniengerecht, plausibel und auf die Diagnose abgestimmt?
 
-⚖Berücksichtige zusätzlich:
+⚖ Berücksichtige zusätzlich:
 - ökologische Aspekte (z. B. CO₂-Bilanz, Strahlenbelastung, Ressourcenverbrauch)
 - ökonomische Sinnhaftigkeit (Kosten-Nutzen-Verhältnis)
 
@@ -278,7 +256,7 @@ Strukturiere dein Feedback klar, hilfreich und differenziert – wie ein persön
             final_feedback = eval_response.choices[0].message.content
         st.session_state.final_feedback = final_feedback
         st.success("✅ Evaluation erstellt")
-        st.markdown("### Abschlussfeedback:")
+        st.markdown("### Strukturierte Rückmeldung zur Fallbearbeitung:")
         st.markdown(final_feedback)
 
 # Downloadbereich
@@ -286,30 +264,33 @@ st.markdown("---")
 st.subheader("Download des Chatprotokolls und Feedback")
 if "final_feedback" in st.session_state:
     protokoll = ""
+protokoll = f"🩺 Simuliertes Krankheitsbild: {st.session_state.diagnose_szenario}\n\n"
 
-    if "user_ddx2" in st.session_state:
-        protokoll += "---\\n🧠 Differentialdiagnosen:\\n"
-        protokoll += st.session_state.user_ddx2 + "\\n"
+protokoll += "---\n💬 Gesprächsverlauf:\n"
+for msg in st.session_state.messages[1:]:
+    rolle = "Karina" if msg["role"] == "assistant" else "Du"
+    protokoll += f"{rolle}: {msg['content']}\n"
 
-    if "user_diagnostics" in st.session_state:
-        protokoll += "---\\n🔬 Gewünschte Diagnostik:\\n"
-        protokoll += st.session_state.user_diagnostics + "\\n"
+if "koerper_befund" in st.session_state:
+    protokoll += "\n---\n🩺 Körperlicher Untersuchungsbefund:\n"
+    protokoll += st.session_state.koerper_befund + "\n"
 
-    if "befunde" in st.session_state:
-        protokoll += "---\\n📄 Generierte Befunde:\\n"
-        protokoll += st.session_state.befunde + "\\n"
+if "user_ddx2" in st.session_state:
+    protokoll += "\n---\n🧠 Differentialdiagnosen:\n"
+    protokoll += st.session_state.user_ddx2 + "\n"
 
-    for msg in st.session_state.messages[1:]:
-        rolle = "Karina" if msg["role"] == "assistant" else "Du"
-        protokoll += f"{rolle}: {msg['content']}\\n"
+if "user_diagnostics" in st.session_state:
+    protokoll += "\n---\n🔬 Gewünschte Diagnostik:\n"
+    protokoll += st.session_state.user_diagnostics + "\n"
 
-    if "koerper_befund" in st.session_state:
-        protokoll += "---\\n🩺 Körperlicher Untersuchungsbefund:\\n"
-        protokoll += st.session_state.koerper_befund + "\\n"
+if "befunde" in st.session_state:
+    protokoll += "\n---\n📄 Generierte Befunde:\n"
+    protokoll += st.session_state.befunde + "\n"
 
+protokoll += "\n---\n📄 Abschlussfeedback:\n"
+protokoll += st.session_state.final_feedback + "\n"
 
-    protokoll += "---\\n📄 Abschlussfeedback:\\n"
-    protokoll += st.session_state.final_feedback + "\\n"
+    protokoll += st.session_state.final_feedback + "\n"
 
     st.download_button(
         label="⬇️ Gespräch & Feedback herunterladen",
