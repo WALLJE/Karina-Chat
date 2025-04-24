@@ -301,7 +301,7 @@ if "befunde" in st.session_state:
 protokoll += "\n---\n📄 Abschlussfeedback:\n"
 protokoll += st.session_state.final_feedback + "\n"
 
-    st.download_button(
+st.download_button(
         label="⬇️ Gespräch & Feedback herunterladen",
         data=protokoll,
         file_name="karina_chatprotokoll.txt",
