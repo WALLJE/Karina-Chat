@@ -154,25 +154,25 @@ if st.session_state.koerper_befund:
     if "diagnostik_step" not in st.session_state:
         st.session_state.diagnostik_step = 0
 
-    if st.session_state.diagnostik_step < 1:
-        st.markdown("---")
-        st.subheader("🧠 Differentialdiagnosen und gewünschte Diagnostik")
-        with st.form("weiterdiagnostik_formular"):
-            ddx_input2 = st.text_area("Welche drei Differentialdiagnosen halten Sie für möglich?", key="ddx_input2")
-            diag_input2 = st.text_area("Welche konkreten diagnostischen Maßnahmen möchten Sie ergreifen?", key="diag_input2")
-            submitted_diag = st.form_submit_button("Eingaben speichern")
+  #  if st.session_state.diagnostik_step < 1:
+  #      st.markdown("---")
+  #      st.subheader("🧠 Differentialdiagnosen und gewünschte Diagnostik")
+  #      with st.form("weiterdiagnostik_formular"):
+  #          ddx_input2 = st.text_area("Welche drei Differentialdiagnosen halten Sie für möglich?", key="ddx_input2")
+  #          diag_input2 = st.text_area("Welche konkreten diagnostischen Maßnahmen möchten Sie ergreifen?", key="diag_input2")
+  #          submitted_diag = st.form_submit_button("Eingaben speichern")
 
-        if submitted_diag:
-            st.session_state.user_ddx2 = ddx_input2
-            st.session_state.user_diagnostics = diag_input2
-            st.session_state.diagnostik_step = 1
-            st.success("✅ Angaben gespeichert")
+  #      if submitted_diag:
+  #          st.session_state.user_ddx2 = ddx_input2
+  #          st.session_state.user_diagnostics = diag_input2
+  #          st.session_state.diagnostik_step = 1
+  #          st.success("✅ Angaben gespeichert")
 
-    if st.session_state.diagnostik_step >= 1:
-        st.markdown("---")
-        st.subheader("🧠 Zusammenfassung Ihrer Eingaben")
-        st.markdown(f"**Differentialdiagnosen:**\n{st.session_state.user_ddx2}")
-        st.markdown(f"**Diagnostische Maßnahmen:**\n{st.session_state.user_diagnostics}")
+   # if st.session_state.diagnostik_step >= 1:
+   #     st.markdown("---")
+   #     st.subheader("🧠 Zusammenfassung Ihrer Eingaben")
+   #     st.markdown(f"**Differentialdiagnosen:**\n{st.session_state.user_ddx2}")
+   #     st.markdown(f"**Diagnostische Maßnahmen:**\n{st.session_state.user_diagnostics}")
 
 # Modul für Diagnosen und Diagnostik
 if st.session_state.get("koerper_befund"):
