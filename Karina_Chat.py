@@ -273,39 +273,44 @@ Strukturiere dein Feedback klar, hilfreich und differenziert – wie ein persön
 # Downloadbereich
 st.markdown("---")
 st.subheader("Download des Chatprotokolls und Feedback")
+# Überprüft, ob final_feedback vorhanden ist
 if "final_feedback" in st.session_state:
     protokoll = ""
-protokoll = f"🩺 Simuliertes Krankheitsbild: {st.session_state.diagnose_szenario}\n\n"
+    protokoll += f"🩺 Simuliertes Krankheitsbild: {st.session_state.diagnose_szenario}\n\n"
+    protokoll += "---\n💬 Gesprächsverlauf:\n"
+    
+    for msg in st.session_state.messages[1:]:
+        rolle = "Karina" if msg["role"] == "assistant" else "Du"
+        protokoll += f"{rolle}: {msg['content']}\n"
+    
+    # Hier können weitere Protokollteile wie Befunde etc. hinzugefügt werden
+    if "koerper_befund" in st.session_state:
+        protokoll += "\n---\n🩺 Körperlicher Untersuchungsbefund:\n"
+        protokoll += st.session_state.koerper_befund + "\n"
+    
+    if "user_ddx2" in st.session_state:
+        protokoll += "\n---\n🧠 Differentialdiagnosen:\n"
+        protokoll += st.session_state.user_ddx2 + "\n"
 
-protokoll += "---\n💬 Gesprächsverlauf:\n"
-for msg in st.session_state.messages[1:]:
-    rolle = "Karina" if msg["role"] == "assistant" else "Du"
-    protokoll += f"{rolle}: {msg['content']}\n"
+    if "user_diagnostics" in st.session_state:
+        protokoll += "\n---\n🔬 Gewünschte Diagnostik:\n"
+        protokoll += st.session_state.user_diagnostics + "\n"
 
-if "koerper_befund" in st.session_state:
-    protokoll += "\n---\n🩺 Körperlicher Untersuchungsbefund:\n"
-    protokoll += st.session_state.koerper_befund + "\n"
+    if "befunde" in st.session_state:
+        protokoll += "\n---\n📄 Generierte Befunde:\n"
+        protokoll += st.session_state.befunde + "\n"
+    
+    protokoll += "\n---\n📄 Abschlussfeedback:\n"
+    protokoll += st.session_state.final_feedback + "\n"
 
-if "user_ddx2" in st.session_state:
-    protokoll += "\n---\n🧠 Differentialdiagnosen:\n"
-    protokoll += st.session_state.user_ddx2 + "\n"
-
-if "user_diagnostics" in st.session_state:
-    protokoll += "\n---\n🔬 Gewünschte Diagnostik:\n"
-    protokoll += st.session_state.user_diagnostics + "\n"
-
-if "befunde" in st.session_state:
-    protokoll += "\n---\n📄 Generierte Befunde:\n"
-    protokoll += st.session_state.befunde + "\n"
-
-protokoll += "\n---\n📄 Abschlussfeedback:\n"
-protokoll += st.session_state.final_feedback + "\n"
-
-st.download_button(
+    # Download-Button zum Export des Protokolls
+    st.download_button(
         label="⬇️ Gespräch & Feedback herunterladen",
         data=protokoll,
         file_name="karina_chatprotokoll.txt",
         mime="text/plain"
     )
+
 else:
     st.info("💬 Das Protokoll kann nach der Evaluation heruntergeladen werden.")
+
