@@ -1,9 +1,9 @@
-# Version 4.5
+# Version 4.6
 # To do: 
 # mehr Fälle (Zöliakie, Laktoseintoleranz)
 # Layout (Antworten belassen)
 # Anamnese und Diagnostik wiederholen lassen.
-#
+# Läuft!
 
 import streamlit as st
 from openai import OpenAI, RateLimitError
@@ -243,7 +243,7 @@ if "befunde" in st.session_state and "final_step" not in st.session_state:
     st.markdown("### Diagnose und Therapiekonzept")
     with st.form("diagnose_therapie"):
         final_diagnose = st.text_input("Ihre endgültige Diagnose:")
-        therapie_vorschlag = st.text_area("Ihr Therapiekonzept:")
+        therapie_vorschlag = st.text_area("Ihr Therapiekonzept, bitte ggf. ausführlicher beschreiben:")
         submitted_final = st.form_submit_button("✅ Entscheidung abschließen")
 
     if submitted_final:
@@ -301,7 +301,7 @@ Therapiekonzept (Nutzereingabe):
 
 ---
 
-Bitte gib ein strukturiertes, medizinisch-wissenschaftlich fundiertes Feedback:
+Bitte gib ein persönliches strukturiertes, medizinisch-wissenschaftlich fundiertes Feedback, indem Du den Nutzer direkt ansprichst in der Du-Form:
 [... Bewertungskriterien ...]
 """
         # muss eingerückt bleiben
