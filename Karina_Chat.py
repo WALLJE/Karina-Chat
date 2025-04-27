@@ -250,7 +250,7 @@ Beurteile ausschließlich die Eingaben und Entscheidungen des Studierenden – N
 
 Die zugrunde liegende Erkrankung im Szenario lautet: **{st.session_state.diagnose_szenario}**.
 
-Hier ist der Gesprächsverlauf mit den Fragen und Aussagen des Studierenden (Nutzer):
+Hier ist der Gesprächsverlauf mit den Fragen und Aussagen des Nutzers:
 {user_verlauf}
 
 Erhobene Differentialdiagnosen (Nutzerangaben):
