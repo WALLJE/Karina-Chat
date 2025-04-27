@@ -269,7 +269,7 @@ if "befunde" in st.session_state and "final_step" not in st.session_state:
 if "final_step" in st.session_state:
     st.markdown("---")
     st.subheader("Abschlussbewertung zur ärztlichen Entscheidungsfindung")
-    st.markdown(f"Der Fall basierte auf der zufällig gewählten Diagnose: *{st.session_state.diagnose_szenario}*.")
+    st.markdown(f"Der Fall basierte auf der Diagnose: *{st.session_state.diagnose_szenario}*.")
 
     if st.button("📋 Abschluss-Feedback anzeigen"):
         # Alle Eingaben sicher abrufen
@@ -321,7 +321,7 @@ Strukturiere dein Feedback klar, hilfreich und differenziert – wie ein persön
 4. Ist das Therapiekonzept leitliniengerecht, plausibel und auf die Diagnose abgestimmt?
 
 ⚖ Berücksichtige zusätzlich:
-- ökologische Aspekte (z. B. CO₂-Bilanz, Strahlenbelastung, Ressourcenverbrauch)
+- ökologische Aspekte (z. B. überflüssige Diagnostik, zuviele Anforderungen, CO₂-Bilanz, Strahlenbelastung bei CT oder Röntgen, Ressourcenverbrauch)
 - ökonomische Sinnhaftigkeit (Kosten-Nutzen-Verhältnis)
 
 """
