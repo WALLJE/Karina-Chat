@@ -96,7 +96,7 @@ for msg in st.session_state.messages[1:]:
     sender = f"👩 {st.session_state.patient_name}" if msg["role"] == "assistant" else "🧑 Du"
     st.markdown(f"**{sender}:** {msg['content']}")
 
-# Eingabeformular
+# Eingabeformular Anamnese Chat
 with st.form(key="eingabe_formular", clear_on_submit=True):
     user_input = st.text_input(f"Deine Frage an {st.session_state.patient_name}:")
     submit_button = st.form_submit_button(label="Absenden")
@@ -156,16 +156,40 @@ if st.session_state.koerper_befund:
     st.success("✅ Untersuchungsbefund erstellt")
     st.markdown(st.session_state.koerper_befund)
 
-    if "diagnostik_step" not in st.session_state:
-        st.session_state.diagnostik_step = 0
+# nicht benötigt, schon definiert 27.04.
+#    if "diagnostik_step" not in st.session_state:
+#        st.session_state.diagnostik_step = 0
 
-# Modul für Diagnosen und Diagnostik
+# Modul für Differentialdiagnosen und geplante Diagnostik
+if st.session_state.get("koerper_befund") and "user_ddx2" not in st.session_state:
+    st.markdown("---")
+    st.subheader("🧠 Differentialdiagnosen und diagnostische Maßnahmen")
+    
+    with st.form("differentialdiagnosen_diagnostik_formular"):
+        ddx_input2 = st.text_area("Welche drei Differentialdiagnosen halten Sie nach Anamnese und Untersuchung für möglich?", key="ddx_input2")
+        diag_input2 = st.text_area("Welche konkreten diagnostischen Maßnahmen möchten Sie vorschlagen?", key="diag_input2")
+        submitted_diag = st.form_submit_button("✅ Eingaben speichern")
+
+    if submitted_diag:
+        st.session_state.user_ddx2 = ddx_input2
+        st.session_state.user_diagnostics = diag_input2
+        st.success("✅ Angaben gespeichert. Befunde können jetzt generiert werden.")
+        st.experimental_rerun()
+
+# Eingaben anzeigen, wenn schon vorhanden
+if "user_ddx2" in st.session_state and "user_diagnostics" in st.session_state:
+    st.markdown("---")
+    st.subheader("📝 Ihre gespeicherten Eingaben:")
+    st.markdown(f"**Differentialdiagnosen:**\n{st.session_state.user_ddx2}")
+    st.markdown(f"**Diagnostische Maßnahmen:**\n{st.session_state.user_diagnostics}")
+
 # Befunde anzeigen oder generieren
 st.markdown("---")
 st.subheader("📄 Ergebnisse der diagnostischen Maßnahmen")
 
 if "befunde" in st.session_state:
     # Befunde wurden schon erstellt – einfach anzeigen
+    st.success("✅ Befunde wurden bereits erstellt.")
     st.markdown(st.session_state.befunde)
 else:
     # Noch keine Befunde vorhanden – Button anbieten
