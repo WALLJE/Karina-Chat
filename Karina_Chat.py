@@ -263,8 +263,8 @@ Therapiekonzept (Nutzereingabe):
 ---
 
 Bitte gib ein strukturiertes, medizinisch-wissenschaftlich fundiertes Feedback zur Leistung des Studierenden:
-
-1. Wurden im Gespräch relevante anamnestische Informationen aktiv und strukturiert erhoben?
+Nenne zunächst die dem Fall zugrunde liegende Diagnose. Hat der Student die Diagnose richtig erfasst?
+1. Wurden im Gespräch relevante anamnestische Informationen aktiv und strukturiert erhoben? Sei sehr kritisch bei zu wenig gestellten Frage zur Anamnese.
 2. Passten die gewählten Differentialdiagnosen zur Szenario-Erkrankung?
 3. Wurden sinnvolle, leitliniengerechte diagnostische Maßnahmen geplant?
 4. Wurde eine nachvollziehbare und richtige finale Diagnose gestellt? Falls abweichend, war sie gut begründet?
