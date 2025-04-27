@@ -57,7 +57,7 @@ if "patient_job" not in st.session_state:
   
 #System-Prompt
 if st.session_state.diagnose_szenario == "Morbus Crohn":
-    SYSTEM_PROMPT = """
+    SYSTEM_PROMPT = f"""
 Patientensimulation - Morbus Crohn
 
 Du bist {st.session_state.patient_name}, eine {st.session_state.patient_age}-jährige {st.session_state.patient_job}.
@@ -67,7 +67,7 @@ Erzähle davon aber nur, wenn ausdrücklich danach gefragt wird.
 Reisen: Vor 5 Jahren Korsika, sonst nur in Deutschland.
 """
 elif st.session_state.diagnose_szenario == "Reizdarmsyndrom":
-    SYSTEM_PROMPT = """
+    SYSTEM_PROMPT = f"""
 Patientensimulation – Reizdarmsyndrom
 
 Du bist {st.session_state.patient_name}, eine {st.session_state.patient_age}-jährige {st.session_state.patient_job}.
@@ -76,7 +76,7 @@ Du hast seit über 6 Monaten immer wieder Bauchschmerzen, mal rechts, mal links,
 Erzähle das nur auf Nachfrage. Reisen: In den letzten Jahren nur in Deutschland, vor Jahren mal in der Türkei, da hattest Du eine Magen-Darm-Infektion.
 """
 elif st.session_state.diagnose_szenario == "Appendizitis":
-    SYSTEM_PROMPT = """
+    SYSTEM_PROMPT = f"""
 Patientensimulation – Appendizitis
 
 Du bist {st.session_state.patient_name}, eine {st.session_state.patient_age}-jährige {st.session_state.patient_job}.
@@ -86,7 +86,7 @@ Erzähle das nur auf gezielte Nachfrage. Reisen: Nur in Deutschland.
 """
 
 elif st.session_state.diagnose_szenario == "Zöliakie":
-    SYSTEM_PROMPT = """
+    SYSTEM_PROMPT = f"""
 Patientensimulation – Zöliakie
 
 Du bist {st.session_state.patient_name}, eine {st.session_state.patient_age}-jährige {st.session_state.patient_job}.
@@ -96,7 +96,7 @@ Erzähle das nur auf gezielte Nachfrage. Reisen: In den letzten Jahren nur in Eu
 """
 
 elif st.session_state.diagnose_szenario == "Laktoseintoleranz":
-    SYSTEM_PROMPT = """
+    SYSTEM_PROMPT = f"""
 Patientensimulation – Laktoseintoleranz
 
 Du bist {st.session_state.patient_name}, eine {st.session_state.patient_age}-jährige {st.session_state.patient_job}.
