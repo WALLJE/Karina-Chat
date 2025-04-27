@@ -209,7 +209,7 @@ Formuliere neutral, präzise und sachlich – so, wie es in einem klinischen Unt
                     temperature=0.5
                 )
                 st.session_state.koerper_befund = response.choices[0].message.content
-                st.experimental_rerun()
+                st.rerun()
             except RateLimitError:
                 st.error("🚫 Die Untersuchung konnte nicht erstellt werden. Die OpenAI-API ist derzeit überlastet.")
 
