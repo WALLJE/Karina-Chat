@@ -103,7 +103,7 @@ with st.form(key="eingabe_formular", clear_on_submit=True):
 
 if submit_button and user_input:
     st.session_state.messages.append({"role": "user", "content": user_input})
-    with st.spinner("Karina antwortet..."):
+    with st.spinner(f"{st.session_state.patient_name} antwortet..."):
         try:
             response = client.chat.completions.create(
                 model="gpt-4",
