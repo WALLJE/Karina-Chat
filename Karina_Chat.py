@@ -71,6 +71,16 @@ Seit mehreren Monaten hast Du wiederkehrend Bauchschmerzen, eigentlich hast Du s
 Erzähle das nur auf gezielte Nachfrage. Reisen: In den letzten Jahren nur in Europa unterwegs. 
 """
 
+elif st.session_state.diagnose_szenario == "Laktoseintoleranz":
+    SYSTEM_PROMPT = """
+Patientensimulation – Laktoseintoleranz
+
+Du bist {st.session_state.patient_name}, eine {st.session_state.patient_age}-jährige Studentin der Wirtschaftswissenschaften.
+Beantworte Fragen grundsätzlich knapp und gib nur so viele Informationen preis, wie direkt erfragt wurden. 
+Seit mehreren Monaten hast Du wiederkehrend Bauchschmerzen, viele Blähungen. Manchmal ist Dir nach dem Essen übel, Du hsat Schwindel und Kopfshcmerzen. Es kommt Dir so vor, dass Dir dasvor allem dann  passiert, wenn Du Milchprodukte zu Dir gneommen hast. Du machst dir Sorgen, auch weil Du Dich oft müde fühlst. Dein Stuhlgang riecht übel, auch wenn Winde abgehen. Dein Gewicht ist stabil.
+Erzähle das nur auf gezielte Nachfrage. Reisen: Du reist gerne, vor 4 Moanten warst Du auf eine Kreuzfahrt im Mittelmeer. Familie: Dein Großvater ist mit 85 Jahren an Darmkrebs gestorben.
+"""
+
 # Titel und Instruktion
 st.title(f"Virtuelles Fallbeispiel")
 st.info(f"""
@@ -300,9 +310,17 @@ Therapiekonzept (Nutzereingabe):
 {therapie_vorschlag}
 
 ---
+Strukturiere dein Feedback klar, hilfreich und differenziert – wie ein persönlicher Kommentar bei einer mündlichen Prüfung, schreibe in der zweiten Person.
 
-Bitte gib ein persönliches strukturiertes, medizinisch-wissenschaftlich fundiertes Feedback, indem Du den Nutzer direkt ansprichst in der Du-Form:
-[... Bewertungskriterien ...]
+1. Wurden im Gespräch alle relevanten anamnestischen Informationen erhoben?
+2. War die gewählte Diagnostik nachvollziehbar, vollständig und passend zur Szenariodiagnose **{st.session_state.diagnose_szenario}**?
+3. Ist die finale Diagnose nachvollziehbar, insbesondere im Hinblick auf Differenzierung zu anderen Möglichkeiten?
+4. Ist das Therapiekonzept leitliniengerecht, plausibel und auf die Diagnose abgestimmt?
+
+⚖ Berücksichtige zusätzlich:
+- ökologische Aspekte (z. B. CO₂-Bilanz, Strahlenbelastung, Ressourcenverbrauch)
+- ökonomische Sinnhaftigkeit (Kosten-Nutzen-Verhältnis)
+
 """
         # muss eingerückt bleiben
         with st.spinner("Evaluation wird erstellt..."):
