@@ -241,8 +241,9 @@ if "final_step" in st.session_state:
             if msg["role"] == "user"
         ])
 
-#Feedback erstellen und zusammensetzen 
-feedback_prompt_final = f"""
+        # Feedback erstellen und zusammensetzen
+        # muss eingerückt bleiben
+        feedback_prompt_final = f"""
 Ein Medizinstudierender hat eine vollständige virtuelle Fallbesprechung mit einer Patientin durchgeführt. Du bist ein erfahrener medizinischer Prüfer.
 
 Beurteile ausschließlich die Eingaben und Entscheidungen des Studierenden – NICHT die Antworten der Patientin oder automatisch generierte Inhalte.
@@ -269,32 +270,21 @@ Therapiekonzept (Nutzereingabe):
 
 ---
 
-Bitte gib ein strukturiertes, medizinisch-wissenschaftlich fundiertes Feedback zur Leistung des Studierenden:
-Nenne zunächst die dem Fall zugrunde liegende Diagnose. Hat der Student die Diagnose richtig erfasst?
-1. Wurden im Gespräch relevante anamnestische Informationen aktiv und strukturiert erhoben? Sei sehr kritisch bei zu wenig gestellten Frage zur Anamnese.
-2. Passten die gewählten Differentialdiagnosen zur Szenario-Erkrankung?
-3. Wurden sinnvolle, leitliniengerechte diagnostische Maßnahmen geplant?
-4. Wurde eine nachvollziehbare und richtige finale Diagnose gestellt? Falls abweichend, war sie gut begründet?
-5. Wurde ein angemessenes Therapiekonzept entwickelt (Akut- und Langzeitstrategie)?
-
-⚖ Berücksichtige zusätzlich:
-- ökologische Aspekte (z. B. CO₂-Bilanz, Strahlenbelastung, Ressourcenverbrauch)
-- ökonomische Sinnhaftigkeit (Kosten-Nutzen-Verhältnis)
-
-Strukturiere dein Feedback klar und verständlich – wie ein persönliches Kommentar an den Studierenden. Schreibe in der Du-Form.
+Bitte gib ein strukturiertes, medizinisch-wissenschaftlich fundiertes Feedback:
+[... Bewertungskriterien ...]
 """
-
-with st.spinner("Evaluation wird erstellt..."):
-    eval_response = client.chat.completions.create(
-         model="gpt-4",
-        messages=[{"role": "user", "content": feedback_prompt_final}],
-        temperature=0.4
-    )
-    final_feedback = eval_response.choices[0].message.content
-st.session_state.final_feedback = final_feedback
-st.success("✅ Evaluation erstellt")
-st.markdown("### Strukturierte Rückmeldung zur Fallbearbeitung:")
-st.markdown(final_feedback)
+        # muss eingerückt bleiben
+        with st.spinner("Evaluation wird erstellt..."):
+            eval_response = client.chat.completions.create(
+                model="gpt-4",
+                messages=[{"role": "user", "content": feedback_prompt_final}],
+                temperature=0.4
+            )
+            final_feedback = eval_response.choices[0].message.content
+            st.session_state.final_feedback = final_feedback
+            st.success("✅ Evaluation erstellt")
+            st.markdown("### Strukturierte Rückmeldung zur Fallbearbeitung:")
+            st.markdown(final_feedback)
 
 # Downloadbereich
 # Zusammenfassung und Download vorbereiten
