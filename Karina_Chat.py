@@ -1,7 +1,8 @@
-# Version 4.6
-# To do: 
-# mehr Fälle (Zöliakie, Laktoseintoleranz)
-# Layout (Antworten belassen)
+# Version 4.7
+#  
+# incl Zöliakie, Laktoseintoleranz
+# To do
+# Layout Antworten belassen
 # Anamnese und Diagnostik wiederholen lassen.
 # Läuft!
 
