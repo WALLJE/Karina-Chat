@@ -277,17 +277,17 @@ Nenne zunächst die dem Fall zugrunde liegende Diagnose. Hat der Student die Dia
 Strukturiere dein Feedback klar und verständlich – wie ein persönliches Kommentar an den Studierenden. Schreibe in der Du-Form.
 """
 
-        with st.spinner("Evaluation wird erstellt..."):
-            eval_response = client.chat.completions.create(
-                model="gpt-4",
-                messages=[{"role": "user", "content": feedback_prompt_final}],
-                temperature=0.4
-            )
-            final_feedback = eval_response.choices[0].message.content
-        st.session_state.final_feedback = final_feedback
-        st.success("✅ Evaluation erstellt")
-        st.markdown("### Strukturierte Rückmeldung zur Fallbearbeitung:")
-        st.markdown(final_feedback)
+with st.spinner("Evaluation wird erstellt..."):
+    eval_response = client.chat.completions.create(
+         model="gpt-4",
+        messages=[{"role": "user", "content": feedback_prompt_final}],
+        temperature=0.4
+    )
+    final_feedback = eval_response.choices[0].message.content
+st.session_state.final_feedback = final_feedback
+st.success("✅ Evaluation erstellt")
+st.markdown("### Strukturierte Rückmeldung zur Fallbearbeitung:")
+st.markdown(final_feedback)
 
 # Downloadbereich
 st.markdown("---")
