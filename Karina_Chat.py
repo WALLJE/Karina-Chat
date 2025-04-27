@@ -213,10 +213,10 @@ Formuliere neutral, präzise und sachlich – so, wie es in einem klinischen Unt
             except RateLimitError:
                 st.error("🚫 Die Untersuchung konnte nicht erstellt werden. Die OpenAI-API ist derzeit überlastet.")
 
-# Wenn körperlicher Befund vorhanden
+# schon oben itegriert - Wenn körperlicher Befund vorhanden
 if st.session_state.get("koerper_befund"):
-    st.success("✅ Untersuchungsbefund erstellt")
-    st.markdown(st.session_state.koerper_befund)
+#    st.success("✅ Untersuchungsbefund erstellt")
+#    st.markdown(st.session_state.koerper_befund)
 
     # Eingabeformular für Differentialdiagnosen und Diagnostik, falls noch nicht gemacht
     if "user_ddx2" not in st.session_state:
