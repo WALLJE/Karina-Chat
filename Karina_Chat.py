@@ -20,8 +20,8 @@ if "diagnose_szenario" not in st.session_state:
     st.session_state.diagnose_szenario = random.choice([
         "Morbus Crohn",
         "Reizdarmsyndrom",
-        "Appendizitis"
-        "Zöliakie"
+        "Appendizitis",
+        "Zöliakie",
         "Laktoseintoleranz"
     ])
 
