@@ -162,11 +162,29 @@ if submit_button and user_input:
 # Körperliche Untersuchung
 st.markdown("---")
 st.subheader("Körperliche Untersuchung")
+st.markdown("---")
+st.subheader("📄 Ergebnisse der diagnostischen Maßnahmen")
 
-if "koerper_befund" not in st.session_state:
-    st.session_state.koerper_befund = None
+# aus diagnostik
+#if "befunde" in st.session_state:
+    # Befunde wurden schon erstellt – einfach anzeigen 
+#    st.success("✅ Befunde wurden bereits erstellt.")
+#    st.markdown(st.session_state.befunde)
+#else:
+    # Noch keine Befunde vorhanden – Button anbieten
+#    if st.button("🧪 Befunde generieren lassen"):
+#        if "user_diagnostics" in st.session_state:
+#            diagnostik_eingabe = st.session_state.user_diagnostics
+            # (weiter mit Befundgenerierung)
+#        else:
+#            st.warning("Bitte geben Sie zuerst diagnostische Maßnahmen ein, bevor Sie Befunde generieren.")
 
-if st.button("🩺 Untersuchung durchführen"):
+if "koerper_befund" in st.session_state:
+    st.success("✅ Körperliche Untersuchung erfolgt.")
+    st.markdown(st.session_state.befunde)
+    # st.session_state.koerper_befund = None
+
+else st.button("🩺 Untersuchung durchführen"):
     untersuchung_prompt = f"""
 Die Patientin hat eine zufällig simulierte Erkrankung. Diese lautet: {st.session_state.diagnose_szenario}.
 
