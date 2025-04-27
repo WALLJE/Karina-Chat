@@ -259,48 +259,48 @@ user_verlauf = "\n".join([
     if msg["role"] == "user"
 ])
 
-
-        feedback_prompt_final = f"""
+feedback_prompt_final = f"""
 Ein Medizinstudierender hat eine vollständige virtuelle Fallbesprechung mit einer Patientin durchgeführt. Du bist ein erfahrener medizinischer Prüfer.
 
-Die zugrunde liegende Erkrankung im Szenario lautet: **{st.session_state.diagnose_szenario}**. Nutze dieses Wissen, um die Entscheidungen des Studierenden in Bezug auf Verdachtsdiagnose, Diagnostik und Therapie angemessen zu beurteilen.
+Beurteile ausschließlich die Eingaben und Entscheidungen des Studierenden – NICHT die Antworten der Patientin oder automatisch generierte Inhalte.
 
-Beurteile ausschließlich die Leistungen des Studierenden – nicht die Qualität automatisch generierter Inhalte wie GPT-Befunde.
+Die zugrunde liegende Erkrankung im Szenario lautet: **{st.session_state.diagnose_szenario}**.
 
-Gesprächsverlauf:
+Hier ist der Gesprächsverlauf mit den Fragen und Aussagen des Studierenden (Nutzer):
 {user_verlauf}
 
-Körperlicher Untersuchungsbefund:
-{st.session_state.koerper_befund}
+Erhobene Differentialdiagnosen (Nutzerangaben):
+{st.session_state.user_ddx2}
 
-Vorgeschlagene Differentialdiagnosen:
-{ddx_text}
+Geplante diagnostische Maßnahmen (Nutzerangaben):
+{st.session_state.user_diagnostics}
 
-Gewünschte Diagnostik:
-{diag_text}
+GPT-generierte Befunde (nur als Hintergrund, bitte nicht bewerten):
+{st.session_state.befunde}
 
-Generierte Befunde:
-{befund_text}
+Finale Diagnose (Nutzereingabe):
+{st.session_state.final_diagnose}
 
-Finale Diagnose:
-{finale_diag}
+Therapiekonzept (Nutzereingabe):
+{st.session_state.therapie_vorschlag}
 
-Therapiekonzept:
-{therapie}
+---
 
-Bitte gib ein strukturiertes, medizinisch-wissenschaftlich fundiertes Feedback:
+Bitte gib ein strukturiertes, medizinisch-wissenschaftlich fundiertes Feedback zur Leistung des Studierenden:
 
-1. Wurden im Gespräch alle relevanten anamnestischen Informationen erhoben?
-2. War die gewählte Diagnostik nachvollziehbar, vollständig und passend zur Szenariodiagnose **{st.session_state.diagnose_szenario}**?
-3. Ist die finale Diagnose nachvollziehbar, insbesondere im Hinblick auf Differenzierung zu anderen Möglichkeiten?
-4. Ist das Therapiekonzept leitliniengerecht, plausibel und auf die Diagnose abgestimmt?
+1. Wurden im Gespräch relevante anamnestische Informationen aktiv und strukturiert erhoben?
+2. Passten die gewählten Differentialdiagnosen zur Szenario-Erkrankung?
+3. Wurden sinnvolle, leitliniengerechte diagnostische Maßnahmen geplant?
+4. Wurde eine nachvollziehbare und richtige finale Diagnose gestellt? Falls abweichend, war sie gut begründet?
+5. Wurde ein angemessenes Therapiekonzept entwickelt (Akut- und Langzeitstrategie)?
 
-Berücksichtige zusätzlich:
+⚖ Berücksichtige zusätzlich:
 - ökologische Aspekte (z. B. CO₂-Bilanz, Strahlenbelastung, Ressourcenverbrauch)
 - ökonomische Sinnhaftigkeit (Kosten-Nutzen-Verhältnis)
 
-Strukturiere dein Feedback klar, hilfreich und differenziert – wie ein persönlicher Kommentar bei einer mündlichen Prüfung, schreibe in der zweiten Person.
+Strukturiere dein Feedback klar und verständlich – wie ein persönliches Kommentar an den Studierenden. Schreibe in der Du-Form.
 """
+
         with st.spinner("Evaluation wird erstellt..."):
             eval_response = client.chat.completions.create(
                 model="gpt-4",
