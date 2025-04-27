@@ -227,18 +227,21 @@ if "final_step" in st.session_state:
     st.subheader("Abschlussbewertung zur ärztlichen Entscheidungsfindung")
     st.markdown(f"Der Fall basierte auf der zufällig gewählten Diagnose: *{st.session_state.diagnose_szenario}*.")
 
-if st.button("📋 Abschluss-Feedback anzeigen"):
-        ddx_text = st.session_state.get("user_ddx2", "")
-        diag_text = st.session_state.get("user_diagnostics", "")
-        befund_text = st.session_state.get("befunde", "")
-        finale_diag = st.session_state.get("final_diagnose", "")
-        therapie = st.session_state.get("therapie_vorschlag", "")
+    if st.button("📋 Abschluss-Feedback anzeigen"):
+        # Alle Eingaben sicher abrufen
+        user_ddx2 = st.session_state.get("user_ddx2", "Keine Differentialdiagnosen angegeben.")
+        user_diagnostics = st.session_state.get("user_diagnostics", "Keine diagnostischen Maßnahmen angegeben.")
+        befunde = st.session_state.get("befunde", "Keine Befunde generiert.")
+        final_diagnose = st.session_state.get("final_diagnose", "Keine finale Diagnose eingegeben.")
+        therapie_vorschlag = st.session_state.get("therapie_vorschlag", "Kein Therapiekonzept eingegeben.")
 
-user_verlauf = "\n".join([
-    msg["content"] for msg in st.session_state.messages
-    if msg["role"] == "user"
-])
+        # Nur die Fragen des Studierenden extrahieren
+        user_verlauf = "\n".join([
+            msg["content"] for msg in st.session_state.messages
+            if msg["role"] == "user"
+        ])
 
+#Feedback erstellen und zusammensetzen 
 feedback_prompt_final = f"""
 Ein Medizinstudierender hat eine vollständige virtuelle Fallbesprechung mit einer Patientin durchgeführt. Du bist ein erfahrener medizinischer Prüfer.
 
@@ -250,19 +253,19 @@ Hier ist der Gesprächsverlauf mit den Fragen und Aussagen des Studierenden (Nut
 {user_verlauf}
 
 Erhobene Differentialdiagnosen (Nutzerangaben):
-{st.session_state.user_ddx2}
+{user_ddx2}
 
 Geplante diagnostische Maßnahmen (Nutzerangaben):
-{st.session_state.user_diagnostics}
+{user_diagnostics}
 
 GPT-generierte Befunde (nur als Hintergrund, bitte nicht bewerten):
-{st.session_state.befunde}
+{befunde}
 
 Finale Diagnose (Nutzereingabe):
-{st.session_state.final_diagnose}
+{final_diagnose}
 
 Therapiekonzept (Nutzereingabe):
-{st.session_state.therapie_vorschlag}
+{therapie_vorschlag}
 
 ---
 
@@ -294,46 +297,62 @@ st.markdown("### Strukturierte Rückmeldung zur Fallbearbeitung:")
 st.markdown(final_feedback)
 
 # Downloadbereich
+# Zusammenfassung und Download vorbereiten
 st.markdown("---")
-st.subheader("Download des Chatprotokolls und Feedback")
-# Überprüft, ob final_feedback vorhanden ist
+st.subheader("📄 Download des gesamten Gesprächsprotokolls")
+
 if "final_feedback" in st.session_state:
     protokoll = ""
+
+    # Szenario
     protokoll += f"🩺 Simuliertes Krankheitsbild: {st.session_state.diagnose_szenario}\n\n"
-    protokoll += "---\n💬 Gesprächsverlauf:\n"
-    
+
+    # Gesprächsverlauf
+    protokoll += "---\n💬 Gesprächsverlauf (nur Fragen des Studierenden):\n"
     for msg in st.session_state.messages[1:]:
-        rolle = "Karina" if msg["role"] == "assistant" else "Du"
+        rolle = st.session_state.patient_name if msg["role"] == "assistant" else "Du"
         protokoll += f"{rolle}: {msg['content']}\n"
-    
-    # Hier können weitere Protokollteile wie Befunde etc. hinzugefügt werden
+
+    # Körperlicher Untersuchungsbefund
     if "koerper_befund" in st.session_state:
         protokoll += "\n---\n🩺 Körperlicher Untersuchungsbefund:\n"
         protokoll += st.session_state.koerper_befund + "\n"
-    
+
+    # Differentialdiagnosen
     if "user_ddx2" in st.session_state:
-        protokoll += "\n---\n🧠 Differentialdiagnosen:\n"
+        protokoll += "\n---\n🧠 Erhobene Differentialdiagnosen:\n"
         protokoll += st.session_state.user_ddx2 + "\n"
 
+    # Diagnostische Maßnahmen
     if "user_diagnostics" in st.session_state:
-        protokoll += "\n---\n🔬 Gewünschte Diagnostik:\n"
+        protokoll += "\n---\n🔬 Geplante diagnostische Maßnahmen:\n"
         protokoll += st.session_state.user_diagnostics + "\n"
 
+    # Generierte Befunde
     if "befunde" in st.session_state:
-        protokoll += "\n---\n📄 Generierte Befunde:\n"
+        protokoll += "\n---\n📄 Ergebnisse der diagnostischen Maßnahmen:\n"
         protokoll += st.session_state.befunde + "\n"
-    
-    protokoll += "\n---\n📄 Abschlussfeedback:\n"
+
+    # Finale Diagnose
+    if "final_diagnose" in st.session_state:
+        protokoll += "\n---\n🩺 Finale Diagnose:\n"
+        protokoll += st.session_state.final_diagnose + "\n"
+
+    # Therapiekonzept
+    if "therapie_vorschlag" in st.session_state:
+        protokoll += "\n---\n💊 Therapiekonzept:\n"
+        protokoll += st.session_state.therapie_vorschlag + "\n"
+
+    # Abschlussfeedback
+    protokoll += "\n---\n📋 Strukturierte Rückmeldung:\n"
     protokoll += st.session_state.final_feedback + "\n"
 
-    # Download-Button zum Export des Protokolls
+    # Download-Button
     st.download_button(
         label="⬇️ Gespräch & Feedback herunterladen",
         data=protokoll,
         file_name="karina_chatprotokoll.txt",
         mime="text/plain"
     )
-
 else:
     st.info("💬 Das Protokoll kann nach der Evaluation heruntergeladen werden.")
-
