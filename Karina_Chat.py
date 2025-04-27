@@ -163,8 +163,6 @@ if submit_button and user_input:
 # Körperliche Untersuchung
 st.markdown("---")
 st.subheader("Körperliche Untersuchung")
-st.markdown("---")
-st.subheader("📄 Ergebnisse der diagnostischen Maßnahmen")
 
 # aus diagnostik
 #if "befunde" in st.session_state:
@@ -182,7 +180,7 @@ st.subheader("📄 Ergebnisse der diagnostischen Maßnahmen")
 
 if "koerper_befund" in st.session_state:
     st.success("✅ Körperliche Untersuchung erfolgt.")
-    st.markdown(st.session_state.befunde)
+    st.markdown(st.session_state.koerper_befund)
     # st.session_state.koerper_befund = None
 
 else:
