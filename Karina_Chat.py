@@ -181,11 +181,10 @@ st.subheader("Körperliche Untersuchung")
 if "koerper_befund" in st.session_state:
     st.success("✅ Körperliche Untersuchung erfolgt.")
     st.markdown(st.session_state.koerper_befund)
-    # st.session_state.koerper_befund = None
 
 else:
-    st.button("🩺 Untersuchung durchführen")
-    untersuchung_prompt = f"""
+    if st.button("🩺 Untersuchung durchführen"):
+        untersuchung_prompt = f"""
 Die Patientin hat eine zufällig simulierte Erkrankung. Diese lautet: {st.session_state.diagnose_szenario}.
 
 Erstelle einen körperlichen Untersuchungsbefund, der zu dieser Erkrankung passt, ohne sie explizit zu nennen oder zu diagnostizieren. Passe die Befundlage so an, dass sie klinisch konsistent ist, aber nicht interpretierend oder hinweisgebend wirkt.
@@ -323,8 +322,7 @@ if "final_step" in st.session_state:
             if msg["role"] == "user"
         ])
 
-        # Feedback erstellen und zusammensetzen
-        # muss eingerückt bleiben
+        # Feedback-Prompt erstellen
         feedback_prompt_final = f"""
 Ein Medizinstudierender hat eine vollständige virtuelle Fallbesprechung mit einer Patientin durchgeführt. Du bist ein erfahrener medizinischer Prüfer.
 
