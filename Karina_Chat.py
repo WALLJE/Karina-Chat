@@ -184,7 +184,7 @@ if "koerper_befund" in st.session_state:
 
 else:
     if st.button("🩺 Untersuchung durchführen"):
-          untersuchung_prompt = f"""
+        untersuchung_prompt = f"""
 Die Patientin hat eine zufällig simulierte Erkrankung. Diese lautet: {st.session_state.diagnose_szenario}.
 
 Erstelle einen körperlichen Untersuchungsbefund, der zu dieser Erkrankung passt, ohne sie explizit zu nennen oder zu diagnostizieren. Passe die Befundlage so an, dass sie klinisch konsistent ist, aber nicht interpretierend oder hinweisgebend wirkt.
@@ -201,17 +201,17 @@ Gib ausschließlich körperliche Untersuchungsbefunde an – keine Bildgebung, L
 
 Formuliere neutral, präzise und sachlich – so, wie es in einem klinischen Untersuchungsprotokoll stehen würde.
 """
-    with st.spinner(f"{st.session_state.patient_name} wird untersucht..."):
-        try:
-            response = client.chat.completions.create(
-                model="gpt-4",
-                messages=[{"role": "user", "content": untersuchung_prompt}],
-                temperature=0.5
-            )
-            st.session_state.koerper_befund = response.choices[0].message.content
-            st.rerun()
-        except RateLimitError:
-            st.error("🚫 Die Untersuchung konnte nicht erstellt werden. Die OpenAI-API ist derzeit überlastet.")
+        with st.spinner(f"{st.session_state.patient_name} wird untersucht..."):
+            try:
+                response = client.chat.completions.create(
+                    model="gpt-4",
+                    messages=[{"role": "user", "content": untersuchung_prompt}],
+                    temperature=0.5
+                )
+                st.session_state.koerper_befund = response.choices[0].message.content
+                st.experimental_rerun()
+            except RateLimitError:
+                st.error("🚫 Die Untersuchung konnte nicht erstellt werden. Die OpenAI-API ist derzeit überlastet.")
 
 # Wenn körperlicher Befund vorhanden
 if st.session_state.get("koerper_befund"):
