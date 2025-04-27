@@ -126,7 +126,7 @@ Wenn Sie genug anamnestische Informationen erhoben haben:
 
 # Chat-Verlauf starten
 if "messages" not in st.session_state:
-    eintritt = f"{st.session_state.patient_name} ({st.session_state.patient_age} Jahre) betritt den Raum."
+    eintritt = f"{st.session_state.patient_name} ({st.session_state.patient_age} Jahre), {st.session_state.patient_job}, betritt den Raum."
     start_text = "Guten Tag, ich bin froh, dass ich mich heute bei Ihnen vorstellen kann."
     st.session_state.messages = [
         {"role": "system", "content": SYSTEM_PROMPT},
