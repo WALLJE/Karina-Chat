@@ -73,7 +73,7 @@ Bitte beachten Sie:
 - {st.session_state.patient_name} antwortet nur auf das, was direkt gefragt wird.
 - Medizinische Fachsprache versteht sie nicht unbedingt – erklären Sie unklare Begriffe.
 
-Wenn Sie genug anemnestische Informationen erhoben haben:
+Wenn Sie genug anamnestische Informationen erhoben haben:
 - Führen Sie eine körperliche Untersuchung durch (per Button unten).
 - Danach: Nennen Sie Ihre Differentialdiagnosen und die gewünschte Diagnostik.
 - Sie erhalten typische Befunde und sollen dann eine Diagnose und ein Therapiekonzept festlegen. Erläurtern Sie die Therapie gern ausführlich.
@@ -158,27 +158,6 @@ if st.session_state.koerper_befund:
 
     if "diagnostik_step" not in st.session_state:
         st.session_state.diagnostik_step = 0
-
-# Memo: kann warhscheinlich alles gelöscht werden 24.4.
-  #  if st.session_state.diagnostik_step < 1:
-  #      st.markdown("---")
-  #      st.subheader("🧠 Differentialdiagnosen und gewünschte Diagnostik")
-  #      with st.form("weiterdiagnostik_formular"):
-  #          ddx_input2 = st.text_area("Welche drei Differentialdiagnosen halten Sie für möglich?", key="ddx_input2")
-  #          diag_input2 = st.text_area("Welche konkreten diagnostischen Maßnahmen möchten Sie ergreifen?", key="diag_input2")
-  #          submitted_diag = st.form_submit_button("Eingaben speichern")
-
-  #      if submitted_diag:
-  #          st.session_state.user_ddx2 = ddx_input2
-  #          st.session_state.user_diagnostics = diag_input2
-  #          st.session_state.diagnostik_step = 1
-  #          st.success("✅ Angaben gespeichert")
-
-   # if st.session_state.diagnostik_step >= 1:
-   #     st.markdown("---")
-   #     st.subheader("🧠 Zusammenfassung Ihrer Eingaben")
-   #     st.markdown(f"**Differentialdiagnosen:**\n{st.session_state.user_ddx2}")
-   #     st.markdown(f"**Diagnostische Maßnahmen:**\n{st.session_state.user_diagnostics}")
 
 # Modul für Diagnosen und Diagnostik
 if st.session_state.get("koerper_befund"):
@@ -274,10 +253,12 @@ if st.button("📋 Abschluss-Feedback anzeigen"):
         befund_text = st.session_state.get("befunde", "")
         finale_diag = st.session_state.get("final_diagnose", "")
         therapie = st.session_state.get("therapie_vorschlag", "")
-        karina_verlauf = "\n".join([
-            msg["content"] for msg in st.session_state.messages
-            if msg["role"] == "assistant"
-        ])
+
+user_verlauf = "\n".join([
+    msg["content"] for msg in st.session_state.messages
+    if msg["role"] == "user"
+])
+
 
         feedback_prompt_final = f"""
 Ein Medizinstudierender hat eine vollständige virtuelle Fallbesprechung mit einer Patientin durchgeführt. Du bist ein erfahrener medizinischer Prüfer.
@@ -287,7 +268,7 @@ Die zugrunde liegende Erkrankung im Szenario lautet: **{st.session_state.diagnos
 Beurteile ausschließlich die Leistungen des Studierenden – nicht die Qualität automatisch generierter Inhalte wie GPT-Befunde.
 
 Gesprächsverlauf:
-{karina_verlauf}
+{user_verlauf}
 
 Körperlicher Untersuchungsbefund:
 {st.session_state.koerper_befund}
