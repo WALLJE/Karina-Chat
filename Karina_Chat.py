@@ -1,4 +1,9 @@
 # Version 4.5
+# To do: 
+# mehr Fälle (Zöliakie, Laktoseintoleranz)
+# Layout (Antworten belassen)
+# Anamnese und Diagnostik wiederholen lassen.
+#
 
 import streamlit as st
 from openai import OpenAI, RateLimitError
