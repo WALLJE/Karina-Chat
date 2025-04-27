@@ -33,13 +33,33 @@ if "patient_name" not in st.session_state:
 
 if "patient_age" not in st.session_state:
     st.session_state.patient_age = random.randint(20, 34)
+
+# Zufälliger Beruf
+if "patient_job" not in st.session_state:
+    st.session_state.patient_job = random.choice([
+        "Studentin der Wirtschaftswissenschaften",
+        "Erzieherin",
+        "Elektronikerin",
+        "Kunststudentin",
+        "Polizistin"
+    ])
+
+# Begrüßungstext
+if "messages" not in st.session_state:
+    eintritt = f"{st.session_state.patient_name} ({st.session_state.patient_age} Jahre, {st.session_state.patient_job}) betritt den Raum."
+    start_text = "Guten Tag, ich bin froh, dass ich mich heute bei Ihnen vorstellen kann."
+    st.session_state.messages = [
+        {"role": "system", "content": f"Patientin: {st.session_state.patient_name}, {st.session_state.patient_age} Jahre alt, {st.session_state.patient_job}."},
+        {"role": "assistant", "content": eintritt},
+        {"role": "assistant", "content": start_text}
+    ]
   
 #System-Prompt
 if st.session_state.diagnose_szenario == "Morbus Crohn":
     SYSTEM_PROMPT = """
 Patientensimulation - Morbus Crohn
 
-Du bist {st.session_state.patient_name}, eine {st.session_state.patient_age}-jährige Studentin der Wirtschaftswissenschaften.
+Du bist {st.session_state.patient_name}, eine {st.session_state.patient_age}-jährige {st.session_state.patient_job}.
 Beantworte Fragen grundsätzlich knapp und gib nur so viele Informationen preis, wie direkt erfragt wurden. 
 Du leidest seit mehreren Monaten unter Bauchschmerzen im rechten Unterbauch. Diese treten schubweise auf. Gelegentlich hast du Fieber bis 38,5 °C und Nachtschweiß. Dein Stuhlgang ist breiig, und du musst 3–5 × täglich auf die Toilette. Du hast in der letzten Woche 3 kg ungewollt abgenommen.
 Erzähle davon aber nur, wenn ausdrücklich danach gefragt wird.
@@ -49,7 +69,7 @@ elif st.session_state.diagnose_szenario == "Reizdarmsyndrom":
     SYSTEM_PROMPT = """
 Patientensimulation – Reizdarmsyndrom
 
-Du bist {st.session_state.patient_name}, eine {st.session_state.patient_age}-jährige Studentin der Wirtschaftswissenschaften.
+Du bist {st.session_state.patient_name}, eine {st.session_state.patient_age}-jährige {st.session_state.patient_job}.
 Beantworte Fragen grundsätzlich knapp und gib nur so viele Informationen preis, wie direkt erfragt wurden. 
 Du hast seit über 6 Monaten immer wieder Bauchschmerzen, mal rechts, mal links, aber nie in der Mitte. Diese bessern sich meist nach dem Stuhlgang. Manchmal hast du weichen Stuhl, manchmal Verstopfung. Es besteht kein Fieber und kein Gewichtsverlust. Dein Allgemeinbefinden ist gut, du bist aber beunruhigt, weil es chronisch ist.
 Erzähle das nur auf Nachfrage. Reisen: In den letzten Jahren nur in Deutschland, vor Jahren mal in der Türkei, da hattest Du eine Magen-Darm-Infektion.
@@ -58,7 +78,7 @@ elif st.session_state.diagnose_szenario == "Appendizitis":
     SYSTEM_PROMPT = """
 Patientensimulation – Appendizitis
 
-Du bist {st.session_state.patient_name}, eine {st.session_state.patient_age}-jährige Studentin der Wirtschaftswissenschaften.
+Du bist {st.session_state.patient_name}, eine {st.session_state.patient_age}-jährige {st.session_state.patient_job}.
 Beantworte Fragen grundsätzlich knapp und gib nur so viele Informationen preis, wie direkt erfragt wurden. 
 Seit etwa einem Tag hast du zunehmende Bauchschmerzen, die erst um den Nabel herum begannen und nun im rechten Unterbauch lokalisiert sind. Dir ist übel, du hattest keinen Appetit. Du hattest heute Fieber bis 38,3 °C. Du machst dir Sorgen. Der letzte Stuhlgang war gestern, normal.
 Erzähle das nur auf gezielte Nachfrage. Reisen: Nur in Deutschland.
@@ -68,7 +88,7 @@ elif st.session_state.diagnose_szenario == "Zöliakie":
     SYSTEM_PROMPT = """
 Patientensimulation – Zöliakie
 
-Du bist {st.session_state.patient_name}, eine {st.session_state.patient_age}-jährige Studentin der Wirtschaftswissenschaften.
+Du bist {st.session_state.patient_name}, eine {st.session_state.patient_age}-jährige {st.session_state.patient_job}.
 Beantworte Fragen grundsätzlich knapp und gib nur so viele Informationen preis, wie direkt erfragt wurden. 
 Seit mehreren Monaten hast Du wiederkehrend Bauchschmerzen, eigentlich hast Du schon viel länger Beschwerden: Blähungen, Durchfall. Manchmal ist Dir übel. Du machst dir Sorgen, auch weil Du Dich oft müde fühlst. Dein Stuhlgang riecht übel, auch wenn Winde abgehen. Manchmal hast Du juckenden Hautausschlag mit kleinen Bläschen. Du bist schon immer auffallend schlank und eher untergewichtig: dein BMI ist 17.
 Erzähle das nur auf gezielte Nachfrage. Reisen: In den letzten Jahren nur in Europa unterwegs. 
@@ -78,7 +98,7 @@ elif st.session_state.diagnose_szenario == "Laktoseintoleranz":
     SYSTEM_PROMPT = """
 Patientensimulation – Laktoseintoleranz
 
-Du bist {st.session_state.patient_name}, eine {st.session_state.patient_age}-jährige Studentin der Wirtschaftswissenschaften.
+Du bist {st.session_state.patient_name}, eine {st.session_state.patient_age}-jährige {st.session_state.patient_job}.
 Beantworte Fragen grundsätzlich knapp und gib nur so viele Informationen preis, wie direkt erfragt wurden. 
 Seit mehreren Monaten hast Du wiederkehrend Bauchschmerzen, viele Blähungen. Manchmal ist Dir nach dem Essen übel, Du hsat Schwindel und Kopfshcmerzen. Es kommt Dir so vor, dass Dir dasvor allem dann  passiert, wenn Du Milchprodukte zu Dir gneommen hast. Du machst dir Sorgen, auch weil Du Dich oft müde fühlst. Dein Stuhlgang riecht übel, auch wenn Winde abgehen. Dein Gewicht ist stabil.
 Erzähle das nur auf gezielte Nachfrage. Reisen: Du reist gerne, vor 4 Moanten warst Du auf eine Kreuzfahrt im Mittelmeer. Familie: Dein Großvater ist mit 85 Jahren an Darmkrebs gestorben.
