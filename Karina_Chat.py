@@ -184,7 +184,7 @@ if "koerper_befund" in st.session_state:
 
 else:
     if st.button("🩺 Untersuchung durchführen"):
-        untersuchung_prompt = f"""
+       untersuchung_prompt = f"""
 Die Patientin hat eine zufällig simulierte Erkrankung. Diese lautet: {st.session_state.diagnose_szenario}.
 
 Erstelle einen körperlichen Untersuchungsbefund, der zu dieser Erkrankung passt, ohne sie explizit zu nennen oder zu diagnostizieren. Passe die Befundlage so an, dass sie klinisch konsistent ist, aber nicht interpretierend oder hinweisgebend wirkt.
