@@ -46,14 +46,14 @@ if "patient_job" not in st.session_state:
     ])
 
 # Begrüßungstext
-if "messages" not in st.session_state:
-    eintritt = f"{st.session_state.patient_name} ({st.session_state.patient_age} Jahre, {st.session_state.patient_job}) betritt den Raum."
-    start_text = "Guten Tag, ich bin froh, dass ich mich heute bei Ihnen vorstellen kann."
-    st.session_state.messages = [
-        {"role": "system", "content": f"Patientin: {st.session_state.patient_name}, {st.session_state.patient_age} Jahre alt, {st.session_state.patient_job}."},
-        {"role": "assistant", "content": eintritt},
-        {"role": "assistant", "content": start_text}
-    ]
+#if "messages" not in st.session_state:
+#    eintritt = f"{st.session_state.patient_name} ({st.session_state.patient_age} Jahre, {st.session_state.patient_job}) betritt den Raum."
+#    start_text = "Guten Tag, ich bin froh, dass ich mich heute bei Ihnen vorstellen kann."
+#    st.session_state.messages = [
+#        {"role": "system", "content": f"Patientin: {st.session_state.patient_name}, {st.session_state.patient_age} Jahre alt, {st.session_state.patient_job}."},
+#        {"role": "assistant", "content": eintritt},
+#        {"role": "assistant", "content": start_text}
+#    ]
   
 #System-Prompt
 if st.session_state.diagnose_szenario == "Morbus Crohn":
