@@ -21,6 +21,8 @@ if "diagnose_szenario" not in st.session_state:
         "Morbus Crohn",
         "Reizdarmsyndrom",
         "Appendizitis"
+        "Zöliakie"
+        "Laktoseintoleranz"
     ])
 
 # Zufälliger Patientenname und Alter
