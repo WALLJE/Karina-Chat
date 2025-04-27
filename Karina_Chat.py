@@ -185,7 +185,8 @@ if "koerper_befund" in st.session_state:
     st.markdown(st.session_state.befunde)
     # st.session_state.koerper_befund = None
 
-else st.button("🩺 Untersuchung durchführen"):
+else:
+    st.button("🩺 Untersuchung durchführen"):
     untersuchung_prompt = f"""
 Die Patientin hat eine zufällig simulierte Erkrankung. Diese lautet: {st.session_state.diagnose_szenario}.
 
