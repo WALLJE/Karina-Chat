@@ -167,7 +167,7 @@ st.subheader("Körperliche Untersuchung")
 # aus diagnostik
 #if "befunde" in st.session_state:
     # Befunde wurden schon erstellt – einfach anzeigen 
-#    st.success("✅ Befunde wurden bereits erstellt.")
+#    st.success("✅ Befunde wurden erstellt.")
 #    st.markdown(st.session_state.befunde)
 #else:
     # Noch keine Befunde vorhanden – Button anbieten
