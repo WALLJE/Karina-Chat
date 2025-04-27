@@ -160,29 +160,16 @@ if st.session_state.koerper_befund:
         st.session_state.diagnostik_step = 0
 
 # Modul für Diagnosen und Diagnostik
-if st.session_state.get("koerper_befund"):
-    if st.session_state.diagnostik_step < 1:
-        st.markdown("---")
-        st.subheader("Differentialdiagnosen und gewünschte Diagnostik")
-        with st.form("weiterdiagnostik_formular_step0"):
-            ddx_input_neu = st.text_area("Welche drei Differentialdiagnosen halten Sie für möglich?", key="ddx_input_neu")
-            diag_input_neu = st.text_area("Welche konkreten diagnostischen Maßnahmen möchten Sie ergreifen?", key="diag_input_neu")
-            submitted_diag = st.form_submit_button("Eingaben speichern")
-        if submitted_diag:
-            st.session_state.user_ddx2 = ddx_input_neu
-            st.session_state.user_diagnostics = diag_input_neu
-            st.session_state.diagnostik_step = 1
-            st.rerun()
-    else:
-        st.markdown("---")
-        st.subheader("📝 Ihre Eingaben:")
-        st.markdown(f"**Differentialdiagnosen:**\n{st.session_state.user_ddx2}")
-        st.markdown(f"**Diagnostische Maßnahmen:**\n{st.session_state.user_diagnostics}")
+# Befunde anzeigen oder generieren
+st.markdown("---")
+st.subheader("📄 Ergebnisse der diagnostischen Maßnahmen")
 
-    st.markdown("---")
-    st.subheader("Diagnostische Befunde")
-
-    if "user_diagnostics" in st.session_state and st.button("🧪 Befunde abrufen"):
+if "befunde" in st.session_state:
+    # Befunde wurden schon erstellt – einfach anzeigen
+    st.markdown(st.session_state.befunde)
+else:
+    # Noch keine Befunde vorhanden – Button anbieten
+    if st.button("🧪 Befunde generieren lassen"):
         diagnostik_eingabe = st.session_state.user_diagnostics
         diagnose_szenario = st.session_state.diagnose_szenario
 
@@ -193,40 +180,29 @@ Ein Medizinstudierender hat folgende diagnostische Maßnahmen konkret angeforder
 
 {diagnostik_eingabe}
 
-Erstelle ausschließlich Befunde zu den genannten Untersuchungen. Nutze die zufällig simulierte Diagnose ({diagnose_szenario}), um klinisch typische Befundlagen zu generieren. 
+Erstelle ausschließlich Befunde zu den genannten Untersuchungen. Gib die Laborwerte in einer Tabelle aus:
+**Parameter** | **Wert** | **Referenzbereich (nur SI-Einheit)**. 
+Vermeide Interpretationen oder Diagnosen.
 
-**Laborbefunde**: Gib die Laborwerte ausschließlich als Tabelle aus. Nutze drei Spalten:  
-   **Parameter** | **Wert** | **Referenzbereich (SI-Einheiten)**  
-   Verwende z. B.:  
-   CRP – 18 – <5 mg/l  
-   Calprotectin – 370 – <50 µg/g  
-
-   Gib ** die Einheit nur im Referenzbereich an**, nicht in der Wert-Spalte.
-
-Ergänze vor den Befunden folgenden Hinweis:
-"Diese Befunde wurden automatisiert durch eine KI (GPT-4) erstellt. Sie dienen der Simulation und können unvollständig oder fehlerhaft sein."
-
-Gib die Befunde sachlich und strukturiert wieder – z. B. als Laborbericht, Befundtext oder Tabelle, je nach Untersuchungsart. Verwende keine Interpretationen oder Diagnosen.
-
-Ergänze keine nicht angeforderten Untersuchungen.
+Gib die Befunde strukturiert und sachlich wieder. Ergänze keine nicht angeforderten Untersuchungen.
+Beginne den Befund mit:
+"Diese Befunde wurden automatisiert durch eine KI (GPT-4) erstellt und dienen der Simulation. Sie können unvollständig oder fehlerhaft sein."
 """
 
-        with st.spinner("Befunde werden generiert..."):
+        with st.spinner(f"{st.session_state.patient_name} erstellt die Befunde..."):
             try:
                 response = client.chat.completions.create(
                     model="gpt-4",
                     messages=[{"role": "user", "content": prompt_befunde}],
                     temperature=0.5
                 )
-                befund_text = response.choices[0].message.content
-                st.session_state.befunde = befund_text
+                st.session_state.befunde = response.choices[0].message.content
+                st.success("✅ Befunde generiert")
+                st.experimental_rerun()
             except RateLimitError:
                 st.error("🚫 Befunde konnten nicht generiert werden. Die OpenAI-API ist aktuell überlastet.")
 
-        if "befunde" in st.session_state:
-            st.success("✅ Befunde generiert")
-            st.markdown("### 📄 Ergebnisse:")
-            st.markdown(st.session_state.befunde)
+            
 # Diagnose und Therapie
 if "befunde" in st.session_state and "final_step" not in st.session_state:
     st.markdown("### Diagnose und Therapiekonzept")
