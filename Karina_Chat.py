@@ -170,9 +170,13 @@ if "befunde" in st.session_state:
 else:
     # Noch keine Befunde vorhanden – Button anbieten
     if st.button("🧪 Befunde generieren lassen"):
-        diagnostik_eingabe = st.session_state.user_diagnostics
-        diagnose_szenario = st.session_state.diagnose_szenario
+        if "user_diagnostics" in st.session_state:
+            diagnostik_eingabe = st.session_state.user_diagnostics
+            # (weiter mit Befundgenerierung)
+        else:
+            st.warning("Bitte geben Sie zuerst diagnostische Maßnahmen ein, bevor Sie Befunde generieren.")
 
+        diagnose_szenario = st.session_state.diagnose_szenario
         prompt_befunde = f"""
 Die Patientin hat laut Szenario das Krankheitsbild **{diagnose_szenario}**.
 
