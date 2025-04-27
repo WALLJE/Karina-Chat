@@ -181,7 +181,7 @@ if st.session_state.get("koerper_befund"):
             st.session_state.user_ddx2 = ddx_input2
             st.session_state.user_diagnostics = diag_input2
             st.success("✅ Angaben gespeichert. Befunde können jetzt generiert werden.")
-            st.experimental_rerun()
+            st.rerun()
 
 # Wenn Differentialdiagnosen und Diagnostik schon gespeichert sind
 if "user_ddx2" in st.session_state and "user_diagnostics" in st.session_state:
@@ -233,7 +233,7 @@ Beginne den Befund mit:
                 )
                 st.session_state.befunde = response.choices[0].message.content
                 st.success("✅ Befunde generiert")
-                st.experimental_rerun()
+                st.rerun()
             except RateLimitError:
                 st.error("🚫 Befunde konnten nicht generiert werden. Die OpenAI-API ist aktuell überlastet.")
 
