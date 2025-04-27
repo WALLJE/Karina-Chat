@@ -151,7 +151,7 @@ Gib ausschließlich körperliche Untersuchungsbefunde an – keine Bildgebung, L
 
 Formuliere neutral, präzise und sachlich – so, wie es in einem klinischen Untersuchungsprotokoll stehen würde.
 """
-    with st.spinner("Untersuchungsbefund wird erstellt..."):
+    with st.spinner(f"{st.session_state.patient_name} wird untersucht..."):
         try:
             response = client.chat.completions.create(
                 model="gpt-4",
@@ -162,31 +162,28 @@ Formuliere neutral, präzise und sachlich – so, wie es in einem klinischen Unt
         except RateLimitError:
             st.error("🚫 Die Untersuchung konnte nicht erstellt werden. Die OpenAI-API ist derzeit überlastet.")
 
-if st.session_state.koerper_befund:
+# Wenn körperlicher Befund vorhanden
+if st.session_state.get("koerper_befund"):
     st.success("✅ Untersuchungsbefund erstellt")
     st.markdown(st.session_state.koerper_befund)
 
-# nicht benötigt, schon definiert 27.04.
-#    if "diagnostik_step" not in st.session_state:
-#        st.session_state.diagnostik_step = 0
+    # Eingabeformular für Differentialdiagnosen und Diagnostik, falls noch nicht gemacht
+    if "user_ddx2" not in st.session_state:
+        st.markdown("---")
+        st.subheader("🧠 Differentialdiagnosen und diagnostische Maßnahmen")
 
-# Modul für Differentialdiagnosen und geplante Diagnostik
-if st.session_state.get("koerper_befund") and "user_ddx2" not in st.session_state:
-    st.markdown("---")
-    st.subheader("🧠 Differentialdiagnosen und diagnostische Maßnahmen")
-    
-    with st.form("differentialdiagnosen_diagnostik_formular"):
-        ddx_input2 = st.text_area("Welche drei Differentialdiagnosen halten Sie nach Anamnese und Untersuchung für möglich?", key="ddx_input2")
-        diag_input2 = st.text_area("Welche konkreten diagnostischen Maßnahmen möchten Sie vorschlagen?", key="diag_input2")
-        submitted_diag = st.form_submit_button("✅ Eingaben speichern")
+        with st.form("differentialdiagnosen_diagnostik_formular"):
+            ddx_input2 = st.text_area("Welche drei Differentialdiagnosen halten Sie nach Anamnese und Untersuchung für möglich?", key="ddx_input2")
+            diag_input2 = st.text_area("Welche konkreten diagnostischen Maßnahmen möchten Sie vorschlagen?", key="diag_input2")
+            submitted_diag = st.form_submit_button("✅ Eingaben speichern")
 
-    if submitted_diag:
-        st.session_state.user_ddx2 = ddx_input2
-        st.session_state.user_diagnostics = diag_input2
-        st.success("✅ Angaben gespeichert. Befunde können jetzt generiert werden.")
-        st.experimental_rerun()
+        if submitted_diag:
+            st.session_state.user_ddx2 = ddx_input2
+            st.session_state.user_diagnostics = diag_input2
+            st.success("✅ Angaben gespeichert. Befunde können jetzt generiert werden.")
+            st.experimental_rerun()
 
-# Eingaben anzeigen, wenn schon vorhanden
+# Wenn Differentialdiagnosen und Diagnostik schon gespeichert sind
 if "user_ddx2" in st.session_state and "user_diagnostics" in st.session_state:
     st.markdown("---")
     st.subheader("📝 Ihre gespeicherten Eingaben:")
