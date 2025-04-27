@@ -1,3 +1,4 @@
+
 # Version 4.7
 #  
 # incl Zöliakie, Laktoseintoleranz
@@ -45,18 +46,18 @@ if "patient_job" not in st.session_state:
     ])
 
 # Begrüßungstext
-if "messages" not in st.session_state:
-    eintritt = f"{st.session_state.patient_name} ({st.session_state.patient_age} Jahre, {st.session_state.patient_job}) betritt den Raum."
-    start_text = "Guten Tag, ich bin froh, dass ich mich heute bei Ihnen vorstellen kann."
-    st.session_state.messages = [
-        {"role": "system", "content": f"Patientin: {st.session_state.patient_name}, {st.session_state.patient_age} Jahre alt, {st.session_state.patient_job}."},
-        {"role": "assistant", "content": eintritt},
-        {"role": "assistant", "content": start_text}
-    ]
+#if "messages" not in st.session_state:
+#    eintritt = f"{st.session_state.patient_name} ({st.session_state.patient_age} Jahre, {st.session_state.patient_job}) betritt den Raum."
+#    start_text = "Guten Tag, ich bin froh, dass ich mich heute bei Ihnen vorstellen kann."
+#    st.session_state.messages = [
+#        {"role": "system", "content": f"Patientin: {st.session_state.patient_name}, {st.session_state.patient_age} Jahre alt, {st.session_state.patient_job}."},
+#        {"role": "assistant", "content": eintritt},
+#        {"role": "assistant", "content": start_text}
+#    ]
   
 #System-Prompt
 if st.session_state.diagnose_szenario == "Morbus Crohn":
-    SYSTEM_PROMPT = """
+    SYSTEM_PROMPT = f"""
 Patientensimulation - Morbus Crohn
 
 Du bist {st.session_state.patient_name}, eine {st.session_state.patient_age}-jährige {st.session_state.patient_job}.
@@ -66,7 +67,7 @@ Erzähle davon aber nur, wenn ausdrücklich danach gefragt wird.
 Reisen: Vor 5 Jahren Korsika, sonst nur in Deutschland.
 """
 elif st.session_state.diagnose_szenario == "Reizdarmsyndrom":
-    SYSTEM_PROMPT = """
+    SYSTEM_PROMPT = f"""
 Patientensimulation – Reizdarmsyndrom
 
 Du bist {st.session_state.patient_name}, eine {st.session_state.patient_age}-jährige {st.session_state.patient_job}.
@@ -75,7 +76,7 @@ Du hast seit über 6 Monaten immer wieder Bauchschmerzen, mal rechts, mal links,
 Erzähle das nur auf Nachfrage. Reisen: In den letzten Jahren nur in Deutschland, vor Jahren mal in der Türkei, da hattest Du eine Magen-Darm-Infektion.
 """
 elif st.session_state.diagnose_szenario == "Appendizitis":
-    SYSTEM_PROMPT = """
+    SYSTEM_PROMPT = f"""
 Patientensimulation – Appendizitis
 
 Du bist {st.session_state.patient_name}, eine {st.session_state.patient_age}-jährige {st.session_state.patient_job}.
@@ -85,7 +86,7 @@ Erzähle das nur auf gezielte Nachfrage. Reisen: Nur in Deutschland.
 """
 
 elif st.session_state.diagnose_szenario == "Zöliakie":
-    SYSTEM_PROMPT = """
+    SYSTEM_PROMPT = f"""
 Patientensimulation – Zöliakie
 
 Du bist {st.session_state.patient_name}, eine {st.session_state.patient_age}-jährige {st.session_state.patient_job}.
@@ -95,7 +96,7 @@ Erzähle das nur auf gezielte Nachfrage. Reisen: In den letzten Jahren nur in Eu
 """
 
 elif st.session_state.diagnose_szenario == "Laktoseintoleranz":
-    SYSTEM_PROMPT = """
+    SYSTEM_PROMPT = f"""
 Patientensimulation – Laktoseintoleranz
 
 Du bist {st.session_state.patient_name}, eine {st.session_state.patient_age}-jährige {st.session_state.patient_job}.
@@ -125,7 +126,7 @@ Wenn Sie genug anamnestische Informationen erhoben haben:
 
 # Chat-Verlauf starten
 if "messages" not in st.session_state:
-    eintritt = f"{st.session_state.patient_name} ({st.session_state.patient_age} Jahre) betritt den Raum."
+    eintritt = f"{st.session_state.patient_name} ({st.session_state.patient_age} Jahre), {st.session_state.patient_job}, betritt den Raum."
     start_text = "Guten Tag, ich bin froh, dass ich mich heute bei Ihnen vorstellen kann."
     st.session_state.messages = [
         {"role": "system", "content": SYSTEM_PROMPT},
@@ -162,13 +163,11 @@ if submit_button and user_input:
 # Körperliche Untersuchung
 st.markdown("---")
 st.subheader("Körperliche Untersuchung")
-st.markdown("---")
-st.subheader("📄 Ergebnisse der diagnostischen Maßnahmen")
 
 # aus diagnostik
 #if "befunde" in st.session_state:
     # Befunde wurden schon erstellt – einfach anzeigen 
-#    st.success("✅ Befunde wurden bereits erstellt.")
+#    st.success("✅ Befunde wurden erstellt.")
 #    st.markdown(st.session_state.befunde)
 #else:
     # Noch keine Befunde vorhanden – Button anbieten
@@ -181,11 +180,11 @@ st.subheader("📄 Ergebnisse der diagnostischen Maßnahmen")
 
 if "koerper_befund" in st.session_state:
     st.success("✅ Körperliche Untersuchung erfolgt.")
-    st.markdown(st.session_state.befunde)
-    # st.session_state.koerper_befund = None
+    st.markdown(st.session_state.koerper_befund)
 
-else st.button("🩺 Untersuchung durchführen"):
-    untersuchung_prompt = f"""
+else:
+    if st.button("🩺 Untersuchung durchführen"):
+        untersuchung_prompt = f"""
 Die Patientin hat eine zufällig simulierte Erkrankung. Diese lautet: {st.session_state.diagnose_szenario}.
 
 Erstelle einen körperlichen Untersuchungsbefund, der zu dieser Erkrankung passt, ohne sie explizit zu nennen oder zu diagnostizieren. Passe die Befundlage so an, dass sie klinisch konsistent ist, aber nicht interpretierend oder hinweisgebend wirkt.
@@ -202,21 +201,22 @@ Gib ausschließlich körperliche Untersuchungsbefunde an – keine Bildgebung, L
 
 Formuliere neutral, präzise und sachlich – so, wie es in einem klinischen Untersuchungsprotokoll stehen würde.
 """
-    with st.spinner(f"{st.session_state.patient_name} wird untersucht..."):
-        try:
-            response = client.chat.completions.create(
-                model="gpt-4",
-                messages=[{"role": "user", "content": untersuchung_prompt}],
-                temperature=0.5
-            )
-            st.session_state.koerper_befund = response.choices[0].message.content
-        except RateLimitError:
-            st.error("🚫 Die Untersuchung konnte nicht erstellt werden. Die OpenAI-API ist derzeit überlastet.")
+        with st.spinner(f"{st.session_state.patient_name} wird untersucht..."):
+            try:
+                response = client.chat.completions.create(
+                    model="gpt-4",
+                    messages=[{"role": "user", "content": untersuchung_prompt}],
+                    temperature=0.5
+                )
+                st.session_state.koerper_befund = response.choices[0].message.content
+                st.rerun()
+            except RateLimitError:
+                st.error("🚫 Die Untersuchung konnte nicht erstellt werden. Die OpenAI-API ist derzeit überlastet.")
 
-# Wenn körperlicher Befund vorhanden
+# schon oben itegriert - Wenn körperlicher Befund vorhanden
 if st.session_state.get("koerper_befund"):
-    st.success("✅ Untersuchungsbefund erstellt")
-    st.markdown(st.session_state.koerper_befund)
+#    st.success("✅ Untersuchungsbefund erstellt")
+#    st.markdown(st.session_state.koerper_befund)
 
     # Eingabeformular für Differentialdiagnosen und Diagnostik, falls noch nicht gemacht
     if "user_ddx2" not in st.session_state:
@@ -323,8 +323,7 @@ if "final_step" in st.session_state:
             if msg["role"] == "user"
         ])
 
-        # Feedback erstellen und zusammensetzen
-        # muss eingerückt bleiben
+        # Feedback-Prompt erstellen
         feedback_prompt_final = f"""
 Ein Medizinstudierender hat eine vollständige virtuelle Fallbesprechung mit einer Patientin durchgeführt. Du bist ein erfahrener medizinischer Prüfer.
 
