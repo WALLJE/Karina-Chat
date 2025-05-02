@@ -207,7 +207,7 @@ Formuliere neutral, präzise und sachlich – so, wie es in einem klinischen Unt
                 except RateLimitError:
                     st.error("🚫 Die Untersuchung konnte nicht erstellt werden. Die OpenAI-API ist derzeit überlastet.")
 else:
-    st.subheader("Körperliche Untersuchung (noch nicht verfügbar)")
+    st.subheader("Körperliche Untersuchung")
     st.button("Untersuchung durchführen", disabled=True)
     st.info("❗Bitte stellen Sie zunächst mindestens eine anamnestische Frage.")
 
@@ -234,7 +234,7 @@ if "koerper_befund" in st.session_state:
         st.markdown(f"**Diagnostische Maßnahmen:**\n{st.session_state.user_diagnostics}")
 
 else:
-    st.subheader("Differentialdiagnosen und diagnostische Maßnahmen (noch nicht verfügbar)")
+    st.subheader("Differentialdiagnosen und diagnostische Maßnahmen")
     st.info("❗Bitte führen Sie zuerst die körperliche Untersuchung durch.")
 
 
