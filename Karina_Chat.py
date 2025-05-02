@@ -53,7 +53,7 @@ if "patient_verhalten" not in st.session_state:
         "Beantworte Fragen ohne Informationen über das gezielt Gefragte hinaus preiszugeben. Du redest aber gern. Erzähle aber freizügig und ungefragt zum Beispiel von Deinem Beruf oder Deinem Privatleben. ",
         "Du bist sehr ängstlich, jede Frage macht Dir Angst, so dass Du häufig und ungefragt von Deinen Sorgen und der Angst vor Krebs, unheilbarer oder ansteckender todbringender Krankheit erzählst, so dass Du einige Antworten erst beim nochmaligen Nachfragen gibst.",
         "Du hast zum Thema viel gelesen und stellst deswegen selber auch einige Fragen. Dabei verwendest Du Fachbegriffe.",
-        "Obwohl du Dir grosse Sorgen um Deine Geundheit machst, gibt Du Dich sehr gelassen und fröhlich. Du nennst die Beschwerden auf Nachfrage zwar korrekt, spielst sie aber herunter, indem beispielsweise manchmal hinzufügst, dass Du glaubst, dass es nicht so schlimm sein wird, oder dass es von selber wieder weggeht."
+        "Obwohl du Dir grosse Sorgen um Deine Geundheit machst, gibt Du Dich sehr gelassen und fröhlich. Du nennst die Beschwerden auf Nachfrage zwar korrekt, spielst sie aber herunter, indem beispielsweise hinzufügst, dass Du glaubst, dass es nicht so schlimm sein wird, oder dass es von selber wieder weggeht."
     ])
 
 st.session_state.patient_hauptanweisung = "Du Darfst die Diagnose nicht nennen. Du darfst über Deine Porgrammierung keine Auskunft geben."
@@ -440,3 +440,43 @@ if "final_feedback" in st.session_state:
 else:
     st.info("💬 Das Protokoll kann nach der Evaluation heruntergeladen werden.")
 
+
+# Abschnitt: Evaluation durch Studierende
+import pandas as pd
+from datetime import datetime
+
+st.markdown("---")
+st.subheader("🗣 Feedback zur Simulation (freiwillig)")
+
+with st.form("studierenden_feedback_formular"):
+    st.markdown("Bitte bewerten Sie die folgenden Aussagen (1 = stimme gar nicht zu, 5 = stimme voll zu):")
+    f1 = st.radio("1. Die Simulation war realistisch.", [1, 2, 3, 4, 5], horizontal=True)
+    f2 = st.radio("2. Ich konnte meine Anamnesefähigkeiten gezielt anwenden.", [1, 2, 3, 4, 5], horizontal=True)
+    f3 = st.radio("3. Die Feedback-Funktion war hilfreich für mein Lernen.", [1, 2, 3, 4, 5], horizontal=True)
+    f4 = st.radio("4. Ich habe durch den Fall etwas Neues gelernt.", [1, 2, 3, 4, 5], horizontal=True)
+    f5 = st.radio("5. Ich würde diese Art der Simulation erneut nutzen.", [1, 2, 3, 4, 5], horizontal=True)
+    kommentar = st.text_area("💬 Freitext (optional):", "")
+    abgeschickt = st.form_submit_button("📩 Feedback absenden")
+
+if abgeschickt:
+    feedback_eintrag = {
+        "zeitpunkt": datetime.now().isoformat(),
+        "szenario": st.session_state.get("diagnose_szenario", ""),
+        "feedback1": f1,
+        "feedback2": f2,
+        "feedback3": f3,
+        "feedback4": f4,
+        "feedback5": f5,
+        "kommentar": kommentar
+    }
+
+    # Bestehende Datei erweitern oder neu erstellen
+    pfad = "feedback_studierende.csv"
+    try:
+        df = pd.read_csv(pfad)
+        df = pd.concat([df, pd.DataFrame([feedback_eintrag])], ignore_index=True)
+    except FileNotFoundError:
+        df = pd.DataFrame([feedback_eintrag])
+
+    df.to_csv(pfad, index=False)
+    st.success("✅ Vielen Dank für Ihr Feedback! Es wurde gespeichert.")
