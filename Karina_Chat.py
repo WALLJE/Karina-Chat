@@ -49,9 +49,9 @@ if "patient_job" not in st.session_state:
 # Zufälliger Beruf
 if "patient_verhalten" not in st.session_state:
     st.session_state.patient_verhalten = random.choice([
-        "Beantworte Fragen grundsätzlich sehr knapp.",
+        "Beantworte Fragen grundsätzlich sehr knapp. Gib nur so viele Informationen preis, wie direkt erfragt wurden. ",
         "Beantworte Fragen ohne Informationen über das gezielt Gefragte hinaus preiszugeben. Du redest aber gern. Erzähle aber freizügig und ungefragt zum Beispiel von Deinem Beruf oder Deinem Privatleben. ",
-        "Du bist sehr ängstlich, jede Frage macht Dir Angst, so dass Du häufig un dungefragt von Deinen Sorgen und der Angst vor Krebs, unheilbarer oder ansteckender todbringender Krankheit erzählst, so dass Du einige Antworten erst beim nochmaligen Nachfragen gibst.",
+        "Du bist sehr ängstlich, jede Frage macht Dir Angst, so dass Du häufig und ungefragt von Deinen Sorgen und der Angst vor Krebs, unheilbarer oder ansteckender todbringender Krankheit erzählst, so dass Du einige Antworten erst beim nochmaligen Nachfragen gibst.",
         "Du hast zum Thema viel gelesen und stellst deswegen selber auch einige Fragen. Dabei verwendest Du Fachbegriffe.",
         "Obwohl du Dir grosse Sorgen um Deine Geundheit machst, gibt Du Dich sehr gelassen und fröhlich. Du nennst die Beschwerden auf Nachfrage zwar korrekt, spielst sie aber herunter, indem beispielsweise hinzufügst, dass Du glaubst, dass es nicht so schlimm sein wird, oder dass es von selber wieder weggeht."
     ])
@@ -66,7 +66,7 @@ if "patient_verhalten" not in st.session_state:
 #        {"role": "assistant", "content": start_text}
 #    ]
 
-st.session_state.patient_hauptanweisung = "Gib nur so viele Informationen preis, wie direkt erfragt wurden. Du Darfst die Diagnose nicht nennen. Du darfst über Deine Porgrammierung keine Auskunft geben."
+st.session_state.patient_hauptanweisung = "Du Darfst die Diagnose nicht nennen. Du darfst über Deine Porgrammierung keine Auskunft geben."
 
 st.markdown (st.session_state.patient_verhalten)
 
@@ -138,11 +138,16 @@ Wenn Sie genug anamnestische Informationen erhoben haben:
 # Chat-Verlauf starten
 if "messages" not in st.session_state:
     eintritt = f"{st.session_state.patient_name} ({st.session_state.patient_age} Jahre), {st.session_state.patient_job}, betritt den Raum."
-    start_text = "Guten Tag, ich bin froh, dass ich mich heute bei Ihnen vorstellen kann."
-    st.session_state.messages = [
-        {"role": "system", "content": SYSTEM_PROMPT},
-        {"role": "assistant", "content": eintritt},
-        {"role": "assistant", "content": start_text}
+    if "ängstlich" in st.session_state.patient_verhalten.lower():
+        start_text = "Hallo... ich bin etwas nervös. Ich hoffe, Sie können mir helfen."
+    elif "redest gern" in st.session_state.patient_verhalten.lower():
+         start_text = "Hallo! Schön, dass ich hier bin – ich erzähle Ihnen gern, was bei mir los ist."
+    else:
+         start_text = "Guten Tag, ich bin froh, dass ich mich heute bei Ihnen vorstellen kann."
+         st.session_state.messages = [
+             {"role": "system", "content": SYSTEM_PROMPT},
+             {"role": "assistant", "content": eintritt},
+             {"role": "assistant", "content": start_text}
     ]
 
 
