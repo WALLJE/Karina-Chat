@@ -160,31 +160,18 @@ if submit_button and user_input:
             st.error("🚫 Die Anfrage konnte nicht verarbeitet werden, da die OpenAI-API derzeit überlastet ist. Bitte versuchen Sie es in einigen Minuten erneut.")
     st.rerun()
 
-# Körperliche Untersuchung
+# Abschnitt: Körperliche Untersuchung
 st.markdown("---")
-st.subheader("Körperliche Untersuchung")
+anzahl_fragen = sum(1 for m in st.session_state.messages if m["role"] == "user")
 
-# aus diagnostik
-#if "befunde" in st.session_state:
-    # Befunde wurden schon erstellt – einfach anzeigen 
-#    st.success("✅ Befunde wurden erstellt.")
-#    st.markdown(st.session_state.befunde)
-#else:
-    # Noch keine Befunde vorhanden – Button anbieten
-#    if st.button("🧪 Befunde generieren lassen"):
-#        if "user_diagnostics" in st.session_state:
-#            diagnostik_eingabe = st.session_state.user_diagnostics
-            # (weiter mit Befundgenerierung)
-#        else:
-#            st.warning("Bitte geben Sie zuerst diagnostische Maßnahmen ein, bevor Sie Befunde generieren.")
-
-if "koerper_befund" in st.session_state:
-    st.success("✅ Körperliche Untersuchung erfolgt.")
-    st.markdown(st.session_state.koerper_befund)
-
-else:
-    if st.button("🩺 Untersuchung durchführen"):
-        untersuchung_prompt = f"""
+if anzahl_fragen > 0:
+    st.subheader("🩺 Körperliche Untersuchung")
+    if "koerper_befund" in st.session_state:
+        st.success("✅ Körperliche Untersuchung erfolgt.")
+        st.markdown(st.session_state.koerper_befund)
+    else:
+        if st.button("🩺 Untersuchung durchführen"):
+            untersuchung_prompt = f"""
 Die Patientin hat eine zufällig simulierte Erkrankung. Diese lautet: {st.session_state.diagnose_szenario}.
 
 Erstelle einen körperlichen Untersuchungsbefund, der zu dieser Erkrankung passt, ohne sie explizit zu nennen oder zu diagnostizieren. Passe die Befundlage so an, dass sie klinisch konsistent ist, aber nicht interpretierend oder hinweisgebend wirkt.
@@ -201,65 +188,39 @@ Gib ausschließlich körperliche Untersuchungsbefunde an – keine Bildgebung, L
 
 Formuliere neutral, präzise und sachlich – so, wie es in einem klinischen Untersuchungsprotokoll stehen würde.
 """
-        with st.spinner(f"{st.session_state.patient_name} wird untersucht..."):
-            try:
-                response = client.chat.completions.create(
-                    model="gpt-4",
-                    messages=[{"role": "user", "content": untersuchung_prompt}],
-                    temperature=0.5
-                )
-                st.session_state.koerper_befund = response.choices[0].message.content
-                st.rerun()
-            except RateLimitError:
-                st.error("🚫 Die Untersuchung konnte nicht erstellt werden. Die OpenAI-API ist derzeit überlastet.")
-
-# schon oben itegriert - Wenn körperlicher Befund vorhanden
-if st.session_state.get("koerper_befund"):
-#    st.success("✅ Untersuchungsbefund erstellt")
-#    st.markdown(st.session_state.koerper_befund)
-
-    # Eingabeformular für Differentialdiagnosen und Diagnostik, falls noch nicht gemacht
-    if "user_ddx2" not in st.session_state:
-        st.markdown("---")
-        st.subheader("🧠 Differentialdiagnosen und diagnostische Maßnahmen")
-
-        with st.form("differentialdiagnosen_diagnostik_formular"):
-            ddx_input2 = st.text_area("Welche drei Differentialdiagnosen halten Sie nach Anamnese und Untersuchung für möglich?", key="ddx_input2")
-            diag_input2 = st.text_area("Welche konkreten diagnostischen Maßnahmen möchten Sie vorschlagen?", key="diag_input2")
-            submitted_diag = st.form_submit_button("✅ Eingaben speichern")
-
-        if submitted_diag:
-            st.session_state.user_ddx2 = ddx_input2
-            st.session_state.user_diagnostics = diag_input2
-            st.success("✅ Angaben gespeichert. Befunde können jetzt generiert werden.")
-            st.rerun()
-
-# Wenn Differentialdiagnosen und Diagnostik schon gespeichert sind
-if "user_ddx2" in st.session_state and "user_diagnostics" in st.session_state:
-    st.markdown("---")
-    st.subheader("📝 Ihre gespeicherten Eingaben:")
-    st.markdown(f"**Differentialdiagnosen:**\n{st.session_state.user_ddx2}")
-    st.markdown(f"**Diagnostische Maßnahmen:**\n{st.session_state.user_diagnostics}")
-
-# Befunde anzeigen oder generieren
-st.markdown("---")
-st.subheader("📄 Ergebnisse der diagnostischen Maßnahmen")
-
-if "befunde" in st.session_state:
-    # Befunde wurden schon erstellt – einfach anzeigen
-    st.success("✅ Befunde wurden bereits erstellt.")
-    st.markdown(st.session_state.befunde)
+            with st.spinner(f"{st.session_state.patient_name} wird untersucht..."):
+                try:
+                    response = client.chat.completions.create(
+                        model="gpt-4",
+                        messages=[{"role": "user", "content": untersuchung_prompt}],
+                        temperature=0.5
+                    )
+                    st.session_state.koerper_befund = response.choices[0].message.content
+                    st.rerun()
+                except RateLimitError:
+                    st.error("🚫 Die Untersuchung konnte nicht erstellt werden. Die OpenAI-API ist derzeit überlastet.")
 else:
-    # Noch keine Befunde vorhanden – Button anbieten
-    if st.button("🧪 Befunde generieren lassen"):
-        if "user_diagnostics" in st.session_state:
-            diagnostik_eingabe = st.session_state.user_diagnostics
-            # (weiter mit Befundgenerierung)
-        else:
-            st.warning("Bitte geben Sie zuerst diagnostische Maßnahmen ein, bevor Sie Befunde generieren.")
+    st.subheader("🩺 Körperliche Untersuchung (noch nicht verfügbar)")
+    st.button("🩺 Untersuchung durchführen", disabled=True)
+    st.info("❗Bitte stellen Sie zunächst mindestens eine anamnestische Frage.")
 
-        diagnose_szenario = st.session_state.diagnose_szenario
-        prompt_befunde = f"""
+
+# Abschnitt: Ergebnisse der diagnostischen Maßnahmen
+st.markdown("---")
+if "koerper_befund" in st.session_state:
+    st.subheader("📄 Ergebnisse der diagnostischen Maßnahmen")
+    if "befunde" in st.session_state:
+        st.success("✅ Befunde wurden bereits erstellt.")
+        st.markdown(st.session_state.befunde)
+    else:
+        if st.button("🧪 Befunde generieren lassen"):
+            if "user_diagnostics" in st.session_state:
+                diagnostik_eingabe = st.session_state.user_diagnostics
+            else:
+                st.warning("Bitte geben Sie zuerst diagnostische Maßnahmen ein, bevor Sie Befunde generieren.")
+
+            diagnose_szenario = st.session_state.diagnose_szenario
+            prompt_befunde = f"""
 Die Patientin hat laut Szenario das Krankheitsbild **{diagnose_szenario}**.
 
 Ein Medizinstudierender hat folgende diagnostische Maßnahmen konkret angefordert:
@@ -274,20 +235,22 @@ Gib die Befunde strukturiert und sachlich wieder. Ergänze keine nicht angeforde
 Beginne den Befund mit:
 "Diese Befunde wurden automatisiert durch eine KI (GPT-4) erstellt und dienen der Simulation. Sie können unvollständig oder fehlerhaft sein."
 """
-
-        with st.spinner(f"{st.session_state.patient_name} erstellt die Befunde..."):
-            try:
-                response = client.chat.completions.create(
-                    model="gpt-4",
-                    messages=[{"role": "user", "content": prompt_befunde}],
-                    temperature=0.5
-                )
-                st.session_state.befunde = response.choices[0].message.content
-                st.success("✅ Befunde generiert")
-                st.rerun()
-            except RateLimitError:
-                st.error("🚫 Befunde konnten nicht generiert werden. Die OpenAI-API ist aktuell überlastet.")
-
+            with st.spinner(f"{st.session_state.patient_name} erstellt die Befunde..."):
+                try:
+                    response = client.chat.completions.create(
+                        model="gpt-4",
+                        messages=[{"role": "user", "content": prompt_befunde}],
+                        temperature=0.5
+                    )
+                    st.session_state.befunde = response.choices[0].message.content
+                    st.success("✅ Befunde generiert")
+                    st.rerun()
+                except RateLimitError:
+                    st.error("🚫 Befunde konnten nicht generiert werden. Die OpenAI-API ist aktuell überlastet.")
+else:
+    st.subheader("📄 Ergebnisse der diagnostischen Maßnahmen (noch nicht verfügbar)")
+    st.button("🧪 Befunde generieren lassen", disabled=True)
+    st.info("❗Bitte führen Sie zuerst die körperliche Untersuchung durch.")
             
 # Diagnose und Therapie
 if "befunde" in st.session_state and "final_step" not in st.session_state:
