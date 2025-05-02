@@ -113,13 +113,9 @@ st.info(f"""
 Sie führen ein strukturiertes Anamnesegespräch mit der virtuellen Patientin {st.session_state.patient_name}.
 Geben Sie zum Beginn Ihre Fragen an die Patientin unten ein. Ziel ist es, durch gezieltes Nachfragen eine Verdachtsdiagnose zu stellen und sinnvolle weitere Diagnostik zu planen.
 
-Bitte beachten Sie:
-- {st.session_state.patient_name} antwortet nur auf das, was direkt gefragt wird.
-- Medizinische Fachsprache versteht sie nicht unbedingt – erklären Sie unklare Begriffe.
-
 Wenn Sie genug anamnestische Informationen erhoben haben:
-- Führen Sie eine körperliche Untersuchung durch (per Button unten).
-- Danach: Nennen Sie Ihre Differentialdiagnosen und die gewünschte Diagnostik.
+- Führen Sie eine körperliche Untersuchung durch.
+- Danach : Nennen Sie Ihre Differentialdiagnosen und die gewünschte Diagnostik.
 - Sie erhalten typische Befunde und sollen dann eine Diagnose und ein Therapiekonzept festlegen. Erläurtern Sie die Therapie gern ausführlich.
 - Danach erhalten Sie ein strukturiertes Feedback zu Ihrem Vorgehen.
 """)
@@ -279,18 +275,23 @@ else:
     st.info("❗Bitte führen Sie zuerst die körperliche Untersuchung durch.")
             
 # Diagnose und Therapie
-if "befunde" in st.session_state and "final_step" not in st.session_state:
-    st.markdown("### Diagnose und Therapiekonzept")
-    with st.form("diagnose_therapie"):
-        final_diagnose = st.text_input("Ihre endgültige Diagnose:")
-        therapie_vorschlag = st.text_area("Ihr Therapiekonzept, bitte ggf. ausführlicher beschreiben:")
-        submitted_final = st.form_submit_button("✅ Entscheidung abschließen")
+if "befunde" in st.session_state:
+    st.markdown("### 🩺 Diagnose und Therapiekonzept")
 
-    if submitted_final:
-        st.session_state.final_diagnose = final_diagnose
-        st.session_state.therapie_vorschlag = therapie_vorschlag
-        st.session_state.final_step = True
-        st.success("✅ Entscheidung gespeichert")
+    if "final_diagnose" in st.session_state and "therapie_vorschlag" in st.session_state:
+        st.markdown(f"**Eingetragene Diagnose:**\n{st.session_state.final_diagnose}")
+        st.markdown(f"**Therapiekonzept:**\n{st.session_state.therapie_vorschlag}")
+    else:
+        with st.form("diagnose_therapie"):
+            input_diag = st.text_input("Ihre endgültige Diagnose:")
+            input_therapie = st.text_area("Ihr Therapiekonzept, bitte ggf. ausführlicher beschreiben:")
+            submitted_final = st.form_submit_button("✅ Entscheidung abschließen")
+
+        if submitted_final:
+            st.session_state.final_diagnose = input_diag
+            st.session_state.therapie_vorschlag = input_therapie
+            st.success("✅ Entscheidung gespeichert")
+            st.rerun()
 
 # Abschlussfeedback
 if "final_step" in st.session_state:
