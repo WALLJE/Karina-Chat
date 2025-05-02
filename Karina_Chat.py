@@ -284,7 +284,10 @@ else:
     st.subheader("📄 Ergebnisse der diagnostischen Maßnahmen (noch nicht verfügbar)")
     st.button("🧪 Befunde generieren lassen", disabled=True)
     st.info("❗Bitte führen Sie zuerst die körperliche Untersuchung durch.")
-            
+
+
+
+
 # Diagnose und Therapie
 if "befunde" in st.session_state:
     st.markdown("### Diagnose und Therapiekonzept")
