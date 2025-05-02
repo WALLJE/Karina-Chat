@@ -458,7 +458,8 @@ else:
 
 
 
-# Abschnitt: Evaluation durch Studierende mit Schulnoten und Secrets
+
+# Abschnitt: Evaluation durch Studierende mit Schulnoten und Sammeldatei
 import pandas as pd
 from datetime import datetime
 import requests
@@ -468,7 +469,7 @@ st.markdown("---")
 st.subheader("🗣 Feedback zur Simulation (freiwillig)")
 
 with st.form("studierenden_feedback_formular"):
-    st.markdown("Bitte bewerten Sie die folgenden Aspekte auf einer Schulnoten-Skala von 1 (sehr gut) bis 6 (ungenügend):")
+    st.markdown("Bitte bewerten Sie die folgenden Aspekte auf einer Skala von 1 (sehr gut) bis 6 (ungenügend):")
     f1 = st.radio("1. Wie realistisch war das Fallbeispiel?", [1, 2, 3, 4, 5, 6], horizontal=True)
     f2 = st.radio("2. Wie hilfreich war die Simulation für das Training der Anamnese?", [1, 2, 3, 4, 5, 6], horizontal=True)
     f3 = st.radio("3. Wie verständlich und relevant war das automatische Feedback?", [1, 2, 3, 4, 5, 6], horizontal=True)
@@ -491,25 +492,40 @@ if abgeschickt:
         "note_feedback": f3,
         "note_didaktik": f4,
         "kommentar": kommentar,
+        "verdachtsdiagnosen": st.session_state.get("user_ddx2", "nicht angegeben"),
+        "diagnostik": st.session_state.get("user_diagnostics", "nicht angegeben"),
+        "finale_diagnose": st.session_state.get("final_diagnose", "nicht angegeben"),
+        "therapie": st.session_state.get("therapie_vorschlag", "nicht angegeben"),
         "gpt_feedback": st.session_state.get("final_feedback", "Kein KI-Feedback erzeugt")
     }
 
-    df = pd.DataFrame([eintrag])
-    dateiname = f"feedback_{now.strftime('%Y%m%d_%H%M%S')}.csv"
+    df_neu = pd.DataFrame([eintrag])
+    dateiname = "feedback_gesamt.csv"
     lokaler_pfad = f"/tmp/{dateiname}"
-    df.to_csv(lokaler_pfad, index=False)
 
     # Zugriff via Streamlit Secrets
     nextcloud_url = st.secrets["nextcloud"]["url"]
     nextcloud_user = st.secrets["nextcloud"]["user"]
     nextcloud_token = st.secrets["nextcloud"]["token"]
+    auth = HTTPBasicAuth(nextcloud_user, nextcloud_token)
 
+    # Versuche alte Datei zu laden
+    try:
+        r = requests.get(nextcloud_url + dateiname, auth=auth)
+        if r.status_code == 200:
+            with open(lokaler_pfad, "wb") as f:
+                f.write(r.content)
+            df_alt = pd.read_csv(lokaler_pfad)
+            df = pd.concat([df_alt, df_neu], ignore_index=True)
+        else:
+            df = df_neu
+    except Exception:
+        df = df_neu
+
+    # Speichern und hochladen
+    df.to_csv(lokaler_pfad, index=False)
     with open(lokaler_pfad, 'rb') as f:
-        response = requests.put(
-            nextcloud_url + dateiname,
-            data=f,
-            auth=HTTPBasicAuth(nextcloud_user, nextcloud_token)
-        )
+        response = requests.put(nextcloud_url + dateiname, data=f, auth=auth)
 
     if response.status_code in [200, 201, 204]:
         st.success("✅ Ihr Feedback wurde erfolgreich gespeichert.")
