@@ -262,7 +262,8 @@ Ein Medizinstudierender hat folgende diagnostische Maßnahmen konkret angeforder
 
 Erstelle ausschließlich Befunde zu den genannten Untersuchungen. Gib Laborwerte in einer Tabelle aus, verwende dabei immer SI-Einheiten:
 **Parameter** | **Wert** | **Referenzbereich (SI-Einheit)**. 
-Vermeide Interpretationen oder Diagnosen.
+
+Interpretationen oder Diagnosen sind nicht erlaubt. Nenne auf keinen Fall das Diagnose-Szenario.
 
 Gib die Befunde strukturiert und sachlich wieder. Ergänze keine nicht angeforderten Untersuchungen.
 Beginne den Befund mit:
