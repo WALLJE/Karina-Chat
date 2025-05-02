@@ -268,7 +268,7 @@ Gib die Befunde strukturiert und sachlich wieder. Ergänze keine nicht angeforde
 Beginne den Befund mit:
 "Diese Befunde wurden automatisiert durch eine KI (GPT-4) erstellt und dienen der Simulation. Sie können unvollständig oder fehlerhaft sein."
 """
-            with st.spinner(f"{st.session_state.patient_name} erstellt die Befunde..."):
+            with st.spinner("Die Befunde werden erstellt."):
                 try:
                     response = client.chat.completions.create(
                         model="gpt-4",
