@@ -485,7 +485,7 @@ if abgeschickt:
         "patient_name": st.session_state.get("patient_name", ""),
         "patient_age": st.session_state.get("patient_age", ""),
         "patient_job": st.session_state.get("patient_job", ""),
-        "patient_verhalten": st.session_state.get("patient_verhalten_memo", "unbekannt")
+        "patient_verhalten": st.session_state.get("patient_verhalten_memo", "unbekannt"),
         "note_realismus": f1,
         "note_anamnese": f2,
         "note_feedback": f3,
