@@ -441,42 +441,61 @@ else:
     st.info("💬 Das Protokoll kann nach der Evaluation heruntergeladen werden.")
 
 
-# Abschnitt: Evaluation durch Studierende
+
+# Abschnitt: Evaluation durch Studierende mit Schulnoten und Secrets
 import pandas as pd
 from datetime import datetime
+import requests
+from requests.auth import HTTPBasicAuth
 
 st.markdown("---")
 st.subheader("🗣 Feedback zur Simulation (freiwillig)")
 
 with st.form("studierenden_feedback_formular"):
-    st.markdown("Bitte bewerten Sie die folgenden Aussagen (1 = stimme gar nicht zu, 5 = stimme voll zu):")
-    f1 = st.radio("1. Die Simulation war realistisch.", [1, 2, 3, 4, 5], horizontal=True)
-    f2 = st.radio("2. Ich konnte meine Anamnesefähigkeiten gezielt anwenden.", [1, 2, 3, 4, 5], horizontal=True)
-    f3 = st.radio("3. Die Feedback-Funktion war hilfreich für mein Lernen.", [1, 2, 3, 4, 5], horizontal=True)
-    f4 = st.radio("4. Ich habe durch den Fall etwas Neues gelernt.", [1, 2, 3, 4, 5], horizontal=True)
-    f5 = st.radio("5. Ich würde diese Art der Simulation erneut nutzen.", [1, 2, 3, 4, 5], horizontal=True)
+    st.markdown("Bitte bewerten Sie die folgenden Aspekte auf einer Schulnoten-Skala von 1 (sehr gut) bis 6 (ungenügend):")
+    f1 = st.radio("1. Wie realistisch war das Fallbeispiel?", [1, 2, 3, 4, 5, 6], horizontal=True)
+    f2 = st.radio("2. Wie hilfreich war die Simulation für das Training der Anamnese?", [1, 2, 3, 4, 5, 6], horizontal=True)
+    f3 = st.radio("3. Wie verständlich und relevant war das automatische Feedback?", [1, 2, 3, 4, 5, 6], horizontal=True)
+    f4 = st.radio("4. Wie bewerten Sie den didaktischen Gesamtwert der Simulation?", [1, 2, 3, 4, 5, 6], horizontal=True)
     kommentar = st.text_area("💬 Freitext (optional):", "")
     abgeschickt = st.form_submit_button("📩 Feedback absenden")
 
 if abgeschickt:
-    feedback_eintrag = {
-        "zeitpunkt": datetime.now().isoformat(),
+    now = datetime.now()
+    eintrag = {
+        "datum": now.strftime("%Y-%m-%d"),
+        "uhrzeit": now.strftime("%H:%M:%S"),
         "szenario": st.session_state.get("diagnose_szenario", ""),
-        "feedback1": f1,
-        "feedback2": f2,
-        "feedback3": f3,
-        "feedback4": f4,
-        "feedback5": f5,
-        "kommentar": kommentar
+        "patient_name": st.session_state.get("patient_name", ""),
+        "patient_age": st.session_state.get("patient_age", ""),
+        "patient_job": st.session_state.get("patient_job", ""),
+        "patient_verhalten": st.session_state.get("patient_verhalten", ""),
+        "note_realismus": f1,
+        "note_anamnese": f2,
+        "note_feedback": f3,
+        "note_didaktik": f4,
+        "kommentar": kommentar,
+        "gpt_feedback": st.session_state.get("final_feedback", "Kein KI-Feedback erzeugt")
     }
 
-    # Bestehende Datei erweitern oder neu erstellen
-    pfad = "feedback_studierende.csv"
-    try:
-        df = pd.read_csv(pfad)
-        df = pd.concat([df, pd.DataFrame([feedback_eintrag])], ignore_index=True)
-    except FileNotFoundError:
-        df = pd.DataFrame([feedback_eintrag])
+    df = pd.DataFrame([eintrag])
+    dateiname = f"feedback_{now.strftime('%Y%m%d_%H%M%S')}.csv"
+    lokaler_pfad = f"/tmp/{dateiname}"
+    df.to_csv(lokaler_pfad, index=False)
 
-    df.to_csv(pfad, index=False)
-    st.success("✅ Vielen Dank für Ihr Feedback! Es wurde gespeichert.")
+    # Zugriff via Streamlit Secrets
+    nextcloud_url = st.secrets["nextcloud"]["url"]
+    nextcloud_user = st.secrets["nextcloud"]["user"]
+    nextcloud_token = st.secrets["nextcloud"]["token"]
+
+    with open(lokaler_pfad, 'rb') as f:
+        response = requests.put(
+            nextcloud_url + dateiname,
+            data=f,
+            auth=HTTPBasicAuth(nextcloud_user, nextcloud_token)
+        )
+
+    if response.status_code in [200, 201, 204]:
+        st.success("✅ Ihr Feedback wurde erfolgreich gespeichert.")
+    else:
+        st.error(f"🚫 Fehler beim Upload: Status {response.status_code}")
