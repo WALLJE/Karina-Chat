@@ -127,8 +127,8 @@ Geben Sie zum Beginn Ihre Fragen an die Patientin unten ein. Ziel ist es, durch 
 
 Wenn Sie genug anamnestische Informationen erhoben haben:
 - Führen Sie eine körperliche Untersuchung durch.
-- Danach : Nennen Sie Ihre Differentialdiagnosen und die gewünschte Diagnostik.
-- Sie erhalten typische Befunde und sollen dann eine Diagnose und ein Therapiekonzept festlegen. Erläurtern Sie die Therapie gern ausführlich.
+- Nennen Sie danach Ihre Differentialdiagnosen und die gewünschte Diagnostik. Sie können nur einmal Diagnostik anfordern.
+- Sie erhalten typische Befunde und sollen dann eine Diagnose und ein Therapiekonzept festlegen. 
 - Danach erhalten Sie ein strukturiertes Feedback zu Ihrem Vorgehen.
 """)
 
