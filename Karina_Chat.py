@@ -204,6 +204,32 @@ else:
     st.button("🩺 Untersuchung durchführen", disabled=True)
     st.info("❗Bitte stellen Sie zunächst mindestens eine anamnestische Frage.")
 
+# Abschnitt: Differentialdiagnosen und diagnostische Maßnahmen
+st.markdown("---")
+if "koerper_befund" in st.session_state:
+    st.subheader("🧠 Differentialdiagnosen und diagnostische Maßnahmen")
+
+    if "user_ddx2" not in st.session_state:
+        with st.form("differentialdiagnosen_diagnostik_formular"):
+            ddx_input2 = st.text_area("Welche drei Differentialdiagnosen halten Sie nach Anamnese und Untersuchung für möglich?", key="ddx_input2")
+            diag_input2 = st.text_area("Welche konkreten diagnostischen Maßnahmen möchten Sie vorschlagen?", key="diag_input2")
+            submitted_diag = st.form_submit_button("✅ Eingaben speichern")
+
+        if submitted_diag:
+            st.session_state.user_ddx2 = ddx_input2
+            st.session_state.user_diagnostics = diag_input2
+            st.success("✅ Angaben gespeichert. Befunde können jetzt generiert werden.")
+            st.rerun()
+
+    else:
+        st.markdown("📝 **Ihre gespeicherten Eingaben:**")
+        st.markdown(f"**Differentialdiagnosen:**\n{st.session_state.user_ddx2}")
+        st.markdown(f"**Diagnostische Maßnahmen:**\n{st.session_state.user_diagnostics}")
+
+else:
+    st.subheader("🧠 Differentialdiagnosen und diagnostische Maßnahmen (noch nicht verfügbar)")
+    st.info("❗Bitte führen Sie zuerst die körperliche Untersuchung durch.")
+
 
 # Abschnitt: Ergebnisse der diagnostischen Maßnahmen
 st.markdown("---")
