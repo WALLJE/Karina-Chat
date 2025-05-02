@@ -50,9 +50,10 @@ if "patient_job" not in st.session_state:
 if "patient_verhalten" not in st.session_state:
     st.session_state.patient_verhalten = random.choice([
         "Beantworte Fragen grundsätzlich sehr knapp.",
-        "Beantworte Fragen sehr ausführlich, ohne aber Informationen über das gezielt gefrage hinaus preiszugeben. Erzähle zum Beispiel von Deinem Beruf oder Deinem Privatleben.",
-        "Du bist sehr ängstlich, jede Frage macht Dir Angst, so dass Du häufig von Deinen Sorgen und der Angst vor Krebs, unheilbarer oder ansteckender todbringender Krankheit erzählst, so dass Antworten erst beim nochmaligen Nachfragen gegeben werden.",
-        "Du hast zum Thema viel gelesen und stellst deswegen selber auch einige Fragen. Dabei verwendest Du Fachbegriffe."
+        "Beantworte Fragen ohne Informationen über das gezielt Gefragte hinaus preiszugeben. Du redest aber gern. Erzähle aber freizügig und ungefragt zum Beispiel von Deinem Beruf oder Deinem Privatleben. ",
+        "Du bist sehr ängstlich, jede Frage macht Dir Angst, so dass Du häufig un dungefragt von Deinen Sorgen und der Angst vor Krebs, unheilbarer oder ansteckender todbringender Krankheit erzählst, so dass Du einige Antworten erst beim nochmaligen Nachfragen gibst.",
+        "Du hast zum Thema viel gelesen und stellst deswegen selber auch einige Fragen. Dabei verwendest Du Fachbegriffe.",
+        "Obwohl du Dir grosse Sorgen um Deine Geundheit machst, gibt Du Dich sehr gelassen und fröhlich. Du nennst die Beschwerden auf Nachfrage zwar korrekt, spielst sie aber herunter, indem beispielsweise hinzufügst, dass Du glaubst, dass es nicht so schlimm sein wird, oder dass es von selber wieder weggeht.":
     ])
 
 # Begrüßungstext
