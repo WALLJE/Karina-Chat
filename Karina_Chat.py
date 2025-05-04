@@ -1,4 +1,4 @@
-#
+
 # Version 10
 #  
 # incl Zöliakie, Laktoseintoleranz
@@ -25,6 +25,26 @@ nextcloud_url = st.secrets["nextcloud"]["url"]
 nextcloud_user = st.secrets["nextcloud"]["user"]
 nextcloud_token = st.secrets["nextcloud"]["token"]
 auth = HTTPBasicAuth(nextcloud_user, nextcloud_token)
+
+def initialisiere_session_state():
+    st.session_state.setdefault("final_feedback", None)
+    st.session_state.setdefault("feedback_prompt_final", "")
+    st.session_state.setdefault("diagnose_szenario", "")
+    st.session_state.setdefault("diagnose_features", "")
+    st.session_state.setdefault("user_ddx2", "")
+    st.session_state.setdefault("user_diagnostics", "")
+    st.session_state.setdefault("final_diagnose", "")
+    st.session_state.setdefault("therapie_vorschlag", "")
+    st.session_state.setdefault("koerper_befund", "")
+    st.session_state.setdefault("nachdiagnostik", "")
+    st.session_state.setdefault("nachbefunde", "")
+    st.session_state.setdefault("nachphase_erlaubt", False)
+    st.session_state.setdefault("patient_name", "Frau S.")
+    st.session_state.setdefault("patient_age", "32")
+    st.session_state.setdefault("patient_job", "kaufmännische Angestellte")
+    st.session_state.setdefault("patient_verhalten", "")
+    st.session_state.setdefault("patient_verhalten_memo", "")
+    st.session_state.setdefault("patient_hauptanweisung", "")
 
 
 def speichere_gpt_feedback_in_nextcloud():
@@ -215,16 +235,7 @@ def fallauswahl_prompt():
     """ 
 
 #---------------- Routinen Ende -------------------
-# Zufällige Erkrankung und Name auswählen
-#if "diagnose_szenario" not in st.session_state:
-    # # st.session_state.diagnose_szenario = random.choice([
-    #     "Morbus Crohn",
-    #     "Reizdarmsyndrom",
-    #     "Appendizitis",
-    #     "Zöliakie",
-    #     "Laktoseintoleranz",
-    #     "Akute Pankreatitis"
-    # ])
+initialisiere_session_state()
 
 # Zufälliger Patientenname und Alter
 if "patient_name" not in st.session_state:
