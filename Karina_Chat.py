@@ -27,7 +27,7 @@ nextcloud_token = st.secrets["nextcloud"]["token"]
 auth = HTTPBasicAuth(nextcloud_user, nextcloud_token)
 
 def initialisiere_session_state():
-#    st.session_state.setdefault("final_feedback", "")
+    st.session_state.setdefault("final_feedback", none)
     st.session_state.setdefault("feedback_prompt_final", "")
     st.session_state.setdefault("diagnose_szenario", "")
     st.session_state.setdefault("diagnose_features", "")
