@@ -497,7 +497,7 @@ diagnose_eingegeben = st.session_state.get("final_diagnose", "").strip() != ""
 therapie_eingegeben = st.session_state.get("therapie_vorschlag", "").strip() != ""
 
 if diagnose_eingegeben and therapie_eingegeben:
-    if "feedback_prompt_final" in st.session_state:
+    if st.session_state.get("final_feedback", "").strip():
         # Feedback wurde schon erzeugt
         st.success("✅ Evaluation abgeschlossen.")
         st.markdown("### Strukturierte Rückmeldung zur Fallbearbeitung:")
