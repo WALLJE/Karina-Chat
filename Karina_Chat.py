@@ -441,7 +441,7 @@ Ein Medizinstudierender hat folgende diagnostische Maßnahmen konkret angeforder
 
 {diagnostik_eingabe}
 
-Erstelle ausschließlich Befunde zu den genannten Untersuchungen. Gib Laborwerte in einer Tabelle aus, verwende dabei immer das Internationale Einheitensystem:
+Erstelle ausschließlich Befunde zu den genannten Untersuchungen. Falls Laborwerte angefordert, gib nur diese in einer Tabelle aus, verwende dabei immer das Internationale Einheitensystem:
 **Parameter** | **Wert** | **Referenzbereich (SI-Einheit)**. 
 
 Interpretationen oder Diagnosen sind nicht erlaubt. Nenne auf keinen Fall das Diagnose-Szenario. Bewerte oder diskutiere nicht die Anforderungen.
