@@ -35,7 +35,7 @@ def initialisiere_session_state():
     st.session_state.setdefault("user_diagnostics", "")
     st.session_state.setdefault("final_diagnose", "")
     st.session_state.setdefault("therapie_vorschlag", "")
-    st.session_state.setdefault("koerper_befund", "")
+#    st.session_state.setdefault("koerper_befund", "")
     st.session_state.setdefault("nachdiagnostik", "")
     st.session_state.setdefault("nachbefunde", "")
     st.session_state.setdefault("nachphase_erlaubt", False)
