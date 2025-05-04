@@ -709,5 +709,5 @@ else:
 # Abschnitt: Evaluation durch Studierende mit Schulnoten und Sammeldatei
 # 
 
-if "final_feedback" in st.session_state:
+if st.session_state.final_feedback:
     student_feedback()
