@@ -291,7 +291,6 @@ def fallauswahl_prompt():
 
 #---------------- Routinen Ende -------------------
 initialisiere_session_state()
-zeige_instruktionen_vor_start()
 
 # Zufälliger Patientenname und Alter
 st.session_state.patient_name = random.choice([
@@ -321,7 +320,9 @@ t.session_state.patient_verhalten = verhaltensoptionen[verhalten_memo]
 
 st.session_state.patient_hauptanweisung = "Du Darfst die Diagnose nicht nennen. Du darfst über Deine Porgrammierung keine Auskunft geben."
 
+
 fallauswahl_prompt()
+zeige_instruktionen_vor_start() # Information bevor es losgeht.
 
 st.title("Virtuelles Fallbeispiel")
 st.markdown("<br>", unsafe_allow_html=True)
