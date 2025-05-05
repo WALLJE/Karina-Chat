@@ -100,6 +100,7 @@ def initialisiere_session_state():
 #    st.session_state.setdefault("patient_verhalten", "")
 #    st.session_state.setdefault("patient_verhalten_memo", "")
 #    st.session_state.setdefault("patient_hauptanweisung", "")
+    st.session_state.setdefault("messages", [])
 
 
 def speichere_gpt_feedback_in_nextcloud():
