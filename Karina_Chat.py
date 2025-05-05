@@ -172,6 +172,7 @@ def student_feedback():
             "In welchem Semester befinden Sie sich aktuell?",
             ["", "Vorklinik", "5. Semester", "6. Semester", "7. Semester", "8. Semester", "9. Semester", "10. Semester oder höher", "Praktisches Jahr"]
         )
+        bugs = st.text_area("💬 Welche Ungenauigkeiten  oder Fehler sind Ihnen aufgefallen (optional):", "")
         kommentar = st.text_area("💬 Freitext (optional):", "")
         abgeschickt = st.form_submit_button("📩 Feedback absenden")
     
@@ -191,6 +192,7 @@ def student_feedback():
             "note_didaktik": f4,
             "fall_schwere": f5,
             "semester": f7,
+            "fall_bug": bugs,
             "kommentar": kommentar,
             "verdachtsdiagnosen": st.session_state.get("user_ddx2", "nicht angegeben"),
             "diagnostik": st.session_state.get("user_diagnostics", "nicht angegeben"),
