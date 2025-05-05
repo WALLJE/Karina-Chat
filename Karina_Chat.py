@@ -45,7 +45,7 @@ z. B. bei neuen Verdachtsmomenten oder zur gezielten Klärung offener Fragen.
 
 ---
 
-- **⚠️ Bitte beachten Sie, dass Sie mit einem **KI-basierten, simulierten Patientinnenmodell** kommunizieren.**
+- ⚠️ Bitte beachten Sie, dass Sie mit einem **KI-basierten, simulierten Patientinnenmodell** kommunizieren.
 - Geben Sie **keine echten persönlichen Informationen** ein.
 - **Überprüfen Sie alle Angaben und Hinweise der Kommunikation auf Richtigkeit.** 
 - Die Anwendung sollte aufgrund ihrer Limitationen nur unter ärztlicher Supervision genutzt werden.
