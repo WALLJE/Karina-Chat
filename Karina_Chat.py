@@ -26,13 +26,15 @@ def sprach_check(text_input):
     if not text_input.strip():
         return ""
     prompt = f"""
-Bitte überprüfe die folgenden stichpunktartigen medizinischen Fachbegriffe hinsichtlich Orthographie. 
+Bitte überprüfe die folgenden stichpunktartigen medizinischen Fachbegriffe hinsichtlich Orthographie und Zeichensetzung, schreibe Abkürzung aus.
 Gib den korrigierten Text direkt und ohne Vorbemerkung und ohne Kommentar zurück.
-Verwende zur Ausgabe dieses Format:
+Verwende zur strukturierten Ausgabe von Diagnosen und Anforderungen von Untersuchungen dieses Format:
 
 - Beispieltext_1
 - Beispieltext_2
 - Beispieltext_3
+
+Freie Texte wie Therapiebegründungen werden als sprachlich und grammatikalisch korrigierter Text zurückgegeben ohne Spiegelstriche. 
 
 Text:
 {text_input}
@@ -502,8 +504,8 @@ if "befunde" in st.session_state:
             submitted_final = st.form_submit_button("✅ Entscheidung abschließen")
 
         if submitted_final:
-            st.session_state.final_diagnose = input_diag
-            st.session_state.therapie_vorschlag = input_therapie
+            st.session_state.final_diagnose = sprach_check(input_diag)
+            st.session_state.therapie_vorschlag = sprach_check(input_therapie)
             st.success("✅ Entscheidung gespeichert")
             st.rerun()
 
