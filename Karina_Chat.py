@@ -336,9 +336,9 @@ st.markdown("<br>", unsafe_allow_html=True)
 if "startzeit" not in st.session_state:
     st.session_state.startzeit = datetime.now()
 
-# st.write("Szenario:", st.session_state.diagnose_szenario)
-# st.write("Features:", st.session_state.diagnose_features)
-# st.write("Prompt:", st.session_state.SYSTEM_PROMPT)
+st.write("Szenario:", st.session_state.diagnose_szenario)
+st.write("Features:", st.session_state.diagnose_features)
+st.write("Prompt:", st.session_state.SYSTEM_PROMPT)
 
 
 # Chat-Verlauf starten
@@ -390,6 +390,9 @@ anzahl_fragen = sum(1 for m in st.session_state.messages if m["role"] == "user")
 
 if anzahl_fragen > 0:
     st.subheader("Körperliche Untersuchung")
+    st.write("Szenario:", st.session_state.diagnose_szenario)
+    st.write("Features:", st.session_state.diagnose_features)
+    st.write("Prompt:", st.session_state.SYSTEM_PROMPT)
     if "koerper_befund" in st.session_state:
         st.success("✅ Körperliche Untersuchung erfolgt.")
         st.markdown(st.session_state.koerper_befund)
