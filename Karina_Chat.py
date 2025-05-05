@@ -84,8 +84,8 @@ Text:
 def initialisiere_session_state():
     st.session_state.setdefault("final_feedback", "")
     st.session_state.setdefault("feedback_prompt_final", "")
-    st.session_state.setdefault("diagnose_szenario", "")
-    st.session_state.setdefault("diagnose_features", "")
+#    st.session_state.setdefault("diagnose_szenario", "")
+#    st.session_state.setdefault("diagnose_features", "")
 #    st.session_state.setdefault("user_ddx2", "")
     st.session_state.setdefault("user_diagnostics", "")
     st.session_state.setdefault("final_diagnose", "")
@@ -336,9 +336,9 @@ st.markdown("<br>", unsafe_allow_html=True)
 if "startzeit" not in st.session_state:
     st.session_state.startzeit = datetime.now()
 
-st.write("Szenario:", st.session_state.diagnose_szenario)
-st.write("Features:", st.session_state.diagnose_features)
-st.write("Prompt:", st.session_state.SYSTEM_PROMPT)
+# st.write("Szenario:", st.session_state.diagnose_szenario)
+# st.write("Features:", st.session_state.diagnose_features)
+# st.write("Prompt:", st.session_state.SYSTEM_PROMPT)
 
 
 # Chat-Verlauf starten
