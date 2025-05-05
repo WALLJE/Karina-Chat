@@ -1,5 +1,16 @@
 # Version 10
 #  
+# Features:
+# Feedback in owncloud gespeichert
+# Einweisung Studierende mit Stopfunktion
+# Sprachkorrektur Diagnosen und Therapie
+# diverse Routinen defs
+# Möglichkeit für jedes Modell Besonderheiten bei Körperlicher Untersuchugn  zu definieren
+# 
+# To Do:
+# zufällige Befundkleinigkeiten
+# Patientendefinitionen aus Tabelle in Owncloud cvs auslesen.
+#
 
 import streamlit as st
 from openai import OpenAI, RateLimitError
