@@ -336,8 +336,10 @@ st.markdown("<br>", unsafe_allow_html=True)
 if "startzeit" not in st.session_state:
     st.session_state.startzeit = datetime.now()
 
-# Fenster definieren 
-# col1, col2 = st.columns([2, 2])  # Links etwas schmaler als rechts
+st.write("Szenario:", st.session_state.diagnose_szenario)
+st.write("Features:", st.session_state.diagnose_features)
+st.write("Prompt:", st.session_state.SYSTEM_PROMPT)
+
 
 # Chat-Verlauf starten
 # with col1: # nur links
@@ -381,8 +383,7 @@ if submit_button and user_input:
             st.error("🚫 Die Anfrage konnte nicht verarbeitet werden, da die OpenAI-API derzeit überlastet ist. Bitte versuchen Sie es in einigen Minuten erneut.")
     st.rerun()
 
-# Rechtes Fenster:
-# with col2:
+
 # Abschnitt: Körperliche Untersuchung
 st.markdown("---")
 anzahl_fragen = sum(1 for m in st.session_state.messages if m["role"] == "user")
