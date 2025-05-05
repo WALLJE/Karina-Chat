@@ -346,13 +346,13 @@ if "messages" not in st.session_state:
     if "ängstlich" in st.session_state.patient_verhalten.lower():
         start_text = "Hallo... ich bin etwas nervös. Ich hoffe, Sie können mir helfen."
     elif "redest gern" in st.session_state.patient_verhalten.lower():
-         start_text = "Hallo! Schön, dass ich hier bin – ich erzähle Ihnen gern, was bei mir los ist."
+        start_text = "Hallo! Schön, dass ich hier bin – ich erzähle Ihnen gern, was bei mir los ist."
     else:
-         start_text = "Guten Tag, ich bin froh, dass ich mich heute bei Ihnen vorstellen kann."
-         st.session_state.messages = [
-             {"role": "system", "content": st.session_state.SYSTEM_PROMPT},
-             {"role": "assistant", "content": eintritt},
-             {"role": "assistant", "content": start_text}
+        start_text = "Guten Tag, ich bin froh, dass ich mich heute bei Ihnen vorstellen kann."
+    st.session_state.messages = [
+        {"role": "system", "content": st.session_state.SYSTEM_PROMPT},
+        {"role": "assistant", "content": eintritt},
+        {"role": "assistant", "content": start_text}
     ]
 
 
