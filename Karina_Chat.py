@@ -20,6 +20,8 @@ nextcloud_user = st.secrets["nextcloud"]["user"]
 nextcloud_token = st.secrets["nextcloud"]["token"]
 auth = HTTPBasicAuth(nextcloud_user, nextcloud_token)
 
+st.set_page_config(layout="wide")
+
 def zeige_instruktionen_vor_start():
     st.session_state.setdefault("instruktion_bestätigt", False)
 
