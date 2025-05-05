@@ -28,15 +28,21 @@ def zeige_instruktionen_vor_start():
     if not st.session_state.instruktion_bestätigt:
         st.markdown(f"""
 ### **Instruktionen für Studierende:**
+Sie übernehmen die Rolle einer Ärztin oder ein Arztes im Gespräch mit der virtuellen Patientin {st.session_state.patient_name}.  
+Ihr Ziel ist es, durch gezielte Anamnese und klinisches Denken eine Verdachtsdiagnose zu stellen  
+sowie ein sinnvolles diagnostisches und therapeutisches Vorgehen zu entwickeln.
 
-Sie führen ein strukturiertes Anamnesegespräch mit der virtuellen Patientin {st.session_state.patient_name}.
-Geben Sie zum Beginn Ihre Fragen an die Patientin unten ein. Ziel ist es, durch gezieltes Nachfragen eine Verdachtsdiagnose zu stellen und sinnvolle weitere Diagnostik zu planen.
+#### 🔍 Ablauf:
 
-Wenn Sie genug anamnestische Informationen erhoben haben:
-- Führen Sie eine körperliche Untersuchung durch.
-- Nennen Sie danach Ihre Differentialdiagnosen und die gewünschte Diagnostik. Sie können nur einmal Diagnostik anfordern.
-- Sie erhalten typische Befunde und sollen dann eine Diagnose und ein Therapiekonzept festlegen. 
-- Danach erhalten Sie ein strukturiertes Feedback zu Ihrem Vorgehen.
+1. **Stellen Sie jederzeit Fragen an die Patientin** – geben Sie diese einfach im Chat ein.
+2. Wenn Sie genug Informationen gesammelt haben, führen Sie eine **körperliche Untersuchung** durch.
+3. Formulieren Sie Ihre **Differentialdiagnosen** und wählen Sie geeignete **diagnostische Maßnahmen**.
+4. Nach Erhalt der Befunde treffen Sie Ihre **endgültige Diagnose** und machen einen **Therapievorschlag**.
+5. Abschließend erhalten Sie ein **automatisches Feedback** zu Ihrem Vorgehen.
+
+> 💬 **Hinweis:** Sie können die Patientin auch nach der ersten Diagnostik weiter befragen –  
+z. B. bei neuen Verdachtsmomenten oder zur gezielten Klärung offener Fragen.
+
 ---
 
 - **⚠️ Bitte beachten Sie, dass Sie mit einem KI-generierten Chat-Bot kommunizieren.**
