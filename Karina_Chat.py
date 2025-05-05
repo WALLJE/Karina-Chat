@@ -299,7 +299,7 @@ fallauswahl_prompt()
 # Titel und Instruktion
 st.title("Virtuelles Fallbeispiel")
 st.markdown(f"""
-###**Instruktionen für Studierende:**
+### **Instruktionen für Studierende:**
 
 Sie führen ein strukturiertes Anamnesegespräch mit der virtuellen Patientin {st.session_state.patient_name}.
 Geben Sie zum Beginn Ihre Fragen an die Patientin unten ein. Ziel ist es, durch gezieltes Nachfragen eine Verdachtsdiagnose zu stellen und sinnvolle weitere Diagnostik zu planen.
