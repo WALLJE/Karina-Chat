@@ -26,6 +26,33 @@ nextcloud_user = st.secrets["nextcloud"]["user"]
 nextcloud_token = st.secrets["nextcloud"]["token"]
 auth = HTTPBasicAuth(nextcloud_user, nextcloud_token)
 
+def sprach_check(text_input):
+    if not text_input.strip():
+        return ""
+    prompt = f"""
+Bitte überprüfe die folgenden stichpunktartigen medizinischen Fachbegriffe hinsichtlich Orthographie. 
+Gib den korrigierten Text direkt und ohne Vorbemerkung und ohne Kommentar zurück.
+Verwende zur Ausgabe dieses Format:
+
+- Beispieltext_1
+- Beispieltext_2
+- Beispieltext_3
+
+Text:
+{text_input}
+    """
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.3
+        )
+        return response.choices[0].message.content.strip()
+
+    except Exception as e:
+        st.error(f"Fehler bei GPT-Anfrage: {e}")
+        return text_input  # Fallback: Originaltext zurückgeben
+        
 def initialisiere_session_state():
     st.session_state.setdefault("final_feedback", "")
     st.session_state.setdefault("feedback_prompt_final", "")
@@ -256,19 +283,6 @@ if "patient_job" not in st.session_state:
         "Polizistin"
     ])
 
-# zufälliges Verhalten
-# Zufälliger Beruf
-#if "patient_verhalten" not in st.session_state:
-#    st.session_state.patient_verhalten = random.choice([
-#        "Beantworte Fragen grundsätzlich sehr knapp. Gib nur so viele Informationen preis, wie direkt erfragt wurden. ",
-#        "Beantworte Fragen ohne Informationen über das gezielt Gefragte hinaus preiszugeben. Du redest aber gern. Erzähle aber freizügig und ungefragt zum Beispiel von Deinem Beruf oder Deinem Privatleben. ",
-#        "Du bist sehr ängstlich, jede Frage macht Dir Angst, so dass Du häufig und ungefragt von Deinen Sorgen und der Angst vor Krebs, unheilbarer oder ansteckender todbringender Krankheit erzählst, so dass Du einige Antworten erst beim nochmaligen Nachfragen gibst.",
-#        "Du hast zum Thema viel gelesen und stellst deswegen selber auch einige Fragen. Dabei verwendest Du Fachbegriffe.",
-#        "Obwohl du Dir grosse Sorgen um Deine Geundheit machst, gibt Du Dich sehr gelassen und fröhlich. Du nennst die Beschwerden auf Nachfrage zwar korrekt, spielst sie aber herunter, indem beispielsweise hinzufügst, dass Du glaubst, dass es nicht so schlimm sein wird, oder dass es von selber wieder weggeht."
-#    ])
-#
-# für Übergabe an feedback:
-
 verhaltensoptionen = {
     "knapp": "Beantworte Fragen grundsätzlich sehr knapp. Gib nur so viele Informationen preis, wie direkt erfragt wurden.",
     "redselig": "Beantworte Fragen ohne Informationen über das gezielt Gefragte hinaus preiszugeben. Du redest aber gern. Erzähle freizügig z. B. von Beruf oder Privatleben.",
@@ -300,9 +314,10 @@ Wenn Sie genug anamnestische Informationen erhoben haben:
 - Sie erhalten typische Befunde und sollen dann eine Diagnose und ein Therapiekonzept festlegen. 
 - Danach erhalten Sie ein strukturiertes Feedback zu Ihrem Vorgehen.
 
-- Bitte beachten Sie, dass Sie mit einem KI-generierten Chat-Bot kommunizieren. 
+- **Bitte beachten Sie, dass Sie mit einem KI-generierten Chat-Bot kommunizieren.**
 - Geben Sie keine persönlichen Informationen ein.
-- * Überprüfen Sie alle Angaben und Hinweise auf Richtigkeit.* Die Anwendung sollte nur unter ärztlicher Supervision genutzt werden.
+- **Überprüfen Sie alle Angaben und Hinweise auf Richtigkeit.** 
+- Die Anwendung sollte aufgrund ihrer Limitationen nur unter ärztlicher Supervision genutzt werden.
 """)
 
 # Startzeit einfügen
@@ -407,8 +422,8 @@ if "koerper_befund" in st.session_state:
             submitted_diag = st.form_submit_button("✅ Eingaben speichern")
 
         if submitted_diag:
-            st.session_state.user_ddx2 = ddx_input2
-            st.session_state.user_diagnostics = diag_input2
+            st.session_state.user_ddx2 = sprach_check(ddx_input2)
+            st.session_state.user_diagnostics = sprach_check(diag_input2)
             st.success("✅ Angaben gespeichert. Befunde können jetzt generiert werden.")
             st.rerun()
 
