@@ -469,7 +469,11 @@ if "koerper_befund" in st.session_state:
                 diagnostik_eingabe = st.session_state.user_diagnostics
             else:
                 st.warning("Bitte geben Sie zuerst diagnostische Maßnahmen ein, bevor Sie Befunde generieren.")
-
+            
+            st.write("Szenario:", st.session_state.diagnose_szenario)
+            st.write("Features:", st.session_state.diagnose_features)
+            st.write("Prompt:", st.session_state.SYSTEM_PROMPT)
+            
             diagnose_szenario = st.session_state.diagnose_szenario
             prompt_befunde = f"""
 Die Patientin hat laut Szenario das Krankheitsbild **{diagnose_szenario}**.
