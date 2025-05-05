@@ -24,7 +24,6 @@ def zeige_instruktionen_vor_start():
     st.session_state.setdefault("instruktion_bestätigt", False)
 
     if not st.session_state.instruktion_bestätigt:
-        st.title("Virtuelles Fallbeispiel")
         st.markdown(f"""
 ### **Instruktionen für Studierende:**
 
@@ -290,6 +289,7 @@ def fallauswahl_prompt():
 
 #---------------- Routinen Ende -------------------
 initialisiere_session_state()
+zeige_instruktionen_vor_start()
 
 # Zufälliger Patientenname und Alter
 if "patient_name" not in st.session_state:
@@ -327,6 +327,7 @@ st.session_state.patient_hauptanweisung = "Du Darfst die Diagnose nicht nennen. 
 
 fallauswahl_prompt()
 
+st.title("Virtuelles Fallbeispiel")
 
 # Startzeit einfügen
 if "startzeit" not in st.session_state:
