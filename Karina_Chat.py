@@ -302,8 +302,8 @@ fallauswahl_prompt()
 
 # Titel und Instruktion
 st.title("Virtuelles Fallbeispiel")
-st.info(f"""
-**Instruktionen für Studierende:**
+st.markdown(f"""
+###**Instruktionen für Studierende:**
 
 Sie führen ein strukturiertes Anamnesegespräch mit der virtuellen Patientin {st.session_state.patient_name}.
 Geben Sie zum Beginn Ihre Fragen an die Patientin unten ein. Ziel ist es, durch gezieltes Nachfragen eine Verdachtsdiagnose zu stellen und sinnvolle weitere Diagnostik zu planen.
@@ -313,8 +313,9 @@ Wenn Sie genug anamnestische Informationen erhoben haben:
 - Nennen Sie danach Ihre Differentialdiagnosen und die gewünschte Diagnostik. Sie können nur einmal Diagnostik anfordern.
 - Sie erhalten typische Befunde und sollen dann eine Diagnose und ein Therapiekonzept festlegen. 
 - Danach erhalten Sie ein strukturiertes Feedback zu Ihrem Vorgehen.
+---
 
-- **Bitte beachten Sie, dass Sie mit einem KI-generierten Chat-Bot kommunizieren.**
+- **⚠️ Bitte beachten Sie, dass Sie mit einem KI-generierten Chat-Bot kommunizieren.**
 - Geben Sie keine persönlichen Informationen ein.
 - **Überprüfen Sie alle Angaben und Hinweise auf Richtigkeit.** 
 - Die Anwendung sollte aufgrund ihrer Limitationen nur unter ärztlicher Supervision genutzt werden.
