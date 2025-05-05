@@ -315,6 +315,9 @@ Wenn Sie genug anamnestische Informationen erhoben haben:
 - Geben Sie keine persönlichen Informationen ein.
 - **Überprüfen Sie alle Angaben und Hinweise auf Richtigkeit.** 
 - Die Anwendung sollte aufgrund ihrer Limitationen nur unter ärztlicher Supervision genutzt werden.
+
+---
+
 """)
 
 # Startzeit einfügen
