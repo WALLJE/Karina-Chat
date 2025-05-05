@@ -24,8 +24,8 @@ def zeige_instruktionen_vor_start():
     st.session_state.setdefault("instruktion_bestätigt", False)
 
     if not st.session_state.instruktion_bestätigt:
-          st.title("Virtuelles Fallbeispiel")
-          st.markdown(f"""
+        st.title("Virtuelles Fallbeispiel")
+        st.markdown(f"""
 ### **Instruktionen für Studierende:**
 
 Sie führen ein strukturiertes Anamnesegespräch mit der virtuellen Patientin {st.session_state.patient_name}.
