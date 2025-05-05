@@ -1,11 +1,7 @@
 
 # Version 10
 #  
-# incl Zöliakie, Laktoseintoleranz
-# To do
-# Layout Antworten belassen
-# Anamnese und Diagnostik wiederholen lassen.
-# Läuft!
+
 
 import streamlit as st
 from openai import OpenAI, RateLimitError
