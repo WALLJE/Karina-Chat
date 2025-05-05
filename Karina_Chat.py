@@ -336,346 +336,346 @@ if "startzeit" not in st.session_state:
     st.session_state.startzeit = datetime.now()
 
 # Fenster definieren 
-col1, col2 = st.columns([2, 2])  # Links etwas schmaler als rechts
+# col1, col2 = st.columns([2, 2])  # Links etwas schmaler als rechts
 
 # Chat-Verlauf starten
-with col1: # nur links
-    if "messages" not in st.session_state:
-        eintritt = f"{st.session_state.patient_name} ({st.session_state.patient_age} Jahre), {st.session_state.patient_job}, betritt den Raum."
-        if "ängstlich" in st.session_state.patient_verhalten.lower():
-            start_text = "Hallo... ich bin etwas nervös. Ich hoffe, Sie können mir helfen."
-        elif "redest gern" in st.session_state.patient_verhalten.lower():
-             start_text = "Hallo! Schön, dass ich hier bin – ich erzähle Ihnen gern, was bei mir los ist."
-        else:
-             start_text = "Guten Tag, ich bin froh, dass ich mich heute bei Ihnen vorstellen kann."
-             st.session_state.messages = [
-                 {"role": "system", "content": st.session_state.SYSTEM_PROMPT},
-                 {"role": "assistant", "content": eintritt},
-                 {"role": "assistant", "content": start_text}
-        ]
-    
-    
-    # Chat anzeigen
-    for msg in st.session_state.messages[1:]:
-        sender = f"👩 {st.session_state.patient_name}" if msg["role"] == "assistant" else "🧑 Du"
-        st.markdown(f"**{sender}:** {msg['content']}")
-    
-    # Eingabeformular Anamnese Chat
-    with st.form(key="eingabe_formular", clear_on_submit=True):
-        user_input = st.text_input(f"Deine Frage an {st.session_state.patient_name}:")
-        submit_button = st.form_submit_button(label="Absenden")
-    
-    if submit_button and user_input:
-        st.session_state.messages.append({"role": "user", "content": user_input})
-        with st.spinner(f"{st.session_state.patient_name} antwortet..."):
-            try:
-                response = client.chat.completions.create(
-                    model="gpt-4",
-                    messages=st.session_state.messages,
-                    temperature=0.6
-                )
-                reply = response.choices[0].message.content
-                st.session_state.messages.append({"role": "assistant", "content": reply})
-            except RateLimitError:
-                st.error("🚫 Die Anfrage konnte nicht verarbeitet werden, da die OpenAI-API derzeit überlastet ist. Bitte versuchen Sie es in einigen Minuten erneut.")
-        st.rerun()
-    
+# with col1: # nur links
+if "messages" not in st.session_state:
+    eintritt = f"{st.session_state.patient_name} ({st.session_state.patient_age} Jahre), {st.session_state.patient_job}, betritt den Raum."
+    if "ängstlich" in st.session_state.patient_verhalten.lower():
+        start_text = "Hallo... ich bin etwas nervös. Ich hoffe, Sie können mir helfen."
+    elif "redest gern" in st.session_state.patient_verhalten.lower():
+         start_text = "Hallo! Schön, dass ich hier bin – ich erzähle Ihnen gern, was bei mir los ist."
+    else:
+         start_text = "Guten Tag, ich bin froh, dass ich mich heute bei Ihnen vorstellen kann."
+         st.session_state.messages = [
+             {"role": "system", "content": st.session_state.SYSTEM_PROMPT},
+             {"role": "assistant", "content": eintritt},
+             {"role": "assistant", "content": start_text}
+    ]
+
+
+# Chat anzeigen
+for msg in st.session_state.messages[1:]:
+    sender = f"👩 {st.session_state.patient_name}" if msg["role"] == "assistant" else "🧑 Du"
+    st.markdown(f"**{sender}:** {msg['content']}")
+
+# Eingabeformular Anamnese Chat
+with st.form(key="eingabe_formular", clear_on_submit=True):
+    user_input = st.text_input(f"Deine Frage an {st.session_state.patient_name}:")
+    submit_button = st.form_submit_button(label="Absenden")
+
+if submit_button and user_input:
+    st.session_state.messages.append({"role": "user", "content": user_input})
+    with st.spinner(f"{st.session_state.patient_name} antwortet..."):
+        try:
+            response = client.chat.completions.create(
+                model="gpt-4",
+                messages=st.session_state.messages,
+                temperature=0.6
+            )
+            reply = response.choices[0].message.content
+            st.session_state.messages.append({"role": "assistant", "content": reply})
+        except RateLimitError:
+            st.error("🚫 Die Anfrage konnte nicht verarbeitet werden, da die OpenAI-API derzeit überlastet ist. Bitte versuchen Sie es in einigen Minuten erneut.")
+    st.rerun()
+
 # Rechtes Fenster:
-with col2:
-    # Abschnitt: Körperliche Untersuchung
-    st.markdown("---")
-    anzahl_fragen = sum(1 for m in st.session_state.messages if m["role"] == "user")
-    
-    if anzahl_fragen > 0:
-        st.subheader("Körperliche Untersuchung")
-        if "koerper_befund" in st.session_state:
-            st.success("✅ Körperliche Untersuchung erfolgt.")
-            st.markdown(st.session_state.koerper_befund)
-        else:
-            if st.button("Untersuchung durchführen"):
-                untersuchung_prompt = f"""
-    Die Patientin hat eine zufällig simulierte Erkrankung. Diese lautet: {st.session_state.diagnose_szenario}.
-    Weitere relevante anamnestische Hinweise: {st.session_state.diagnose_features}
-    Erstelle einen körperlichen Untersuchungsbefund, der zu dieser Erkrankung passt, ohne sie explizit zu nennen oder zu diagnostizieren. Berücksichtige Befunde, die sich aus den Zusatzinformationen ergeben könnten. 
-    Erstelle eine klinisch konsistente Befundlage für die simulierte Erkankung. Interpretiere die Befund nicht, gibt keine Hinweise auf die Diagnose.
-    
-    Strukturiere den Befund bitte in folgende Abschnitte:
-    
-    **Allgemeinzustand:**  
-    **Abdomen:**   
-    **Auskultation Herz/Lunge:**  
-    **Haut:**  
-    **Extremitäten:**  
-    
-    Gib ausschließlich körperliche Untersuchungsbefunde an – keine Bildgebung, Labordiagnostik oder Zusatzverfahren. Vermeide jede Form von Bewertung, Hypothese oder Krankheitsnennung.
-    
-    Formuliere neutral, präzise und sachlich – so, wie es in einem klinischen Untersuchungsprotokoll stehen würde.
-    """
-                with st.spinner(f"{st.session_state.patient_name} wird untersucht..."):
-                    try:
-                        response = client.chat.completions.create(
-                            model="gpt-4",
-                            messages=[{"role": "user", "content": untersuchung_prompt}],
-                            temperature=0.5
-                        )
-                        st.session_state.koerper_befund = response.choices[0].message.content
-                        st.rerun()
-                    except RateLimitError:
-                        st.error("🚫 Die Untersuchung konnte nicht erstellt werden. Die OpenAI-API ist derzeit überlastet.")
-    else:
-        st.subheader("Körperliche Untersuchung")
-        st.button("Untersuchung durchführen", disabled=True)
-        st.info("❗Bitte stellen Sie zunächst mindestens eine anamnestische Frage.")
-    
-    # Abschnitt: Differentialdiagnosen und diagnostische Maßnahmen
-    st.markdown("---")
+# with col2:
+# Abschnitt: Körperliche Untersuchung
+st.markdown("---")
+anzahl_fragen = sum(1 for m in st.session_state.messages if m["role"] == "user")
+
+if anzahl_fragen > 0:
+    st.subheader("Körperliche Untersuchung")
     if "koerper_befund" in st.session_state:
-        st.subheader("Differentialdiagnosen und diagnostische Maßnahmen")
-    
-        if "user_ddx2" not in st.session_state:
-            with st.form("differentialdiagnosen_diagnostik_formular"):
-                ddx_input2 = st.text_area("Welche drei Differentialdiagnosen halten Sie nach Anamnese und Untersuchung für möglich?", key="ddx_input2")
-                diag_input2 = st.text_area("Welche konkreten diagnostischen Maßnahmen möchten Sie vorschlagen?", key="diag_input2")
-                submitted_diag = st.form_submit_button("✅ Eingaben speichern")
-    
-            if submitted_diag:
-                st.session_state.user_ddx2 = sprach_check(ddx_input2)
-                st.session_state.user_diagnostics = sprach_check(diag_input2)
-                st.success("✅ Angaben gespeichert. Befunde können jetzt generiert werden.")
-                st.rerun()
-    
-        else:
-            st.markdown("📝 **Ihre gespeicherten Eingaben:**")
-            st.markdown(f"**Differentialdiagnosen:**\n{st.session_state.user_ddx2}")
-            st.markdown(f"**Diagnostische Maßnahmen:**\n{st.session_state.user_diagnostics}")
-    
+        st.success("✅ Körperliche Untersuchung erfolgt.")
+        st.markdown(st.session_state.koerper_befund)
     else:
-        st.subheader("Differentialdiagnosen und diagnostische Maßnahmen")
-        st.info("❗Bitte führen Sie zuerst die körperliche Untersuchung durch.")
-    
-    
-    # Abschnitt: Ergebnisse der diagnostischen Maßnahmen
-    st.markdown("---")
-    if "koerper_befund" in st.session_state:
-        st.subheader("📄 Ergebnisse der diagnostischen Maßnahmen")
-        if "befunde" in st.session_state:
-            st.success("✅ Befunde wurden erstellt.")
-            st.markdown(st.session_state.befunde)
-        else:
-            if st.button("🧪 Befunde generieren lassen"):
-                if "user_diagnostics" in st.session_state:
-                    diagnostik_eingabe = st.session_state.user_diagnostics
-                else:
-                    st.warning("Bitte geben Sie zuerst diagnostische Maßnahmen ein, bevor Sie Befunde generieren.")
-    
-                diagnose_szenario = st.session_state.diagnose_szenario
-                prompt_befunde = f"""
-    Die Patientin hat laut Szenario das Krankheitsbild **{diagnose_szenario}**.
-    Weitere relevante anamnestische Hinweise: {st.session_state.diagnose_features}
-    
-    Ein Medizinstudierender hat folgende diagnostische Maßnahmen konkret angefordert:
-    
-    {diagnostik_eingabe}
-    
-    Erstelle ausschließlich Befunde zu den genannten Untersuchungen. Falls Laborwerte angefordert, gib nur diese in einer Tabelle aus, verwende dabei immer das Internationale Einheitensystem:
-    **Parameter** | **Wert** | **Referenzbereich (SI-Einheit)**. 
-    
-    Interpretationen oder Diagnosen sind nicht erlaubt. Nenne auf keinen Fall das Diagnose-Szenario. Bewerte oder diskutiere nicht die Anforderungen.
-    
-    Gib die Befunde strukturiert und sachlich wieder. Ergänze keine nicht angeforderten Untersuchungen.
-    Beginne den Befund mit:
-    "Diese Befunde wurden automatisiert durch eine KI (GPT-4) erstellt und dienen der Simulation. Sie können unvollständig oder fehlerhaft sein."
-    """
-                with st.spinner("Die Befunde werden erstellt."):
-                    try:
-                        response = client.chat.completions.create(
-                            model="gpt-4",
-                            messages=[{"role": "user", "content": prompt_befunde}],
-                            temperature=0.5
-                        )
-                        st.session_state.befunde = response.choices[0].message.content
-                        st.success("✅ Befunde generiert")
-                        st.rerun()
-                    except RateLimitError:
-                        st.error("🚫 Befunde konnten nicht generiert werden. Die OpenAI-API ist aktuell überlastet.")
-    else:
-        st.subheader("📄 Ergebnisse der diagnostischen Maßnahmen (noch nicht verfügbar)")
-        st.button("🧪 Befunde generieren lassen", disabled=True)
-        st.info("❗Bitte führen Sie zuerst die körperliche Untersuchung durch.")
-    
-    
-    
-    
-    # Diagnose und Therapie
-    if "befunde" in st.session_state:
-        st.markdown("### Diagnose und Therapiekonzept")
-        if st.session_state.final_diagnose.strip() and st.session_state.therapie_vorschlag.strip():
-            st.markdown(f"**Eingetragene Diagnose:**\n{st.session_state.final_diagnose}")
-            st.markdown(f"**Therapiekonzept:**\n{st.session_state.therapie_vorschlag}")
-        else:
-            with st.form("diagnose_therapie"):
-                input_diag = st.text_input("Ihre endgültige Diagnose:")
-                input_therapie = st.text_area("Ihr Therapiekonzept, bitte ggf. ausführlicher beschreiben:")
-                submitted_final = st.form_submit_button("✅ Entscheidung abschließen")
-    
-            if submitted_final:
-                st.session_state.final_diagnose = sprach_check(input_diag)
-                st.session_state.therapie_vorschlag = sprach_check(input_therapie)
-                st.success("✅ Entscheidung gespeichert")
-                st.rerun()
-    
-    
-    # Abschlussfeedback
-    st.markdown("---")
-    st.subheader("📋 Evaluation durch KI")
-    
-    diagnose_eingegeben = st.session_state.get("final_diagnose", "").strip() != ""
-    therapie_eingegeben = st.session_state.get("therapie_vorschlag", "").strip() != ""
-    
-    if diagnose_eingegeben and therapie_eingegeben:
-        if st.session_state.get("final_feedback", "").strip():
-            # Feedback wurde schon erzeugt
-            st.success("✅ Evaluation abgeschlossen.")
-            st.markdown("### Strukturierte Rückmeldung zur Fallbearbeitung:")
-            st.markdown(st.session_state.final_feedback)
-        else:
-            if st.button("📋 Abschluss-Feedback anzeigen"):
-                user_ddx2 = st.session_state.get("user_ddx2", "Keine Differentialdiagnosen angegeben.")
-                user_diagnostics = st.session_state.get("user_diagnostics", "Keine diagnostischen Maßnahmen angegeben.")
-                befunde = st.session_state.get("befunde", "Keine Befunde generiert.")
-                final_diagnose = st.session_state.get("final_diagnose", "Keine finale Diagnose eingegeben.")
-                therapie_vorschlag = st.session_state.get("therapie_vorschlag", "Kein Therapiekonzept eingegeben.")
-                user_verlauf = "\n".join([
-                    msg["content"] for msg in st.session_state.messages
-                    if msg["role"] == "user"
-                ])
-    
-                feedback_prompt_final = f"""
-    Ein Medizinstudierender hat eine vollständige virtuelle Fallbesprechung mit einer Patientin durchgeführt. Du bist ein erfahrener medizinischer Prüfer.
-    
-    Beurteile ausschließlich die Eingaben und Entscheidungen des Studierenden – NICHT die Antworten der Patientin oder automatisch generierte Inhalte.
-    
-    Die zugrunde liegende Erkrankung im Szenario lautet: **{st.session_state.diagnose_szenario}**.
-    
-    Hier ist der Gesprächsverlauf mit den Fragen und Aussagen des Nutzers:
-    {user_verlauf}
-    
-    Erhobene Differentialdiagnosen (Nutzerangaben):
-    {user_ddx2}
-    
-    Geplante diagnostische Maßnahmen (Nutzerangaben):
-    {user_diagnostics}
-    
-    GPT-generierte Befunde (nur als Hintergrund, bitte nicht bewerten):
-    {befunde}
-    
-    Finale Diagnose (Nutzereingabe):
-    {final_diagnose}
-    
-    Therapiekonzept (Nutzereingabe):
-    {therapie_vorschlag}
-    
-    ---
-    Strukturiere dein Feedback klar, hilfreich und differenziert – wie ein persönlicher Kommentar bei einer mündlichen Prüfung, schreibe in der zweiten Person.
-    
-    Nenne vorab das zugrunde liegende Szennario. Gib an, ob die Daignose richtig gestellt wurde.
-    
-    1. Wurden im Gespräch alle relevanten anamnestischen Informationen erhoben?
-    2. War die gewählte Diagnostik nachvollziehbar, vollständig und passend zur Szenariodiagnose **{st.session_state.diagnose_szenario}**?
-    3. War die gewählte Diagnostik nachvollziehbar, vollständig und passend zu den Differentialdiagnosen **{user_ddx2}**?
-    4. Ist die finale Diagnose nachvollziehbar, insbesondere im Hinblick auf Differenzierung zu anderen Möglichkeiten?
-    5. Ist das Therapiekonzept leitliniengerecht, plausibel und auf die Diagnose abgestimmt?
-    
-    ⚖ Berücksichtige zusätzlich:
-    - ökologische Aspekte (z. B. überflüssige Diagnostik, zuviele Anforderungen, CO₂-Bilanz, Strahlenbelastung bei CT oder Röntgen, Ressourcenverbrauch)
-    - ökonomische Sinnhaftigkeit (Kosten-Nutzen-Verhältnis)
-    
-    """
-            # muss eingerückt bleiben
-    
-                with st.spinner("Evaluation wird erstellt..."):
-                    eval_response = client.chat.completions.create(
+        if st.button("Untersuchung durchführen"):
+            untersuchung_prompt = f"""
+Die Patientin hat eine zufällig simulierte Erkrankung. Diese lautet: {st.session_state.diagnose_szenario}.
+Weitere relevante anamnestische Hinweise: {st.session_state.diagnose_features}
+Erstelle einen körperlichen Untersuchungsbefund, der zu dieser Erkrankung passt, ohne sie explizit zu nennen oder zu diagnostizieren. Berücksichtige Befunde, die sich aus den Zusatzinformationen ergeben könnten. 
+Erstelle eine klinisch konsistente Befundlage für die simulierte Erkankung. Interpretiere die Befund nicht, gibt keine Hinweise auf die Diagnose.
+
+Strukturiere den Befund bitte in folgende Abschnitte:
+
+**Allgemeinzustand:**  
+**Abdomen:**   
+**Auskultation Herz/Lunge:**  
+**Haut:**  
+**Extremitäten:**  
+
+Gib ausschließlich körperliche Untersuchungsbefunde an – keine Bildgebung, Labordiagnostik oder Zusatzverfahren. Vermeide jede Form von Bewertung, Hypothese oder Krankheitsnennung.
+
+Formuliere neutral, präzise und sachlich – so, wie es in einem klinischen Untersuchungsprotokoll stehen würde.
+"""
+            with st.spinner(f"{st.session_state.patient_name} wird untersucht..."):
+                try:
+                    response = client.chat.completions.create(
                         model="gpt-4",
-                        messages=[{"role": "user", "content": feedback_prompt_final}],
-                        temperature=0.4
+                        messages=[{"role": "user", "content": untersuchung_prompt}],
+                        temperature=0.5
                     )
-                    final_feedback = eval_response.choices[0].message.content
-                    st.session_state.final_feedback = final_feedback
-                    speichere_gpt_feedback_in_nextcloud()
-                    st.session_state.feedback_prompt_final = feedback_prompt_final
-                    st.success("✅ Evaluation erstellt")
+                    st.session_state.koerper_befund = response.choices[0].message.content
                     st.rerun()
+                except RateLimitError:
+                    st.error("🚫 Die Untersuchung konnte nicht erstellt werden. Die OpenAI-API ist derzeit überlastet.")
+else:
+    st.subheader("Körperliche Untersuchung")
+    st.button("Untersuchung durchführen", disabled=True)
+    st.info("❗Bitte stellen Sie zunächst mindestens eine anamnestische Frage.")
+
+# Abschnitt: Differentialdiagnosen und diagnostische Maßnahmen
+st.markdown("---")
+if "koerper_befund" in st.session_state:
+    st.subheader("Differentialdiagnosen und diagnostische Maßnahmen")
+
+    if "user_ddx2" not in st.session_state:
+        with st.form("differentialdiagnosen_diagnostik_formular"):
+            ddx_input2 = st.text_area("Welche drei Differentialdiagnosen halten Sie nach Anamnese und Untersuchung für möglich?", key="ddx_input2")
+            diag_input2 = st.text_area("Welche konkreten diagnostischen Maßnahmen möchten Sie vorschlagen?", key="diag_input2")
+            submitted_diag = st.form_submit_button("✅ Eingaben speichern")
+
+        if submitted_diag:
+            st.session_state.user_ddx2 = sprach_check(ddx_input2)
+            st.session_state.user_diagnostics = sprach_check(diag_input2)
+            st.success("✅ Angaben gespeichert. Befunde können jetzt generiert werden.")
+            st.rerun()
+
     else:
-        st.button("📋 Abschluss-Feedback anzeigen", disabled=True)
-        st.info("❗Bitte tragen Sie eine finale Diagnose und ein Therapiekonzept ein.")
-        
-    
-    # Downloadbereich
-    # Zusammenfassung und Download vorbereiten
-    st.markdown("---")
-    st.subheader("📄 Download")
-    
-    if "final_feedback" in st.session_state:
-        protokoll = ""
-    
-        # Szenario
-        protokoll += f"Simuliertes Krankheitsbild: {st.session_state.diagnose_szenario}\n\n"
-    
-        # Gesprächsverlauf
-        protokoll += "---\n💬 Gesprächsverlauf (nur Fragen des Studierenden):\n"
-        for msg in st.session_state.messages[1:]:
-            rolle = st.session_state.patient_name if msg["role"] == "assistant" else "Du"
-            protokoll += f"{rolle}: {msg['content']}\n"
-    
-        # Körperlicher Untersuchungsbefund
-        if "koerper_befund" in st.session_state:
-            protokoll += "\n---\nKörperlicher Untersuchungsbefund:\n"
-            protokoll += st.session_state.koerper_befund + "\n"
-    
-        # Differentialdiagnosen
-        if "user_ddx2" in st.session_state:
-            protokoll += "\n---\nErhobene Differentialdiagnosen:\n"
-            protokoll += st.session_state.user_ddx2 + "\n"
-    
-        # Diagnostische Maßnahmen
-        if "user_diagnostics" in st.session_state:
-            protokoll += "\n---\n🔬 Geplante diagnostische Maßnahmen:\n"
-            protokoll += st.session_state.user_diagnostics + "\n"
-    
-        # Generierte Befunde
-        if "befunde" in st.session_state:
-            protokoll += "\n---\n📄 Ergebnisse der diagnostischen Maßnahmen:\n"
-            protokoll += st.session_state.befunde + "\n"
-    
-        # Finale Diagnose
-        if "final_diagnose" in st.session_state:
-            protokoll += "\n---\nFinale Diagnose:\n"
-            protokoll += st.session_state.final_diagnose + "\n"
-    
-        # Therapiekonzept
-        if "therapie_vorschlag" in st.session_state:
-            protokoll += "\n---\n Therapiekonzept:\n"
-            protokoll += st.session_state.therapie_vorschlag + "\n"
-    
-        # Abschlussfeedback
-        protokoll += "\n---\n Strukturierte Rückmeldung:\n"
-        protokoll += st.session_state.final_feedback + "\n"
-    
-        # Download-Button
-        st.download_button(
-            label="⬇️ Gespräch & Feedback herunterladen",
-            data=protokoll,
-            file_name="karina_chatprotokoll.txt",
-            mime="text/plain"
-        )
+        st.markdown("📝 **Ihre gespeicherten Eingaben:**")
+        st.markdown(f"**Differentialdiagnosen:**\n{st.session_state.user_ddx2}")
+        st.markdown(f"**Diagnostische Maßnahmen:**\n{st.session_state.user_diagnostics}")
+
+else:
+    st.subheader("Differentialdiagnosen und diagnostische Maßnahmen")
+    st.info("❗Bitte führen Sie zuerst die körperliche Untersuchung durch.")
+
+
+# Abschnitt: Ergebnisse der diagnostischen Maßnahmen
+st.markdown("---")
+if "koerper_befund" in st.session_state:
+    st.subheader("📄 Ergebnisse der diagnostischen Maßnahmen")
+    if "befunde" in st.session_state:
+        st.success("✅ Befunde wurden erstellt.")
+        st.markdown(st.session_state.befunde)
     else:
-        st.info("💬 Das Protokoll kann nach der Evaluation heruntergeladen werden.")
+        if st.button("🧪 Befunde generieren lassen"):
+            if "user_diagnostics" in st.session_state:
+                diagnostik_eingabe = st.session_state.user_diagnostics
+            else:
+                st.warning("Bitte geben Sie zuerst diagnostische Maßnahmen ein, bevor Sie Befunde generieren.")
+
+            diagnose_szenario = st.session_state.diagnose_szenario
+            prompt_befunde = f"""
+Die Patientin hat laut Szenario das Krankheitsbild **{diagnose_szenario}**.
+Weitere relevante anamnestische Hinweise: {st.session_state.diagnose_features}
+
+Ein Medizinstudierender hat folgende diagnostische Maßnahmen konkret angefordert:
+
+{diagnostik_eingabe}
+
+Erstelle ausschließlich Befunde zu den genannten Untersuchungen. Falls Laborwerte angefordert, gib nur diese in einer Tabelle aus, verwende dabei immer das Internationale Einheitensystem:
+**Parameter** | **Wert** | **Referenzbereich (SI-Einheit)**. 
+
+Interpretationen oder Diagnosen sind nicht erlaubt. Nenne auf keinen Fall das Diagnose-Szenario. Bewerte oder diskutiere nicht die Anforderungen.
+
+Gib die Befunde strukturiert und sachlich wieder. Ergänze keine nicht angeforderten Untersuchungen.
+Beginne den Befund mit:
+"Diese Befunde wurden automatisiert durch eine KI (GPT-4) erstellt und dienen der Simulation. Sie können unvollständig oder fehlerhaft sein."
+"""
+            with st.spinner("Die Befunde werden erstellt."):
+                try:
+                    response = client.chat.completions.create(
+                        model="gpt-4",
+                        messages=[{"role": "user", "content": prompt_befunde}],
+                        temperature=0.5
+                    )
+                    st.session_state.befunde = response.choices[0].message.content
+                    st.success("✅ Befunde generiert")
+                    st.rerun()
+                except RateLimitError:
+                    st.error("🚫 Befunde konnten nicht generiert werden. Die OpenAI-API ist aktuell überlastet.")
+else:
+    st.subheader("📄 Ergebnisse der diagnostischen Maßnahmen (noch nicht verfügbar)")
+    st.button("🧪 Befunde generieren lassen", disabled=True)
+    st.info("❗Bitte führen Sie zuerst die körperliche Untersuchung durch.")
+
+
+
+
+# Diagnose und Therapie
+if "befunde" in st.session_state:
+    st.markdown("### Diagnose und Therapiekonzept")
+    if st.session_state.final_diagnose.strip() and st.session_state.therapie_vorschlag.strip():
+        st.markdown(f"**Eingetragene Diagnose:**\n{st.session_state.final_diagnose}")
+        st.markdown(f"**Therapiekonzept:**\n{st.session_state.therapie_vorschlag}")
+    else:
+        with st.form("diagnose_therapie"):
+            input_diag = st.text_input("Ihre endgültige Diagnose:")
+            input_therapie = st.text_area("Ihr Therapiekonzept, bitte ggf. ausführlicher beschreiben:")
+            submitted_final = st.form_submit_button("✅ Entscheidung abschließen")
+
+        if submitted_final:
+            st.session_state.final_diagnose = sprach_check(input_diag)
+            st.session_state.therapie_vorschlag = sprach_check(input_therapie)
+            st.success("✅ Entscheidung gespeichert")
+            st.rerun()
+
+
+# Abschlussfeedback
+st.markdown("---")
+st.subheader("📋 Evaluation durch KI")
+
+diagnose_eingegeben = st.session_state.get("final_diagnose", "").strip() != ""
+therapie_eingegeben = st.session_state.get("therapie_vorschlag", "").strip() != ""
+
+if diagnose_eingegeben and therapie_eingegeben:
+    if st.session_state.get("final_feedback", "").strip():
+        # Feedback wurde schon erzeugt
+        st.success("✅ Evaluation abgeschlossen.")
+        st.markdown("### Strukturierte Rückmeldung zur Fallbearbeitung:")
+        st.markdown(st.session_state.final_feedback)
+    else:
+        if st.button("📋 Abschluss-Feedback anzeigen"):
+            user_ddx2 = st.session_state.get("user_ddx2", "Keine Differentialdiagnosen angegeben.")
+            user_diagnostics = st.session_state.get("user_diagnostics", "Keine diagnostischen Maßnahmen angegeben.")
+            befunde = st.session_state.get("befunde", "Keine Befunde generiert.")
+            final_diagnose = st.session_state.get("final_diagnose", "Keine finale Diagnose eingegeben.")
+            therapie_vorschlag = st.session_state.get("therapie_vorschlag", "Kein Therapiekonzept eingegeben.")
+            user_verlauf = "\n".join([
+                msg["content"] for msg in st.session_state.messages
+                if msg["role"] == "user"
+            ])
+
+            feedback_prompt_final = f"""
+Ein Medizinstudierender hat eine vollständige virtuelle Fallbesprechung mit einer Patientin durchgeführt. Du bist ein erfahrener medizinischer Prüfer.
+
+Beurteile ausschließlich die Eingaben und Entscheidungen des Studierenden – NICHT die Antworten der Patientin oder automatisch generierte Inhalte.
+
+Die zugrunde liegende Erkrankung im Szenario lautet: **{st.session_state.diagnose_szenario}**.
+
+Hier ist der Gesprächsverlauf mit den Fragen und Aussagen des Nutzers:
+{user_verlauf}
+
+Erhobene Differentialdiagnosen (Nutzerangaben):
+{user_ddx2}
+
+Geplante diagnostische Maßnahmen (Nutzerangaben):
+{user_diagnostics}
+
+GPT-generierte Befunde (nur als Hintergrund, bitte nicht bewerten):
+{befunde}
+
+Finale Diagnose (Nutzereingabe):
+{final_diagnose}
+
+Therapiekonzept (Nutzereingabe):
+{therapie_vorschlag}
+
+---
+Strukturiere dein Feedback klar, hilfreich und differenziert – wie ein persönlicher Kommentar bei einer mündlichen Prüfung, schreibe in der zweiten Person.
+
+Nenne vorab das zugrunde liegende Szennario. Gib an, ob die Daignose richtig gestellt wurde.
+
+1. Wurden im Gespräch alle relevanten anamnestischen Informationen erhoben?
+2. War die gewählte Diagnostik nachvollziehbar, vollständig und passend zur Szenariodiagnose **{st.session_state.diagnose_szenario}**?
+3. War die gewählte Diagnostik nachvollziehbar, vollständig und passend zu den Differentialdiagnosen **{user_ddx2}**?
+4. Ist die finale Diagnose nachvollziehbar, insbesondere im Hinblick auf Differenzierung zu anderen Möglichkeiten?
+5. Ist das Therapiekonzept leitliniengerecht, plausibel und auf die Diagnose abgestimmt?
+
+⚖ Berücksichtige zusätzlich:
+- ökologische Aspekte (z. B. überflüssige Diagnostik, zuviele Anforderungen, CO₂-Bilanz, Strahlenbelastung bei CT oder Röntgen, Ressourcenverbrauch)
+- ökonomische Sinnhaftigkeit (Kosten-Nutzen-Verhältnis)
+
+"""
+        # muss eingerückt bleiben
+
+            with st.spinner("Evaluation wird erstellt..."):
+                eval_response = client.chat.completions.create(
+                    model="gpt-4",
+                    messages=[{"role": "user", "content": feedback_prompt_final}],
+                    temperature=0.4
+                )
+                final_feedback = eval_response.choices[0].message.content
+                st.session_state.final_feedback = final_feedback
+                speichere_gpt_feedback_in_nextcloud()
+                st.session_state.feedback_prompt_final = feedback_prompt_final
+                st.success("✅ Evaluation erstellt")
+                st.rerun()
+else:
+    st.button("📋 Abschluss-Feedback anzeigen", disabled=True)
+    st.info("❗Bitte tragen Sie eine finale Diagnose und ein Therapiekonzept ein.")
     
-    
-    
-    
-    # Abschnitt: Evaluation durch Studierende mit Schulnoten und Sammeldatei
-    # 
-    
-    if st.session_state.final_feedback:
-        student_feedback()
+
+# Downloadbereich
+# Zusammenfassung und Download vorbereiten
+st.markdown("---")
+st.subheader("📄 Download")
+
+if "final_feedback" in st.session_state:
+    protokoll = ""
+
+    # Szenario
+    protokoll += f"Simuliertes Krankheitsbild: {st.session_state.diagnose_szenario}\n\n"
+
+    # Gesprächsverlauf
+    protokoll += "---\n💬 Gesprächsverlauf (nur Fragen des Studierenden):\n"
+    for msg in st.session_state.messages[1:]:
+        rolle = st.session_state.patient_name if msg["role"] == "assistant" else "Du"
+        protokoll += f"{rolle}: {msg['content']}\n"
+
+    # Körperlicher Untersuchungsbefund
+    if "koerper_befund" in st.session_state:
+        protokoll += "\n---\nKörperlicher Untersuchungsbefund:\n"
+        protokoll += st.session_state.koerper_befund + "\n"
+
+    # Differentialdiagnosen
+    if "user_ddx2" in st.session_state:
+        protokoll += "\n---\nErhobene Differentialdiagnosen:\n"
+        protokoll += st.session_state.user_ddx2 + "\n"
+
+    # Diagnostische Maßnahmen
+    if "user_diagnostics" in st.session_state:
+        protokoll += "\n---\n🔬 Geplante diagnostische Maßnahmen:\n"
+        protokoll += st.session_state.user_diagnostics + "\n"
+
+    # Generierte Befunde
+    if "befunde" in st.session_state:
+        protokoll += "\n---\n📄 Ergebnisse der diagnostischen Maßnahmen:\n"
+        protokoll += st.session_state.befunde + "\n"
+
+    # Finale Diagnose
+    if "final_diagnose" in st.session_state:
+        protokoll += "\n---\nFinale Diagnose:\n"
+        protokoll += st.session_state.final_diagnose + "\n"
+
+    # Therapiekonzept
+    if "therapie_vorschlag" in st.session_state:
+        protokoll += "\n---\n Therapiekonzept:\n"
+        protokoll += st.session_state.therapie_vorschlag + "\n"
+
+    # Abschlussfeedback
+    protokoll += "\n---\n Strukturierte Rückmeldung:\n"
+    protokoll += st.session_state.final_feedback + "\n"
+
+    # Download-Button
+    st.download_button(
+        label="⬇️ Gespräch & Feedback herunterladen",
+        data=protokoll,
+        file_name="karina_chatprotokoll.txt",
+        mime="text/plain"
+    )
+else:
+    st.info("💬 Das Protokoll kann nach der Evaluation heruntergeladen werden.")
+
+
+
+
+# Abschnitt: Evaluation durch Studierende mit Schulnoten und Sammeldatei
+# 
+
+if st.session_state.final_feedback:
+    student_feedback()
