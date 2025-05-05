@@ -294,17 +294,22 @@ def fallauswahl_prompt():
 initialisiere_session_state()
 
 # Zufälliger Patientenname und Alter
-st.session_state.patient_name = random.choice([
-    "Karina", "Leonie", "Sophie", "Laura", "Anna", "Mara", "Bettina", "Sabine"
-])
-st.session_state.patient_age = random.randint(20, 34)
-st.session_state.patient_job = random.choice([
-        "Studentin der Wirtschaftswissenschaften",
-        "Erzieherin",
-        "Elektronikerin",
-        "Kunststudentin",
-        "Polizistin"
+if "patient_name" not in st.session_state:
+    st.session_state.patient_name = random.choice([
+        "Karina", "Leonie", "Sophie", "Laura", "Anna", "Mara"
     ])
+    
+if "patient_age" not in st.session_state:
+    st.session_state.patient_age = random.randint(20, 34)
+    
+if "patient_job" not in st.session_state:    
+    st.session_state.patient_job = random.choice([
+            "Studentin der Wirtschaftswissenschaften",
+            "Erzieherin",
+            "Elektronikerin",
+            "Kunststudentin",
+            "Polizistin"
+        ])
 
 verhaltensoptionen = {
     "knapp": "Beantworte Fragen grundsätzlich sehr knapp. Gib nur so viele Informationen preis, wie direkt erfragt wurden.",
