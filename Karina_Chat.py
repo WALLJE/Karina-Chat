@@ -166,6 +166,12 @@ def student_feedback():
         f2 = st.radio("2. Wie hilfreich war die Simulation für das Training der Anamnese?", [1, 2, 3, 4, 5, 6], horizontal=True)
         f3 = st.radio("3. Wie verständlich und relevant war das automatische Feedback?", [1, 2, 3, 4, 5, 6], horizontal=True)
         f4 = st.radio("4. Wie bewerten Sie den didaktischen Gesamtwert der Simulation?", [1, 2, 3, 4, 5, 6], horizontal=True)
+        f5 = st.radio("5. Wie schwierig fanden Sie den Fall? 1 -sehr einfach 6 - sehr schwer?", [1, 2, 3, 4, 5, 6], horizontal=True)
+        f6 = st.radio("6. Wie bewerten Sie den didaktischen Gesamtwert der Simulation?", [1, 2, 3, 4, 5, 6], horizontal=True)
+        f7 = st.selectbox(
+            "In welchem Semester befinden Sie sich aktuell?",
+            ["", "Vorklinik", "5. Semester", "6. Semester", "7. Semester", "8. Semester", "9. Semester", "10. Semester oder höher", "Praktisches Jahr"]
+        )
         kommentar = st.text_area("💬 Freitext (optional):", "")
         abgeschickt = st.form_submit_button("📩 Feedback absenden")
     
@@ -183,6 +189,8 @@ def student_feedback():
             "note_anamnese": f2,
             "note_feedback": f3,
             "note_didaktik": f4,
+            "fall_schwere": f5,
+            "semester": f7,
             "kommentar": kommentar,
             "verdachtsdiagnosen": st.session_state.get("user_ddx2", "nicht angegeben"),
             "diagnostik": st.session_state.get("user_diagnostics", "nicht angegeben"),
