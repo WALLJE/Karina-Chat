@@ -20,6 +20,37 @@ nextcloud_user = st.secrets["nextcloud"]["user"]
 nextcloud_token = st.secrets["nextcloud"]["token"]
 auth = HTTPBasicAuth(nextcloud_user, nextcloud_token)
 
+def zeige_instruktionen_vor_start():
+    st.session_state.setdefault("instruktion_bestätigt", False)
+
+    if not st.session_state.instruktion_bestätigt:
+          st.title("Virtuelles Fallbeispiel")
+          st.markdown(f"""
+### **Instruktionen für Studierende:**
+
+Sie führen ein strukturiertes Anamnesegespräch mit der virtuellen Patientin {st.session_state.patient_name}.
+Geben Sie zum Beginn Ihre Fragen an die Patientin unten ein. Ziel ist es, durch gezieltes Nachfragen eine Verdachtsdiagnose zu stellen und sinnvolle weitere Diagnostik zu planen.
+
+Wenn Sie genug anamnestische Informationen erhoben haben:
+- Führen Sie eine körperliche Untersuchung durch.
+- Nennen Sie danach Ihre Differentialdiagnosen und die gewünschte Diagnostik. Sie können nur einmal Diagnostik anfordern.
+- Sie erhalten typische Befunde und sollen dann eine Diagnose und ein Therapiekonzept festlegen. 
+- Danach erhalten Sie ein strukturiertes Feedback zu Ihrem Vorgehen.
+---
+
+- **⚠️ Bitte beachten Sie, dass Sie mit einem KI-generierten Chat-Bot kommunizieren.**
+- Geben Sie keine persönlichen Informationen ein.
+- **Überprüfen Sie alle Angaben und Hinweise auf Richtigkeit.** 
+- Die Anwendung sollte aufgrund ihrer Limitationen nur unter ärztlicher Supervision genutzt werden.
+
+---
+
+""")
+        if st.button("✅ Verstanden"):
+            st.session_state.instruktion_bestätigt = True
+            st.rerun()
+        st.stop()  # ⛔ Stoppt die App bis zum Klick
+    
 def sprach_check(text_input):
     if not text_input.strip():
         return ""
@@ -296,29 +327,6 @@ st.session_state.patient_hauptanweisung = "Du Darfst die Diagnose nicht nennen. 
 
 fallauswahl_prompt()
 
-# Titel und Instruktion
-st.title("Virtuelles Fallbeispiel")
-st.markdown(f"""
-### **Instruktionen für Studierende:**
-
-Sie führen ein strukturiertes Anamnesegespräch mit der virtuellen Patientin {st.session_state.patient_name}.
-Geben Sie zum Beginn Ihre Fragen an die Patientin unten ein. Ziel ist es, durch gezieltes Nachfragen eine Verdachtsdiagnose zu stellen und sinnvolle weitere Diagnostik zu planen.
-
-Wenn Sie genug anamnestische Informationen erhoben haben:
-- Führen Sie eine körperliche Untersuchung durch.
-- Nennen Sie danach Ihre Differentialdiagnosen und die gewünschte Diagnostik. Sie können nur einmal Diagnostik anfordern.
-- Sie erhalten typische Befunde und sollen dann eine Diagnose und ein Therapiekonzept festlegen. 
-- Danach erhalten Sie ein strukturiertes Feedback zu Ihrem Vorgehen.
----
-
-- **⚠️ Bitte beachten Sie, dass Sie mit einem KI-generierten Chat-Bot kommunizieren.**
-- Geben Sie keine persönlichen Informationen ein.
-- **Überprüfen Sie alle Angaben und Hinweise auf Richtigkeit.** 
-- Die Anwendung sollte aufgrund ihrer Limitationen nur unter ärztlicher Supervision genutzt werden.
-
----
-
-""")
 
 # Startzeit einfügen
 if "startzeit" not in st.session_state:
