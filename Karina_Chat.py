@@ -330,6 +330,7 @@ st.session_state.patient_hauptanweisung = "Du Darfst die Diagnose nicht nennen. 
 fallauswahl_prompt()
 
 st.title("Virtuelles Fallbeispiel")
+st.markdown("<br>", unsafe_allow_html=True)
 
 # Startzeit einfügen
 if "startzeit" not in st.session_state:
