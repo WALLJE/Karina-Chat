@@ -178,7 +178,7 @@ def student_feedback():
     bearbeitungsdauer = (jetzt - start).total_seconds() / 60  # in Minuten
     
     with st.form("studierenden_feedback_formular"):
-        st.markdown("Bitte bewerten Sie die folgenden Aspekte \nauf einer Schulnoten-Skala von 1 (sehr gut) bis 6 (ungenügend):")
+        st.markdown("Bitte bewerten Sie die folgenden Aspekte auf einer Schulnoten-Skala von 1 (sehr gut) bis 6 (ungenügend):")
         f1 = st.radio("1. Wie realistisch war das Fallbeispiel?", [1, 2, 3, 4, 5, 6], horizontal=True)
         f2 = st.radio("2. Wie hilfreich war die Simulation für das Training der Anamnese?", [1, 2, 3, 4, 5, 6], horizontal=True)
         f3 = st.radio("3. Wie verständlich und relevant war das automatische Feedback?", [1, 2, 3, 4, 5, 6], horizontal=True)
