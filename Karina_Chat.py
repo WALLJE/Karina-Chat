@@ -104,9 +104,9 @@ def initialisiere_session_state():
 #    st.session_state.setdefault("diagnose_szenario", "")
 #    st.session_state.setdefault("diagnose_features", "")
 #    st.session_state.setdefault("user_ddx2", "")
-    st.session_state.setdefault("user_diagnostics", "") #test
-    st.session_state.setdefault("final_diagnose", "") #test
-    st.session_state.setdefault("therapie_vorschlag", "") #test
+#    st.session_state.setdefault("user_diagnostics", "") #test
+#    st.session_state.setdefault("final_diagnose", "") #test
+#    st.session_state.setdefault("therapie_vorschlag", "") #test
 #    st.session_state.setdefault("koerper_befund", "")
 #    st.session_state.setdefault("nachdiagnostik", "")
 #    st.session_state.setdefault("nachbefunde", "")
