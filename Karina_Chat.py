@@ -105,7 +105,7 @@ def initialisiere_session_state():
 #    st.session_state.setdefault("diagnose_features", "")
 #    st.session_state.setdefault("user_ddx2", "")
 #    st.session_state.setdefault("user_diagnostics", "") #test
-#    st.session_state.setdefault("final_diagnose", "") #test
+    st.session_state.setdefault("final_diagnose", "") #test
 #    st.session_state.setdefault("therapie_vorschlag", "") #test
 #    st.session_state.setdefault("koerper_befund", "")
 #    st.session_state.setdefault("nachdiagnostik", "")
@@ -493,7 +493,7 @@ else:
 st.markdown("---")
 #if "koerper_befund" in st.session_state: # geändert 6.5.
 if "koerper_befund" in st.session_state and "user_diagnostics" in st.session_state and "user_ddx2" in st.session_state:
-    st.subheader("📄 Ergebnisse der diagnostischen Maßnahmen")
+    st.subheader("📄 Befunde")
     if "befunde" in st.session_state:
         st.success("✅ Befunde wurden erstellt.")
         st.markdown(st.session_state.befunde)
@@ -540,7 +540,7 @@ Beginne den Befund mit:
                 except RateLimitError:
                     st.error("🚫 Befunde konnten nicht generiert werden. Die OpenAI-API ist aktuell überlastet.")
 else:
-    st.subheader("📄 Ergebnisse der diagnostischen Maßnahmen (noch nicht verfügbar)")
+    st.subheader("📄 Befunde")
     st.button("🧪 Befunde generieren lassen", disabled=True)
     st.info("❗Bitte führen Sie zuerst die körperliche Untersuchung durch.")
 
