@@ -99,18 +99,18 @@ Text:
         return text_input  # Fallback: Originaltext zurückgeben
         
 def initialisiere_session_state():
-    st.session_state.setdefault("final_feedback", "")
-    st.session_state.setdefault("feedback_prompt_final", "")
+    st.session_state.setdefault("final_feedback", "") #test
+    st.session_state.setdefault("feedback_prompt_final", "") #test
 #    st.session_state.setdefault("diagnose_szenario", "")
 #    st.session_state.setdefault("diagnose_features", "")
 #    st.session_state.setdefault("user_ddx2", "")
-    st.session_state.setdefault("user_diagnostics", "")
-    st.session_state.setdefault("final_diagnose", "")
-    st.session_state.setdefault("therapie_vorschlag", "")
+    st.session_state.setdefault("user_diagnostics", "") #test
+    st.session_state.setdefault("final_diagnose", "") #test
+    st.session_state.setdefault("therapie_vorschlag", "") #test
 #    st.session_state.setdefault("koerper_befund", "")
-    st.session_state.setdefault("nachdiagnostik", "")
-    st.session_state.setdefault("nachbefunde", "")
-    st.session_state.setdefault("nachphase_erlaubt", False)
+#    st.session_state.setdefault("nachdiagnostik", "")
+#    st.session_state.setdefault("nachbefunde", "")
+#    st.session_state.setdefault("nachphase_erlaubt", False)
 #    st.session_state.setdefault("patient_name", "Frau S.")
 #    st.session_state.setdefault("patient_age", "32")
 #    st.session_state.setdefault("patient_job", "kaufmännische Angestellte")
