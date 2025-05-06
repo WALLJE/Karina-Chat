@@ -491,7 +491,8 @@ else:
 
 # Abschnitt: Ergebnisse der diagnostischen Maßnahmen
 st.markdown("---")
-if "koerper_befund" in st.session_state:
+#if "koerper_befund" in st.session_state: # geändert 6.5.
+if "koerper_befund" in st.session_state and "user_diagnostics" in st.session_state and "user_ddx2" in st.session_state:
     st.subheader("📄 Ergebnisse der diagnostischen Maßnahmen")
     if "befunde" in st.session_state:
         st.success("✅ Befunde wurden erstellt.")
