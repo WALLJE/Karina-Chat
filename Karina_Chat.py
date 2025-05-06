@@ -568,7 +568,7 @@ if "befunde" in st.session_state:
 
 # Abschlussfeedback
 st.markdown("---")
-st.subheader("📋 Evaluation durch KI")
+st.subheader("📋 Feedback durch KI")
 
 diagnose_eingegeben = st.session_state.get("final_diagnose", "").strip() != ""
 therapie_eingegeben = st.session_state.get("therapie_vorschlag", "").strip() != ""
