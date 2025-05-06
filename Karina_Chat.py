@@ -322,7 +322,7 @@ initialisiere_session_state()
 # Zufälliger Patientenname und Alter
 if "patient_name" not in st.session_state:
     st.session_state.patient_name = random.choice([
-        "Karina", "Leonie", "Sophie", "Laura", "Anna", "Mara"
+        "Karina", "Leonie", "Sophie", "Laura", "Anna", "Mara", "Sabine", "Hertha", "Bettina", "Dora", "Emilia", "Johanna", "Fabienne", "Hannah"
     ])
     
 if "patient_age" not in st.session_state:
