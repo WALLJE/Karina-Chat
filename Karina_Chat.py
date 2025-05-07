@@ -38,7 +38,7 @@ def zeige_instruktionen_vor_start():
 
     if not st.session_state.instruktion_bestätigt:
         st.markdown(f"""
-## **Instruktionen für Studierende:**
+#### Instruktionen für Studierende:
 Sie übernehmen die Rolle einer Ärztin oder eines Arztes im Gespräch mit der virtuellen Patientin {st.session_state.patient_name}.  
 Ihr Ziel ist es, durch gezielte Anamnese und klinisches Denken eine Verdachtsdiagnose zu stellen  
 sowie ein sinnvolles diagnostisches und therapeutisches Vorgehen zu entwickeln.
@@ -56,7 +56,7 @@ z. B. bei neuen Verdachtsmomenten oder zur gezielten Klärung offener Fragen.
 
 ---
 
-- ⚠️ Bitte beachten Sie, dass Sie mit einem **KI-basierten, simulierten Patientinnenmodell** kommunizieren.
+⚠️ Bitte beachten Sie, dass Sie mit einem **KI-basierten, simulierten Patientinnenmodell** kommunizieren.
 - Zur Qualitätssicherung werden Ihre Eingaben und die Reaktionen des ChatBots auf einem Server der Universität Halle gespeichert. Persönliche Daten (incl. E-Mail-Adresse oder IP-Adresse) werden nicht gespeichert, sofern Sie diese nicht selber angeben.
 - Geben Sie daher **keine echten persönlichen Informationen** ein.
 - **Überprüfen Sie alle Angaben und Hinweise der Kommunikation auf Richtigkeit.** 
