@@ -336,7 +336,7 @@ def copyright_footer():
         }
         </style>
         <div class="footer">
-            &copy; 2025 Jens Walldorf – Diese Anwendung dient ausschließlich zu Lehrzwecken.
+            &copy; 2025 Jens Walldorf – Diese Simulation dient ausschließlich zu Lehrzwecken.
         </div>
         """,
         unsafe_allow_html=True
