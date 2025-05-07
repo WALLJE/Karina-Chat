@@ -317,6 +317,32 @@ def fallauswahl_prompt():
     {st.session_state.diagnose_features}
     """ 
 
+def copyright_footer():
+    st.markdown(
+        """
+        <style>
+        .footer {
+            position: fixed;
+            left: 0;
+            bottom: 0;
+            width: 100%;
+            background-color: #f1f1f1;
+            color: #666;
+            text-align: center;
+            padding: 8px;
+            font-size: 0.85em;
+            border-top: 1px solid #ddd;
+            z-index: 100;
+        }
+        </style>
+        <div class="footer">
+            &copy; 2025 Jens Walldorf – Diese Anwendung dient ausschließlich zu Lehrzwecken.
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+
 #---------------- Routinen Ende -------------------
 initialisiere_session_state()
 
@@ -721,3 +747,5 @@ else:
 
 if st.session_state.final_feedback:
     student_feedback()
+
+copyright_footer()
