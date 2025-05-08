@@ -162,7 +162,7 @@ def speichere_gpt_feedback_in_nextcloud():
     except Exception:
         df = df_neu
 
-    df.to_csv(lokaler_csv_pfad, , sep=";", index=False, encoding="utf-8-sig")
+    df.to_csv(lokaler_csv_pfad, sep=";", index=False, encoding="utf-8-sig")
     with open(lokaler_csv_pfad, "rb") as f:
         response = requests.put(nextcloud_url + csv_name, data=f, auth=auth)
 
