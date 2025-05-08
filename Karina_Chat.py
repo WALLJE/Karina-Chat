@@ -162,7 +162,7 @@ def speichere_gpt_feedback_in_nextcloud():
     except Exception:
         df = df_neu
 
-    df.to_csv(lokaler_csv_pfad, index=False)
+    df.to_csv(lokaler_csv_pfad, , sep=";", index=False, encoding="utf-8-sig")
     with open(lokaler_csv_pfad, "rb") as f:
         response = requests.put(nextcloud_url + csv_name, data=f, auth=auth)
 
@@ -220,7 +220,7 @@ def student_feedback():
         }
     
         df_neu = pd.DataFrame([eintrag])
-        dateiname = "feedback_gesamt.csv"
+        dateiname = "feedback_studi_gesamt.csv"
         lokaler_pfad = os.path.join(os.getcwd(), dateiname)
     
         # Zugriff via Streamlit Secrets bei inittierung eingefügt
@@ -243,7 +243,7 @@ def student_feedback():
             df = df_neu
     
         # Speichern und hochladen
-        df.to_csv(lokaler_pfad, index=False)
+        df.to_csv(lokaler_pfad, sep=";", index=False, encoding="utf-8-sig")
         with open(lokaler_pfad, 'rb') as f:
             response = requests.put(nextcloud_url + dateiname, data=f, auth=auth)
     
@@ -611,6 +611,7 @@ if diagnose_eingegeben and therapie_eingegeben:
             user_ddx2 = st.session_state.get("user_ddx2", "Keine Differentialdiagnosen angegeben.")
             user_diagnostics = st.session_state.get("user_diagnostics", "Keine diagnostischen Maßnahmen angegeben.")
             befunde = st.session_state.get("befunde", "Keine Befunde generiert.")
+            koerperlich_U = st.session_state.get("koerper_befund", "Keine Körperliche Untersuchung generiert")
             final_diagnose = st.session_state.get("final_diagnose", "Keine finale Diagnose eingegeben.")
             therapie_vorschlag = st.session_state.get("therapie_vorschlag", "Kein Therapiekonzept eingegeben.")
             user_verlauf = "\n".join([
@@ -628,6 +629,9 @@ Die zugrunde liegende Erkrankung im Szenario lautet: **{st.session_state.diagnos
 Hier ist der Gesprächsverlauf mit den Fragen und Aussagen des Nutzers:
 {user_verlauf}
 
+GPT-generierter körperlicher Untersuchungsbefund (nur als Hintergrund, bitte nicht bewerten):
+{koerperlich_U}
+
 Erhobene Differentialdiagnosen (Nutzerangaben):
 {user_ddx2}
 
@@ -635,6 +639,7 @@ Geplante diagnostische Maßnahmen (Nutzerangaben):
 {user_diagnostics}
 
 GPT-generierte Befunde (nur als Hintergrund, bitte nicht bewerten):
+{koerperlich_U}
 {befunde}
 
 Finale Diagnose (Nutzereingabe):
