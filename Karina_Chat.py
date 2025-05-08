@@ -545,10 +545,11 @@ Ein Medizinstudierender hat folgende diagnostische Maßnahmen konkret angeforder
 
 {diagnostik_eingabe}
 
-Erstelle ausschließlich Befunde zu den genannten Untersuchungen. Falls Laborwerte angefordert, gib nur diese in einer Tabelle aus, verwende dabei immer das Internationale Einheitensystem:
+Erstelle ausschließlich Befunde zu den genannten Untersuchungen. Falls **Laborwerte** angefordert wurden, gib  diese **ausschliesslich in einer strukturierten Tabelle** aus, verwende dabei immer das Internationale Einheitensystem und dieses Tabellenformat:
+
 **Parameter** | **Wert** | **Referenzbereich (SI-Einheit)**. 
 
-Interpretationen oder Diagnosen sind nicht erlaubt. Nenne auf keinen Fall das Diagnose-Szenario. Bewerte oder diskutiere nicht die Anforderungen.
+**Wichtig:** Interpretationen oder Diagnosen sind nicht erlaubt. Nenne auf keinen Fall das Diagnose-Szenario. Bewerte oder diskutiere nicht die Anforderungen.
 
 Gib die Befunde strukturiert und sachlich wieder. Ergänze keine nicht angeforderten Untersuchungen.
 Beginne den Befund mit:
