@@ -579,7 +579,7 @@ else:
 if "befunde" in st.session_state:
     st.markdown("### Diagnose und Therapiekonzept")
     if st.session_state.final_diagnose.strip() and st.session_state.therapie_vorschlag.strip():
-        st.markdown(f"**Eingetragene Diagnose:**\n{st.session_state.final_diagnose}")
+        st.markdown(f"**Ihre Diagnose:**\n{st.session_state.final_diagnose}")
         st.markdown(f"**Therapiekonzept:**\n{st.session_state.therapie_vorschlag}")
     else:
         with st.form("diagnose_therapie"):
