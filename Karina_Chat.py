@@ -78,9 +78,9 @@ Bitte überprüfe die folgenden stichpunktartigen medizinischen Fachbegriffe hin
 Gib den korrigierten Text direkt und ohne Vorbemerkung und ohne Kommentar zurück.
 Verwende zur strukturierten Ausgabe von Diagnosen und Anforderungen von Untersuchungen dieses Format:
 
-- Beispieltext_1
-- Beispieltext_2
-- Beispieltext_3
+• Beispieltext_1
+• Beispieltext_2
+• Beispieltext_3
 
 Freie Texte wie Therapiebegründungen werden als sprachlich und grammatikalisch korrigierter Text zurückgegeben ohne Spiegelstriche. 
 
@@ -93,7 +93,10 @@ Text:
             messages=[{"role": "user", "content": prompt}],
             temperature=0.3
         )
-        return response.choices[0].message.content.strip()
+        korrigiert = response.choices[0].message.content.strip()
+        # Verhindere Excel-Interpretation von Spiegelstrichen
+        korrigiert = korrigiert.replace("- ", "• ")
+        return korrigiert
 
     except Exception as e:
         st.error(f"Fehler bei GPT-Anfrage: {e}")
