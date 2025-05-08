@@ -511,8 +511,8 @@ if "koerper_befund" in st.session_state:
 
     else:
         st.markdown("📝 **Ihre gespeicherten Eingaben:**")
-        st.markdown(f"**Differentialdiagnosen:**\n{st.session_state.user_ddx2}")
-        st.markdown(f"**Diagnostische Maßnahmen:**\n{st.session_state.user_diagnostics}")
+        st.markdown(f"**Differentialdiagnosen:**  \n{st.session_state.user_ddx2}")
+        st.markdown(f"**Diagnostische Maßnahmen:**  \n{st.session_state.user_diagnostics}")
 
 else:
     st.subheader("Differentialdiagnosen und diagnostische Maßnahmen")
@@ -582,8 +582,8 @@ else:
 if "befunde" in st.session_state:
     st.markdown("### Diagnose und Therapiekonzept")
     if st.session_state.final_diagnose.strip() and st.session_state.therapie_vorschlag.strip():
-        st.markdown(f"**Ihre Diagnose:**\n{st.session_state.final_diagnose}")
-        st.markdown(f"**Therapiekonzept:**\n{st.session_state.therapie_vorschlag}")
+        st.markdown(f"**Ihre Diagnose:**  \n{st.session_state.final_diagnose}")
+        st.markdown(f"**Therapiekonzept:**  \n{st.session_state.therapie_vorschlag}")
     else:
         with st.form("diagnose_therapie"):
             input_diag = st.text_input("Ihre endgültige Diagnose:")
