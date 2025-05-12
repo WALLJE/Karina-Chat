@@ -51,10 +51,8 @@ def fallauswahl_prompt(df, szenario=None):
         st.session_state.diagnose_features = fall["Beschreibung"]
         st.session_state.koerper_befund = fall.get("Körperliche Untersuchung", "")
         st.success(f"✅ Zufälliger Fall geladen: {fall['Szenario']}")
-    except Exception as e:
-        st.error(f"❌ Fehler beim Laden des Falls: {e}")
 
-        # SYSTEM_PROMPT zusammenbauen
+        # SYSTEM_PROMPT korrekt hier, nicht im except-Block
         st.session_state.SYSTEM_PROMPT = f"""
 Patientensimulation – {st.session_state.diagnose_szenario}
 
@@ -64,10 +62,9 @@ Du bist {st.session_state.patient_name}, eine {st.session_state.patient_age}-jä
 {st.session_state.diagnose_features}
 """
 
-        st.success(f"✅ Fall geladen: {fall['Szenario']}")
-
     except Exception as e:
         st.error(f"❌ Fehler beim Laden des Falls: {e}")
+
 
 
 def zeige_instruktionen_vor_start():
