@@ -650,7 +650,7 @@ Nenne vorab das zugrunde liegende Szennario. Gib an, ob die Daignose richtig ges
 4. Ist die finale Diagnose nachvollziehbar, insbesondere im Hinblick auf Differenzierung zu anderen Möglichkeiten?
 5. Ist das Therapiekonzept leitliniengerecht, plausibel und auf die Diagnose abgestimmt?
 
-⚖ Berücksichtige zusätzlich:
+**Berücksichtige und kommentiere zusätzlich**:
 - ökologische Aspekte (z. B. überflüssige Diagnostik, zuviele Anforderungen, CO₂-Bilanz, Strahlenbelastung bei CT oder Röntgen, Ressourcenverbrauch)
 - ökonomische Sinnhaftigkeit (Kosten-Nutzen-Verhältnis)
 
