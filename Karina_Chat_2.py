@@ -22,6 +22,21 @@ from datetime import datetime
 import requests
 from requests.auth import HTTPBasicAuth
 
+# Für einlesen Excel Datei
+from io import BytesIO
+
+# Einlesen Fallbeispiele
+url_szenarien = "https://github.com/WALLJE/Karina-Chat/blob/main/fallbeispiele.xlsx"
+response = requests.get(url_szenarien)
+if response.status_code == 200:
+    df = pd.read_excel(BytesIO(response.content))
+else:
+    st.error("Fehler beim Laden der Datei von GitHub.")
+
+#
+# müssen noch übergeben werden
+#
+
 # API-Key setzen
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
