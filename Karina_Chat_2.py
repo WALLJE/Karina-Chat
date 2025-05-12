@@ -37,7 +37,7 @@ auth = HTTPBasicAuth(nextcloud_user, nextcloud_token)
 # st.set_page_config(layout="wide") # breiter Bildschrim sieht nicht gut aus.
 
 # Funktion: Fall aus DataFrame laden
-def lade_fall_aus_df(df, szenario=None):
+def fallauswahl_prompt(df, szenario=None):
     if df.empty:
         st.error("📄 Die Falltabelle ist leer oder konnte nicht geladen werden.")
         return
@@ -293,22 +293,22 @@ def student_feedback():
         else:
             st.error(f"🚫 Fehler beim Upload: Status {response.status_code}")
             
-def fallauswahl_prompt(df, szenario=None):
-    if df.empty:
-        st.error("📄 Die Falltabelle ist leer oder konnte nicht geladen werden.")
-        return
-    try:
-        if szenario:
-            fall = df[df["Szenario"] == szenario].iloc[0]
-        else:
-            fall = df.sample(1).iloc[0]
-
-        st.session_state.diagnose_szenario = fall["Szenario"]
-        st.session_state.diagnose_features = fall["Beschreibung"]
-        st.session_state.koerper_befund = fall.get("Körperliche Untersuchung", "")
-        st.success(f"✅ Zufälliger Fall geladen: {fall['Szenario']}")
-    except Exception as e:
-        st.error(f"❌ Fehler beim Laden des Falls: {e}")
+#def fallauswahl_prompt(df, szenario=None):
+#    if df.empty:
+#        st.error("📄 Die Falltabelle ist leer oder konnte nicht geladen werden.")
+#        return
+#    try:
+#        if szenario:
+#           fall = df[df["Szenario"] == szenario].iloc[0]
+#        else:
+#            fall = df.sample(1).iloc[0]
+#
+#        st.session_state.diagnose_szenario = fall["Szenario"]
+#        st.session_state.diagnose_features = fall["Beschreibung"]
+#        st.session_state.koerper_befund = fall.get("Körperliche Untersuchung", "")
+#        st.success(f"✅ Zufälliger Fall geladen: {fall['Szenario']}")
+#    except Exception as e:
+#        st.error(f"❌ Fehler beim Laden des Falls: {e}")
 
 def copyright_footer():
     st.markdown(
