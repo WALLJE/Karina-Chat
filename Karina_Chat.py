@@ -290,8 +290,10 @@ def fallauswahl_prompt():
         "Laktoseintoleranz": {
             "diagnose": "Laktoseintoleranz",
             "features": """
-    Seit mehreren Monaten hast Du wiederkehrend Bauchschmerzen, viele Blähungen. Manchmal ist Dir nach dem Essen übel, Du hast Schwindel und Kopfschmerzen. Es kommt Dir so vor, dass Dir das vor allem dann passiert, wenn Du Milchprodukte zu Dir genommen hast. Du machst dir Sorgen, auch weil Du Dich oft müde fühlst. Dein Stuhlgang riecht übel, auch wenn Winde abgehen. Dein Gewicht ist stabil.
-    Erzähle das nur auf gezielte Nachfrage. Reisen: Du reist gerne, vor 4 Monaten warst Du auf einer Kreuzfahrt im Mittelmeer. Familie: Dein Großvater ist mit 85 Jahren an Darmkrebs gestorben.
+    Seit mehreren Monaten hast Du wiederkehrend Bauchschmerzen, viele Blähungen. Manchmal ist Dir nach dem Essen übel, Du hast Schwindel und Kopfschmerzen.  Du machst dir Sorgen, auch weil Du Dich oft müde fühlst. Dein Stuhlgang riecht übel, auch wenn Winde abgehen. Dein Gewicht ist stabil.
+    **Nur auf Nachfrage zu Unverträglichkeiten oder einen Zusammenhang der Beschwerden mit der Ernährung** erzählst Du, dass die Symptome vor allem nach dem Verzehr von Milchprodukten auftreten.
+   
+    Reisen: Du reist gerne, vor 4 Monaten warst Du auf einer Kreuzfahrt im Mittelmeer. Familie: Dein Großvater ist mit 85 Jahren an Darmkrebs gestorben.
     """
         },
         "Akute Pankreatitis": {
