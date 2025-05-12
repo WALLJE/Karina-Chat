@@ -40,8 +40,7 @@ def zeige_instruktionen_vor_start():
         st.markdown(f"""
 #### Instruktionen für Studierende:
 Sie übernehmen die Rolle einer Ärztin oder eines Arztes im Gespräch mit der virtuellen Patientin {st.session_state.patient_name}, die sich in Ihrer hausärztlichen Sprechstunde vorstellt. 
-Ihr Ziel ist es, durch gezielte Anamnese und klinisches Denken eine Verdachtsdiagnose zu stellen  
-sowie ein sinnvolles diagnostisches und therapeutisches Vorgehen zu entwickeln.
+Ihr Ziel ist es, durch gezielte Anamnese und klinisches Denken eine Verdachtsdiagnose zu stellen sowie ein sinnvolles diagnostisches und therapeutisches Vorgehen zu entwickeln.
 
 #### 🔍 Ablauf:
 
