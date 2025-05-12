@@ -1,4 +1,4 @@
-# Version 10
+# Version 13
 #  
 # Features:
 # Feedback in owncloud gespeichert
@@ -38,10 +38,9 @@ def zeige_instruktionen_vor_start():
 
     if not st.session_state.instruktion_bestätigt:
         st.markdown(f"""
-### **Instruktionen für Studierende:**
-Sie übernehmen die Rolle einer Ärztin oder ein Arztes im Gespräch mit der virtuellen Patientin {st.session_state.patient_name}.  
-Ihr Ziel ist es, durch gezielte Anamnese und klinisches Denken eine Verdachtsdiagnose zu stellen  
-sowie ein sinnvolles diagnostisches und therapeutisches Vorgehen zu entwickeln.
+#### Instruktionen für Studierende:
+Sie übernehmen die Rolle einer Ärztin oder eines Arztes im Gespräch mit der virtuellen Patientin {st.session_state.patient_name}, die sich in Ihrer hausärztlichen Sprechstunde vorstellt. 
+Ihr Ziel ist es, durch gezielte Anamnese und klinisches Denken eine Verdachtsdiagnose zu stellen sowie ein sinnvolles diagnostisches und therapeutisches Vorgehen zu entwickeln.
 
 #### 🔍 Ablauf:
 
@@ -54,12 +53,15 @@ sowie ein sinnvolles diagnostisches und therapeutisches Vorgehen zu entwickeln.
 > 💬 **Hinweis:** Sie können die Patientin auch nach der ersten Diagnostik weiter befragen –  
 z. B. bei neuen Verdachtsmomenten oder zur gezielten Klärung offener Fragen.
 
+Im Wartezimmer sitzen weitere Patientinnen mit anderen Krankheitsbildern, die Sie durch einen erneuten Aufruf der App kennenlernen können.
+
 ---
 
-- ⚠️ Bitte beachten Sie, dass Sie mit einem **KI-basierten, simulierten Patientinnenmodell** kommunizieren.
-- Geben Sie **keine echten persönlichen Informationen** ein.
+⚠️ Bitte beachten Sie, dass Sie mit einem **KI-basierten, simulierten Patientinnenmodell** kommunizieren.
+- Zur Qualitätssicherung werden Ihre Eingaben und die Reaktionen des ChatBots auf einem Server der Universität Halle gespeichert. Persönliche Daten (incl. E-Mail-Adresse oder IP-Adresse) werden nicht gespeichert, sofern Sie diese nicht selber angeben.
+- Geben Sie daher **keine echten persönlichen Informationen** ein.
 - **Überprüfen Sie alle Angaben und Hinweise der Kommunikation auf Richtigkeit.** 
-- Die Anwendung sollte aufgrund ihrer Limitationen nur unter ärztlicher Supervision genutzt werden.
+- Die Anwendung sollte aufgrund ihrer Limitationen nur unter ärztlicher Supervision genutzt werden; Sie können bei Fragen und Unklarheiten den Chatverlauf in einer Text-Datei speichern.
 
 ---
 
@@ -77,9 +79,9 @@ Bitte überprüfe die folgenden stichpunktartigen medizinischen Fachbegriffe hin
 Gib den korrigierten Text direkt und ohne Vorbemerkung und ohne Kommentar zurück.
 Verwende zur strukturierten Ausgabe von Diagnosen und Anforderungen von Untersuchungen dieses Format:
 
-- Beispieltext_1
-- Beispieltext_2
-- Beispieltext_3
+• Beispieltext_1
+• Beispieltext_2
+• Beispieltext_3
 
 Freie Texte wie Therapiebegründungen werden als sprachlich und grammatikalisch korrigierter Text zurückgegeben ohne Spiegelstriche. 
 
@@ -92,25 +94,28 @@ Text:
             messages=[{"role": "user", "content": prompt}],
             temperature=0.3
         )
-        return response.choices[0].message.content.strip()
+        korrigiert = response.choices[0].message.content.strip()
+        # Verhindere Excel-Interpretation von Spiegelstrichen
+        korrigiert = korrigiert.replace("- ", "• ")
+        return korrigiert
 
     except Exception as e:
         st.error(f"Fehler bei GPT-Anfrage: {e}")
         return text_input  # Fallback: Originaltext zurückgeben
         
 def initialisiere_session_state():
-    st.session_state.setdefault("final_feedback", "")
-    st.session_state.setdefault("feedback_prompt_final", "")
+    st.session_state.setdefault("final_feedback", "") #test
+    st.session_state.setdefault("feedback_prompt_final", "") #test
 #    st.session_state.setdefault("diagnose_szenario", "")
 #    st.session_state.setdefault("diagnose_features", "")
 #    st.session_state.setdefault("user_ddx2", "")
-    st.session_state.setdefault("user_diagnostics", "")
-    st.session_state.setdefault("final_diagnose", "")
-    st.session_state.setdefault("therapie_vorschlag", "")
+#    st.session_state.setdefault("user_diagnostics", "") #test
+    st.session_state.setdefault("final_diagnose", "") #test
+#    st.session_state.setdefault("therapie_vorschlag", "") #test
 #    st.session_state.setdefault("koerper_befund", "")
-    st.session_state.setdefault("nachdiagnostik", "")
-    st.session_state.setdefault("nachbefunde", "")
-    st.session_state.setdefault("nachphase_erlaubt", False)
+#    st.session_state.setdefault("nachdiagnostik", "")
+#    st.session_state.setdefault("nachbefunde", "")
+#    st.session_state.setdefault("nachphase_erlaubt", False)
 #    st.session_state.setdefault("patient_name", "Frau S.")
 #    st.session_state.setdefault("patient_age", "32")
 #    st.session_state.setdefault("patient_job", "kaufmännische Angestellte")
@@ -161,7 +166,7 @@ def speichere_gpt_feedback_in_nextcloud():
     except Exception:
         df = df_neu
 
-    df.to_csv(lokaler_csv_pfad, index=False)
+    df.to_csv(lokaler_csv_pfad, sep=";", index=False, encoding="utf-8-sig")
     with open(lokaler_csv_pfad, "rb") as f:
         response = requests.put(nextcloud_url + csv_name, data=f, auth=auth)
 
@@ -178,13 +183,13 @@ def student_feedback():
     bearbeitungsdauer = (jetzt - start).total_seconds() / 60  # in Minuten
     
     with st.form("studierenden_feedback_formular"):
-        st.markdown("Bitte bewerten Sie die folgenden Aspekte auf einer Skala von 1 (sehr gut) bis 6 (ungenügend):")
+        st.markdown("Bitte bewerten Sie die folgenden Aspekte auf einer Schulnoten-Skala von 1 (sehr gut) bis 6 (ungenügend):")
         f1 = st.radio("1. Wie realistisch war das Fallbeispiel?", [1, 2, 3, 4, 5, 6], horizontal=True)
         f2 = st.radio("2. Wie hilfreich war die Simulation für das Training der Anamnese?", [1, 2, 3, 4, 5, 6], horizontal=True)
         f3 = st.radio("3. Wie verständlich und relevant war das automatische Feedback?", [1, 2, 3, 4, 5, 6], horizontal=True)
         f4 = st.radio("4. Wie bewerten Sie den didaktischen Gesamtwert der Simulation?", [1, 2, 3, 4, 5, 6], horizontal=True)
-        f5 = st.radio("5. Wie schwierig fanden Sie den Fall? 1 -sehr einfach 6 - sehr schwer?", [1, 2, 3, 4, 5, 6], horizontal=True)
         f6 = st.radio("6. Wie bewerten Sie den didaktischen Gesamtwert der Simulation?", [1, 2, 3, 4, 5, 6], horizontal=True)
+        f5 = st.radio("5. Wie schwierig fanden Sie den Fall? \n\n *1 -sehr einfach 6 - sehr schwer?*", [1, 2, 3, 4, 5, 6], horizontal=True)
         f7 = st.selectbox(
             "In welchem Semester befinden Sie sich aktuell?",
             ["", "Vorklinik", "5. Semester", "6. Semester", "7. Semester", "8. Semester", "9. Semester", "10. Semester oder höher", "Praktisches Jahr"]
@@ -219,7 +224,7 @@ def student_feedback():
         }
     
         df_neu = pd.DataFrame([eintrag])
-        dateiname = "feedback_gesamt.csv"
+        dateiname = "feedback_studi_gesamt.csv"
         lokaler_pfad = os.path.join(os.getcwd(), dateiname)
     
         # Zugriff via Streamlit Secrets bei inittierung eingefügt
@@ -242,7 +247,7 @@ def student_feedback():
             df = df_neu
     
         # Speichern und hochladen
-        df.to_csv(lokaler_pfad, index=False)
+        df.to_csv(lokaler_pfad, sep=";", index=False, encoding="utf-8-sig")
         with open(lokaler_pfad, 'rb') as f:
             response = requests.put(nextcloud_url + dateiname, data=f, auth=auth)
     
@@ -285,8 +290,10 @@ def fallauswahl_prompt():
         "Laktoseintoleranz": {
             "diagnose": "Laktoseintoleranz",
             "features": """
-    Seit mehreren Monaten hast Du wiederkehrend Bauchschmerzen, viele Blähungen. Manchmal ist Dir nach dem Essen übel, Du hast Schwindel und Kopfschmerzen. Es kommt Dir so vor, dass Dir das vor allem dann passiert, wenn Du Milchprodukte zu Dir genommen hast. Du machst dir Sorgen, auch weil Du Dich oft müde fühlst. Dein Stuhlgang riecht übel, auch wenn Winde abgehen. Dein Gewicht ist stabil.
-    Erzähle das nur auf gezielte Nachfrage. Reisen: Du reist gerne, vor 4 Monaten warst Du auf einer Kreuzfahrt im Mittelmeer. Familie: Dein Großvater ist mit 85 Jahren an Darmkrebs gestorben.
+    Seit mehreren Monaten hast Du wiederkehrend Bauchschmerzen, viele Blähungen. Manchmal ist Dir nach dem Essen übel, Du hast Schwindel und Kopfschmerzen.  Du machst dir Sorgen, auch weil Du Dich oft müde fühlst. Dein Stuhlgang riecht übel, auch wenn Winde abgehen. Dein Gewicht ist stabil.
+    **Nur auf Nachfrage zu Unverträglichkeiten oder einen Zusammenhang der Beschwerden mit der Ernährung** erzählst Du, dass die Symptome vor allem nach dem Verzehr von Milchprodukten auftreten.
+   
+    Reisen: Du reist gerne, vor 4 Monaten warst Du auf einer Kreuzfahrt im Mittelmeer. Familie: Dein Großvater ist mit 85 Jahren an Darmkrebs gestorben.
     """
         },
         "Akute Pankreatitis": {
@@ -316,13 +323,39 @@ def fallauswahl_prompt():
     {st.session_state.diagnose_features}
     """ 
 
+def copyright_footer():
+    st.markdown(
+        """
+        <style>
+        .footer {
+            position: fixed;
+            left: 0;
+            bottom: 0;
+            width: 100%;
+            background-color: #f1f1f1;
+            color: #666;
+            text-align: center;
+            padding: 8px;
+            font-size: 0.85em;
+            border-top: 1px solid #ddd;
+            z-index: 100;
+        }
+        </style>
+        <div class="footer">
+            &copy; 2025 <a href="mailto:jens.walldorf@uk-halle.de">Jens Walldorf</a> – Diese Simulation dient ausschließlich zu Lehrzwecken.
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+
 #---------------- Routinen Ende -------------------
 initialisiere_session_state()
 
 # Zufälliger Patientenname und Alter
 if "patient_name" not in st.session_state:
     st.session_state.patient_name = random.choice([
-        "Karina", "Leonie", "Sophie", "Laura", "Anna", "Mara"
+        "Karina", "Leonie", "Sophie", "Laura", "Anna", "Mara", "Sabine", "Hertha", "Bettina", "Dora", "Emilia", "Johanna", "Fabienne", "Hannah"
     ])
     
 if "patient_age" not in st.session_state:
@@ -481,8 +514,8 @@ if "koerper_befund" in st.session_state:
 
     else:
         st.markdown("📝 **Ihre gespeicherten Eingaben:**")
-        st.markdown(f"**Differentialdiagnosen:**\n{st.session_state.user_ddx2}")
-        st.markdown(f"**Diagnostische Maßnahmen:**\n{st.session_state.user_diagnostics}")
+        st.markdown(f"**Differentialdiagnosen:**  \n{st.session_state.user_ddx2}")
+        st.markdown(f"**Diagnostische Maßnahmen:**  \n{st.session_state.user_diagnostics}")
 
 else:
     st.subheader("Differentialdiagnosen und diagnostische Maßnahmen")
@@ -491,8 +524,9 @@ else:
 
 # Abschnitt: Ergebnisse der diagnostischen Maßnahmen
 st.markdown("---")
-if "koerper_befund" in st.session_state:
-    st.subheader("📄 Ergebnisse der diagnostischen Maßnahmen")
+#if "koerper_befund" in st.session_state: # geändert 6.5.
+if "koerper_befund" in st.session_state and "user_diagnostics" in st.session_state and "user_ddx2" in st.session_state:
+    st.subheader("📄 Befunde")
     if "befunde" in st.session_state:
         st.success("✅ Befunde wurden erstellt.")
         st.markdown(st.session_state.befunde)
@@ -517,10 +551,11 @@ Ein Medizinstudierender hat folgende diagnostische Maßnahmen konkret angeforder
 
 {diagnostik_eingabe}
 
-Erstelle ausschließlich Befunde zu den genannten Untersuchungen. Falls Laborwerte angefordert, gib nur diese in einer Tabelle aus, verwende dabei immer das Internationale Einheitensystem:
+Erstelle ausschließlich Befunde zu den genannten Untersuchungen. Falls **Laborwerte** angefordert wurden, gib  diese **ausschliesslich in einer strukturierten Tabelle** aus, verwende dabei immer das Internationale Einheitensystem und dieses Tabellenformat:
+
 **Parameter** | **Wert** | **Referenzbereich (SI-Einheit)**. 
 
-Interpretationen oder Diagnosen sind nicht erlaubt. Nenne auf keinen Fall das Diagnose-Szenario. Bewerte oder diskutiere nicht die Anforderungen.
+**Wichtig:** Interpretationen oder Diagnosen sind nicht erlaubt. Nenne auf keinen Fall das Diagnose-Szenario. Bewerte oder diskutiere nicht die Anforderungen.
 
 Gib die Befunde strukturiert und sachlich wieder. Ergänze keine nicht angeforderten Untersuchungen.
 Beginne den Befund mit:
@@ -539,7 +574,7 @@ Beginne den Befund mit:
                 except RateLimitError:
                     st.error("🚫 Befunde konnten nicht generiert werden. Die OpenAI-API ist aktuell überlastet.")
 else:
-    st.subheader("📄 Ergebnisse der diagnostischen Maßnahmen (noch nicht verfügbar)")
+    st.subheader("📄 Befunde")
     st.button("🧪 Befunde generieren lassen", disabled=True)
     st.info("❗Bitte führen Sie zuerst die körperliche Untersuchung durch.")
 
@@ -550,8 +585,8 @@ else:
 if "befunde" in st.session_state:
     st.markdown("### Diagnose und Therapiekonzept")
     if st.session_state.final_diagnose.strip() and st.session_state.therapie_vorschlag.strip():
-        st.markdown(f"**Eingetragene Diagnose:**\n{st.session_state.final_diagnose}")
-        st.markdown(f"**Therapiekonzept:**\n{st.session_state.therapie_vorschlag}")
+        st.markdown(f"**Ihre Diagnose:**  \n{st.session_state.final_diagnose}")
+        st.markdown(f"**Therapiekonzept:**  \n{st.session_state.therapie_vorschlag}")
     else:
         with st.form("diagnose_therapie"):
             input_diag = st.text_input("Ihre endgültige Diagnose:")
@@ -567,7 +602,7 @@ if "befunde" in st.session_state:
 
 # Abschlussfeedback
 st.markdown("---")
-st.subheader("📋 Evaluation durch KI")
+st.subheader("📋 Feedback durch KI")
 
 diagnose_eingegeben = st.session_state.get("final_diagnose", "").strip() != ""
 therapie_eingegeben = st.session_state.get("therapie_vorschlag", "").strip() != ""
@@ -583,6 +618,7 @@ if diagnose_eingegeben and therapie_eingegeben:
             user_ddx2 = st.session_state.get("user_ddx2", "Keine Differentialdiagnosen angegeben.")
             user_diagnostics = st.session_state.get("user_diagnostics", "Keine diagnostischen Maßnahmen angegeben.")
             befunde = st.session_state.get("befunde", "Keine Befunde generiert.")
+            koerperlich_U = st.session_state.get("koerper_befund", "Keine Körperliche Untersuchung generiert")
             final_diagnose = st.session_state.get("final_diagnose", "Keine finale Diagnose eingegeben.")
             therapie_vorschlag = st.session_state.get("therapie_vorschlag", "Kein Therapiekonzept eingegeben.")
             user_verlauf = "\n".join([
@@ -600,6 +636,9 @@ Die zugrunde liegende Erkrankung im Szenario lautet: **{st.session_state.diagnos
 Hier ist der Gesprächsverlauf mit den Fragen und Aussagen des Nutzers:
 {user_verlauf}
 
+GPT-generierter körperlicher Untersuchungsbefund (nur als Hintergrund, bitte nicht bewerten):
+{koerperlich_U}
+
 Erhobene Differentialdiagnosen (Nutzerangaben):
 {user_ddx2}
 
@@ -607,6 +646,7 @@ Geplante diagnostische Maßnahmen (Nutzerangaben):
 {user_diagnostics}
 
 GPT-generierte Befunde (nur als Hintergrund, bitte nicht bewerten):
+{koerperlich_U}
 {befunde}
 
 Finale Diagnose (Nutzereingabe):
@@ -719,3 +759,5 @@ else:
 
 if st.session_state.final_feedback:
     student_feedback()
+
+copyright_footer()
