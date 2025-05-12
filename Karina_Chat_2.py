@@ -54,6 +54,22 @@ def lade_fall_aus_df(df, szenario=None):
     except Exception as e:
         st.error(f"❌ Fehler beim Laden des Falls: {e}")
 
+        # SYSTEM_PROMPT zusammenbauen
+        st.session_state.SYSTEM_PROMPT = f"""
+Patientensimulation – {st.session_state.diagnose_szenario}
+
+Du bist {st.session_state.patient_name}, eine {st.session_state.patient_age}-jährige {st.session_state.patient_job}.
+{st.session_state.patient_verhalten}. {st.session_state.patient_hauptanweisung}.
+
+{st.session_state.diagnose_features}
+"""
+
+        st.success(f"✅ Fall geladen: {fall['Szenario']}")
+
+    except Exception as e:
+        st.error(f"❌ Fehler beim Laden des Falls: {e}")
+
+
 def zeige_instruktionen_vor_start():
     st.session_state.setdefault("instruktion_bestätigt", False)
 
