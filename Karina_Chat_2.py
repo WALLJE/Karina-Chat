@@ -49,7 +49,8 @@ def fallauswahl_prompt(df, szenario=None):
 
         st.session_state.diagnose_szenario = fall["Szenario"]
         st.session_state.diagnose_features = fall["Beschreibung"]
-        st.session_state.koerper_befund = fall.get("Körperliche Untersuchung", "")
+        st.session_state.koerper_befund_tip = fall.get("Körperliche Untersuchung", "")
+        # Spalte Besonderheit noch offen
         st.success(f"✅ Zufälliger Fall geladen: {fall['Szenario']}")
 
         # SYSTEM_PROMPT korrekt hier, nicht im except-Block
@@ -461,6 +462,7 @@ if anzahl_fragen > 0:
             untersuchung_prompt = f"""
 Die Patientin hat eine zufällig simulierte Erkrankung. Diese lautet: {st.session_state.diagnose_szenario}.
 Weitere relevante anamnestische Hinweise: {st.session_state.diagnose_features}
+Zusatzinformationen: {st.session_state.koerper_befund_tip}
 Erstelle einen körperlichen Untersuchungsbefund, der zu dieser Erkrankung passt, ohne sie explizit zu nennen oder zu diagnostizieren. Berücksichtige Befunde, die sich aus den Zusatzinformationen ergeben könnten. 
 Erstelle eine klinisch konsistente Befundlage für die simulierte Erkankung. Interpretiere die Befund nicht, gibt keine Hinweise auf die Diagnose.
 
