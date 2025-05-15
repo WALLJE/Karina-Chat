@@ -25,16 +25,22 @@ from requests.auth import HTTPBasicAuth
 # Für einlesen Excel Datei
 from io import BytesIO
 
+# Für Einbinden Supabase Tabellen
 
+from supabase import create_client, Client
+# Supabase initialisieren
+supabase_url = st.secrets["supabase"]["url"]
+supabase_key = st.secrets["supabase"]["key"]
+supabase: Client = create_client(supabase_url, supabase_key)
 
-# API-Key setzen
+# Open AI API-Key setzen
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 # Zugriff via Streamlit Secrets
-nextcloud_url = st.secrets["nextcloud"]["url"]
-nextcloud_user = st.secrets["nextcloud"]["user"]
-nextcloud_token = st.secrets["nextcloud"]["token"]
-auth = HTTPBasicAuth(nextcloud_user, nextcloud_token)
+# nextcloud_url = st.secrets["nextcloud"]["url"]
+# nextcloud_user = st.secrets["nextcloud"]["user"]
+# nextcloud_token = st.secrets["nextcloud"]["token"]
+# auth = HTTPBasicAuth(nextcloud_user, nextcloud_token)
 
 # st.set_page_config(layout="wide") # breiter Bildschrim sieht nicht gut aus.
 
