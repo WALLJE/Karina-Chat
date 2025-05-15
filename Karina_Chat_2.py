@@ -241,9 +241,9 @@ def speichere_gpt_feedback_in_supabase():
     }
 
     try:
-        st.write("📤 Insert-Daten:", gpt_row)
+        # st.write("📤 Insert-Daten:", gpt_row)
         supabase.table("feedback_gpt").insert(gpt_row).execute()
-        st.success("✅ GPT-Feedback wurde in Supabase gespeichert.")
+        # st.success("✅ GPT-Feedback wurde in Supabase gespeichert.") # Für Debug
     except Exception as e:
         st.error(f"🚫 Fehler beim Speichern in Supabase: {repr(e)}")
 
