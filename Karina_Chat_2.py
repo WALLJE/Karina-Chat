@@ -298,7 +298,16 @@ def student_feedback():
         df_neu = pd.DataFrame([eintrag])
         dateiname = "feedback_studi_gesamt.csv"
         lokaler_pfad = os.path.join(os.getcwd(), dateiname)
-    
+
+# Neu: speichern in Supabase
+        try:
+            supabase.table("feedback_studierende").insert(eintrag).execute()
+            st.success("✅ Ihr Feedback wurde erfolgreich in Supabase gespeichert.")
+        except Exception as e:
+            st.error(f"🚫 Fehler beim Speichern in Supabase: {e}")
+
+
+# folgende Zeilen alt: Export in Steamlit.    
         # Zugriff via Streamlit Secrets bei inittierung eingefügt
         # nextcloud_url = st.secrets["nextcloud"]["url"]
         # nextcloud_user = st.secrets["nextcloud"]["user"]
@@ -306,27 +315,27 @@ def student_feedback():
         # auth = HTTPBasicAuth(nextcloud_user, nextcloud_token)
     
         # Versuche alte Datei zu laden
-        try:
-            r = requests.get(nextcloud_url + dateiname, auth=auth)
-            if r.status_code == 200:
-                with open(lokaler_pfad, "wb") as f:
-                    f.write(r.content)
-                df_alt = pd.read_csv(lokaler_pfad)
-                df = pd.concat([df_alt, df_neu], ignore_index=True)
-            else:
-                df = df_neu
-        except Exception:
-            df = df_neu
+        #try:
+        #    r = requests.get(nextcloud_url + dateiname, auth=auth)
+        #    if r.status_code == 200:
+        #        with open(lokaler_pfad, "wb") as f:
+        #            f.write(r.content)
+        #        df_alt = pd.read_csv(lokaler_pfad)
+        #        df = pd.concat([df_alt, df_neu], ignore_index=True)
+        #    else:
+        #        df = df_neu
+        #except Exception:
+        #    df = df_neu
     
         # Speichern und hochladen
-        df.to_csv(lokaler_pfad, sep=";", index=False, encoding="utf-8-sig")
-        with open(lokaler_pfad, 'rb') as f:
-            response = requests.put(nextcloud_url + dateiname, data=f, auth=auth)
+        #df.to_csv(lokaler_pfad, sep=";", index=False, encoding="utf-8-sig")
+        #with open(lokaler_pfad, 'rb') as f:
+        #    response = requests.put(nextcloud_url + dateiname, data=f, auth=auth)
     
-        if response.status_code in [200, 201, 204]:
-            st.success("✅ Ihr Feedback wurde erfolgreich gespeichert.")
-        else:
-            st.error(f"🚫 Fehler beim Upload: Status {response.status_code}")
+        #if response.status_code in [200, 201, 204]:
+        #    st.success("✅ Ihr Feedback wurde erfolgreich gespeichert.")
+        #else:
+        #    st.error(f"🚫 Fehler beim Upload: Status {response.status_code}")
             
 #def fallauswahl_prompt(df, szenario=None):
 #    if df.empty:
