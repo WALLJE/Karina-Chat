@@ -1,7 +1,7 @@
-# Version 13
+# Version 14
 #  
 # Features:
-# Feedback in owncloud gespeichert
+# Feedback in Supabase gespeichert
 # Einweisung Studierende mit Stopfunktion
 # Sprachkorrektur Diagnosen und Therapie
 # diverse Routinen defs
