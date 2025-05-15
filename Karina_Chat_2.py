@@ -25,6 +25,8 @@ from requests.auth import HTTPBasicAuth
 # Für einlesen Excel Datei
 from io import BytesIO
 
+
+
 # API-Key setzen
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
@@ -51,7 +53,8 @@ def fallauswahl_prompt(df, szenario=None):
         st.session_state.diagnose_features = fall["Beschreibung"]
         st.session_state.koerper_befund_tip = fall.get("Körperliche Untersuchung", "")
         # Spalte Besonderheit noch offen
-        st.success(f"✅ Zufälliger Fall geladen: {fall['Szenario']}")
+        # Mit der folgenden Zeile kann der Fall am Anfang zu Kontrollzwecken schon angezeigt werden
+        # st.success(f"✅ Zufälliger Fall geladen: {fall['Szenario']}")
 
         # SYSTEM_PROMPT korrekt hier, nicht im except-Block
         st.session_state.SYSTEM_PROMPT = f"""
