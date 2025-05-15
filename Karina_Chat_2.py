@@ -168,17 +168,66 @@ def initialisiere_session_state():
 #    st.session_state.setdefault("patient_hauptanweisung", "")
 
 
-def speichere_gpt_feedback_in_nextcloud():
-    csv_name = "feedback_gpt_gesamt.csv"
-    lokaler_csv_pfad = os.path.join(os.getcwd(), csv_name)
+#def speichere_gpt_feedback_in_nextcloud():
+#    csv_name = "feedback_gpt_gesamt.csv"
+#    lokaler_csv_pfad = os.path.join(os.getcwd(), csv_name)
+#    jetzt = datetime.now()
+#    start = st.session_state.get("startzeit", jetzt)
+#    bearbeitungsdauer = (jetzt - start).total_seconds() / 60  # in Minuten
+#    
+#    gpt_row = {
+#        "datum": jetzt.strftime("%Y-%m-%d"),
+#        "uhrzeit": jetzt.strftime("%H:%M:%S"),
+#        "bearbeitungsdauer_min": round(bearbeitungsdauer, 1),
+#       "szenario": st.session_state.get("diagnose_szenario", ""),
+#        "name": st.session_state.get("patient_name", ""),
+#        "alter": st.session_state.get("patient_age", ""),
+#        "beruf": st.session_state.get("patient_job", ""),
+#        "verhalten": st.session_state.get("patient_verhalten_memo", "unbekannt"),
+#        "verdachtsdiagnosen": st.session_state.get("user_ddx2", ""),
+#        "diagnostik": st.session_state.get("user_diagnostics", ""),
+#        "finale_diagnose": st.session_state.get("final_diagnose", ""),
+#        "therapie": st.session_state.get("therapie_vorschlag", ""),
+#        "gpt_feedback": st.session_state.get("final_feedback", "")
+#    }
+#
+#    df_neu = pd.DataFrame([gpt_row])
+#
+#    nextcloud_url = st.secrets["nextcloud"]["url"]
+#    nextcloud_user = st.secrets["nextcloud"]["user"]
+#    nextcloud_token = st.secrets["nextcloud"]["token"]
+#    auth = HTTPBasicAuth(nextcloud_user, nextcloud_token)
+#
+#    try:
+#        r = requests.get(nextcloud_url + csv_name, auth=auth)
+#        if r.status_code == 200:
+#            with open(lokaler_csv_pfad, "wb") as f:
+#                f.write(r.content)
+#            df_alt = pd.read_csv(lokaler_csv_pfad)
+#            df = pd.concat([df_alt, df_neu], ignore_index=True)
+#        else:
+#            df = df_neu
+#    except Exception:
+#        df = df_neu
+
+#    df.to_csv(lokaler_csv_pfad, sep=";", index=False, encoding="utf-8-sig")
+#    with open(lokaler_csv_pfad, "rb") as f:
+#        response = requests.put(nextcloud_url + csv_name, data=f, auth=auth)
+
+#    if response.status_code in [200, 201, 204]:
+#        st.success("✅ GPT-Feedback wurde in Nextcloud gespeichert.")
+#    else:
+#        st.error(f"🚫 Fehler beim Feedback-Upload: Status {response.status_code}")
+
+def speichere_gpt_feedback_in_supabase():
     jetzt = datetime.now()
     start = st.session_state.get("startzeit", jetzt)
-    bearbeitungsdauer = (jetzt - start).total_seconds() / 60  # in Minuten
-    
+    dauer_min = round((jetzt - start).total_seconds() / 60, 1)
+
     gpt_row = {
         "datum": jetzt.strftime("%Y-%m-%d"),
         "uhrzeit": jetzt.strftime("%H:%M:%S"),
-        "bearbeitungsdauer_min": round(bearbeitungsdauer, 1),
+        "bearbeitungsdauer_min": dauer_min,
         "szenario": st.session_state.get("diagnose_szenario", ""),
         "name": st.session_state.get("patient_name", ""),
         "alter": st.session_state.get("patient_age", ""),
@@ -191,33 +240,12 @@ def speichere_gpt_feedback_in_nextcloud():
         "gpt_feedback": st.session_state.get("final_feedback", "")
     }
 
-    df_neu = pd.DataFrame([gpt_row])
-
-    nextcloud_url = st.secrets["nextcloud"]["url"]
-    nextcloud_user = st.secrets["nextcloud"]["user"]
-    nextcloud_token = st.secrets["nextcloud"]["token"]
-    auth = HTTPBasicAuth(nextcloud_user, nextcloud_token)
-
     try:
-        r = requests.get(nextcloud_url + csv_name, auth=auth)
-        if r.status_code == 200:
-            with open(lokaler_csv_pfad, "wb") as f:
-                f.write(r.content)
-            df_alt = pd.read_csv(lokaler_csv_pfad)
-            df = pd.concat([df_alt, df_neu], ignore_index=True)
-        else:
-            df = df_neu
-    except Exception:
-        df = df_neu
+        supabase.table("feedback_gpt").insert(gpt_row).execute()
+        st.success("✅ GPT-Feedback wurde in Supabase gespeichert.")
+    except Exception as e:
+        st.error(f"🚫 Fehler beim Speichern in Supabase: {e}")
 
-    df.to_csv(lokaler_csv_pfad, sep=";", index=False, encoding="utf-8-sig")
-    with open(lokaler_csv_pfad, "rb") as f:
-        response = requests.put(nextcloud_url + csv_name, data=f, auth=auth)
-
-    if response.status_code in [200, 201, 204]:
-        st.success("✅ GPT-Feedback wurde in Nextcloud gespeichert.")
-    else:
-        st.error(f"🚫 Fehler beim Feedback-Upload: Status {response.status_code}")
 
 def student_feedback():
     st.markdown("---")
@@ -689,7 +717,7 @@ Nenne vorab das zugrunde liegende Szennario. Gib an, ob die Daignose richtig ges
                 )
                 final_feedback = eval_response.choices[0].message.content
                 st.session_state.final_feedback = final_feedback
-                speichere_gpt_feedback_in_nextcloud()
+                speichere_gpt_feedback_in_supabase()
                 st.session_state.feedback_prompt_final = feedback_prompt_final
                 st.success("✅ Evaluation erstellt")
                 st.rerun()
