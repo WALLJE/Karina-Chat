@@ -241,6 +241,7 @@ def speichere_gpt_feedback_in_supabase():
     }
 
     try:
+        st.write("Typen:", type(gpt_row["alter"]), type(gpt_row["bearbeitungsdauer_min"]))
         supabase.table("feedback_gpt").insert(gpt_row).execute()
         st.success("✅ GPT-Feedback wurde in Supabase gespeichert.")
     except Exception as e:
@@ -444,6 +445,7 @@ if "startzeit" not in st.session_state:
 # st.write("Szenario:", st.session_state.diagnose_szenario)
 # st.write("Features:", st.session_state.diagnose_features)
 # st.write("Prompt:", st.session_state.SYSTEM_PROMPT)
+
 speichere_gpt_feedback_in_supabase()
 
 
