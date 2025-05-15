@@ -303,7 +303,7 @@ def student_feedback():
 # Neu: speichern in Supabase
         try:
             supabase.table("feedback_studi").insert(eintrag).execute()
-            st.success("✅ Ihr Feedback wurde erfolgreich in Supabase gespeichert.")
+            st.success("✅ Vielen Dank, Ihr Feedback wurde gespeichert.")
         except Exception as e:
             st.error(f"🚫 Fehler beim Speichern in Supabase: {repr(e)}")
 
@@ -658,7 +658,7 @@ therapie_eingegeben = st.session_state.get("therapie_vorschlag", "").strip() != 
 if diagnose_eingegeben and therapie_eingegeben:
     if st.session_state.get("final_feedback", "").strip():
         # Feedback wurde schon erzeugt
-        st.success("✅ Evaluation abgeschlossen.")
+        # st.success("✅ Feedback erstellt.")
         st.markdown("### Strukturierte Rückmeldung zur Fallbearbeitung:")
         st.markdown(st.session_state.final_feedback)
     else:
