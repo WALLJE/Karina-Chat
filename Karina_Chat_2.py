@@ -244,7 +244,7 @@ def speichere_gpt_feedback_in_supabase():
         supabase.table("feedback_gpt").insert(gpt_row).execute()
         st.success("✅ GPT-Feedback wurde in Supabase gespeichert.")
     except Exception as e:
-        st.error(f"🚫 Fehler beim Speichern in Supabase: {e}")
+        st.error(f"🚫 Fehler beim Speichern in Supabase: {repr(e)}")
 
 
 def student_feedback():
@@ -295,16 +295,16 @@ def student_feedback():
             "gpt_feedback": st.session_state.get("final_feedback", "Kein KI-Feedback erzeugt")
         }
     
-        df_neu = pd.DataFrame([eintrag])
-        dateiname = "feedback_studi_gesamt.csv"
-        lokaler_pfad = os.path.join(os.getcwd(), dateiname)
+        #df_neu = pd.DataFrame([eintrag])
+        #dateiname = "feedback_studi_gesamt.csv"
+        #lokaler_pfad = os.path.join(os.getcwd(), dateiname)
 
 # Neu: speichern in Supabase
         try:
-            supabase.table("feedback_studierende").insert(eintrag).execute()
+            supabase.table("feedback_studi").insert(eintrag).execute()
             st.success("✅ Ihr Feedback wurde erfolgreich in Supabase gespeichert.")
         except Exception as e:
-            st.error(f"🚫 Fehler beim Speichern in Supabase: {e}")
+            st.error(f"🚫 Fehler beim Speichern in Supabase: {repr(e)}")
 
 
 # folgende Zeilen alt: Export in Steamlit.    
