@@ -440,10 +440,11 @@ st.markdown("<br>", unsafe_allow_html=True)
 if "startzeit" not in st.session_state:
     st.session_state.startzeit = datetime.now()
 
-# Debug
+####### Debug
 # st.write("Szenario:", st.session_state.diagnose_szenario)
 # st.write("Features:", st.session_state.diagnose_features)
 # st.write("Prompt:", st.session_state.SYSTEM_PROMPT)
+speichere_gpt_feedback_in_supabase()
 
 
 # Chat-Verlauf starten
