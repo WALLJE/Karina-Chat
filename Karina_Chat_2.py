@@ -168,57 +168,6 @@ def initialisiere_session_state():
 #    st.session_state.setdefault("patient_hauptanweisung", "")
 
 
-#def speichere_gpt_feedback_in_nextcloud():
-#    csv_name = "feedback_gpt_gesamt.csv"
-#    lokaler_csv_pfad = os.path.join(os.getcwd(), csv_name)
-#    jetzt = datetime.now()
-#    start = st.session_state.get("startzeit", jetzt)
-#    bearbeitungsdauer = (jetzt - start).total_seconds() / 60  # in Minuten
-#    
-#    gpt_row = {
-#        "datum": jetzt.strftime("%Y-%m-%d"),
-#        "uhrzeit": jetzt.strftime("%H:%M:%S"),
-#        "bearbeitungsdauer_min": round(bearbeitungsdauer, 1),
-#       "szenario": st.session_state.get("diagnose_szenario", ""),
-#        "name": st.session_state.get("patient_name", ""),
-#        "alter": st.session_state.get("patient_age", ""),
-#        "beruf": st.session_state.get("patient_job", ""),
-#        "verhalten": st.session_state.get("patient_verhalten_memo", "unbekannt"),
-#        "verdachtsdiagnosen": st.session_state.get("user_ddx2", ""),
-#        "diagnostik": st.session_state.get("user_diagnostics", ""),
-#        "finale_diagnose": st.session_state.get("final_diagnose", ""),
-#        "therapie": st.session_state.get("therapie_vorschlag", ""),
-#        "gpt_feedback": st.session_state.get("final_feedback", "")
-#    }
-#
-#    df_neu = pd.DataFrame([gpt_row])
-#
-#    nextcloud_url = st.secrets["nextcloud"]["url"]
-#    nextcloud_user = st.secrets["nextcloud"]["user"]
-#    nextcloud_token = st.secrets["nextcloud"]["token"]
-#    auth = HTTPBasicAuth(nextcloud_user, nextcloud_token)
-#
-#    try:
-#        r = requests.get(nextcloud_url + csv_name, auth=auth)
-#        if r.status_code == 200:
-#            with open(lokaler_csv_pfad, "wb") as f:
-#                f.write(r.content)
-#            df_alt = pd.read_csv(lokaler_csv_pfad)
-#            df = pd.concat([df_alt, df_neu], ignore_index=True)
-#        else:
-#            df = df_neu
-#    except Exception:
-#        df = df_neu
-
-#    df.to_csv(lokaler_csv_pfad, sep=";", index=False, encoding="utf-8-sig")
-#    with open(lokaler_csv_pfad, "rb") as f:
-#        response = requests.put(nextcloud_url + csv_name, data=f, auth=auth)
-
-#    if response.status_code in [200, 201, 204]:
-#        st.success("✅ GPT-Feedback wurde in Nextcloud gespeichert.")
-#    else:
-#        st.error(f"🚫 Fehler beim Feedback-Upload: Status {response.status_code}")
-
 def speichere_gpt_feedback_in_supabase():
     jetzt = datetime.now()
     start = st.session_state.get("startzeit", jetzt)
@@ -261,7 +210,8 @@ def student_feedback():
         f2 = st.radio("2. Wie hilfreich war die Simulation für das Training der Anamnese?", [1, 2, 3, 4, 5, 6], horizontal=True)
         f3 = st.radio("3. Wie verständlich und relevant war das automatische Feedback?", [1, 2, 3, 4, 5, 6], horizontal=True)
         f4 = st.radio("4. Wie bewerten Sie den didaktischen Gesamtwert der Simulation?", [1, 2, 3, 4, 5, 6], horizontal=True)
-        f6 = st.radio("6. Wie bewerten Sie den didaktischen Gesamtwert der Simulation?", [1, 2, 3, 4, 5, 6], horizontal=True)
+        # f6 nicht definiert.
+        # f6 = st.radio("5. Wie bewerten Sie den didaktischen Gesamtwert der Simulation?", [1, 2, 3, 4, 5, 6], horizontal=True)
         f5 = st.radio("5. Wie schwierig fanden Sie den Fall? \n\n *1 -sehr einfach 6 - sehr schwer?*", [1, 2, 3, 4, 5, 6], horizontal=True)
         f7 = st.selectbox(
             "In welchem Semester befinden Sie sich aktuell?",
@@ -307,53 +257,6 @@ def student_feedback():
         except Exception as e:
             st.error(f"🚫 Fehler beim Speichern in Supabase: {repr(e)}")
 
-
-# folgende Zeilen alt: Export in Steamlit.    
-        # Zugriff via Streamlit Secrets bei inittierung eingefügt
-        # nextcloud_url = st.secrets["nextcloud"]["url"]
-        # nextcloud_user = st.secrets["nextcloud"]["user"]
-        # nextcloud_token = st.secrets["nextcloud"]["token"]
-        # auth = HTTPBasicAuth(nextcloud_user, nextcloud_token)
-    
-        # Versuche alte Datei zu laden
-        #try:
-        #    r = requests.get(nextcloud_url + dateiname, auth=auth)
-        #    if r.status_code == 200:
-        #        with open(lokaler_pfad, "wb") as f:
-        #            f.write(r.content)
-        #        df_alt = pd.read_csv(lokaler_pfad)
-        #        df = pd.concat([df_alt, df_neu], ignore_index=True)
-        #    else:
-        #        df = df_neu
-        #except Exception:
-        #    df = df_neu
-    
-        # Speichern und hochladen
-        #df.to_csv(lokaler_pfad, sep=";", index=False, encoding="utf-8-sig")
-        #with open(lokaler_pfad, 'rb') as f:
-        #    response = requests.put(nextcloud_url + dateiname, data=f, auth=auth)
-    
-        #if response.status_code in [200, 201, 204]:
-        #    st.success("✅ Ihr Feedback wurde erfolgreich gespeichert.")
-        #else:
-        #    st.error(f"🚫 Fehler beim Upload: Status {response.status_code}")
-            
-#def fallauswahl_prompt(df, szenario=None):
-#    if df.empty:
-#        st.error("📄 Die Falltabelle ist leer oder konnte nicht geladen werden.")
-#        return
-#    try:
-#        if szenario:
-#           fall = df[df["Szenario"] == szenario].iloc[0]
-#        else:
-#            fall = df.sample(1).iloc[0]
-#
-#        st.session_state.diagnose_szenario = fall["Szenario"]
-#        st.session_state.diagnose_features = fall["Beschreibung"]
-#        st.session_state.koerper_befund = fall.get("Körperliche Untersuchung", "")
-#        st.success(f"✅ Zufälliger Fall geladen: {fall['Szenario']}")
-#    except Exception as e:
-#        st.error(f"❌ Fehler beim Laden des Falls: {e}")
 
 def copyright_footer():
     st.markdown(
@@ -445,7 +348,7 @@ if "startzeit" not in st.session_state:
 # st.write("Szenario:", st.session_state.diagnose_szenario)
 # st.write("Features:", st.session_state.diagnose_features)
 # st.write("Prompt:", st.session_state.SYSTEM_PROMPT)
-speichere_gpt_feedback_in_supabase()
+# speichere_gpt_feedback_in_supabase()
 
 
 # Chat-Verlauf starten
@@ -798,11 +701,7 @@ if "final_feedback" in st.session_state:
 else:
     st.info("💬 Das Protokoll kann nach der Evaluation heruntergeladen werden.")
 
-
-
-
 # Abschnitt: Evaluation durch Studierende mit Schulnoten und Sammeldatei
-# 
 
 if st.session_state.final_feedback:
     student_feedback()
