@@ -41,7 +41,7 @@ Gib die Befunde strukturiert und sachlich wieder. Ergänze keine nicht angeforde
                     befund = response.choices[0].message.content
                     st.session_state[f"befunde_runde_{runde}"] = befund
                     st.session_state["diagnostik_runden_gesamt"] = runde
-                    st.experimental_rerun()
+                    st.rerun()
 
         # Befund anzeigen
         if befund_existiert:
@@ -57,7 +57,7 @@ Gib die Befunde strukturiert und sachlich wieder. Ergänze keine nicht angeforde
             )
             if weitere == "Ja":
                 st.session_state["diagnostik_runden_gesamt"] = runde + 1
-                st.experimental_rerun()
+                st.rerun()
 
     # --- Zusammenfassung ---
     diagnostik_eingaben = ""
