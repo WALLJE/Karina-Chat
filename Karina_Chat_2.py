@@ -587,7 +587,6 @@ if diagnose_eingegeben and therapie_eingegeben:
             user_verlauf = "\n".join([
                 msg["content"] for msg in st.session_state.messages
                 if msg["role"] == "user"
-            diagnostik_und_befunde_routine(client)
             user_diagnostics, gpt_befunde = diagnostik_und_befunde_routine(client, start_runde=2)
             anzahl_runden = st.session_state.get("diagnostik_runden_gesamt", 1)
             ])
