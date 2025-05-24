@@ -292,10 +292,10 @@ initialisiere_session_state()
 
 #####
 # Testlauf
-diagnostik_und_befunde_routine(client)
-diagnostik_eingaben, gpt_befunde = diagnostik_und_befunde_routine(client, start_runde=2)
-anzahl_runden = st.session_state.get("diagnostik_runden_gesamt", 1)
-st.write ("Status:", diagnostik_eingaben, gpt_befunde, anzahl_runden)
+# diagnostik_und_befunde_routine(client)
+# diagnostik_eingaben, gpt_befunde = diagnostik_und_befunde_routine(client, start_runde=2)
+# anzahl_runden = st.session_state.get("diagnostik_runden_gesamt", 1)
+# st.write ("Status:", diagnostik_eingaben, gpt_befunde, anzahl_runden)
 #####
 
 # Zufälliger Patientenname und Alter
@@ -579,17 +579,19 @@ if diagnose_eingegeben and therapie_eingegeben:
     else:
         if st.button("📋 Abschluss-Feedback anzeigen"):
             user_ddx2 = st.session_state.get("user_ddx2", "Keine Differentialdiagnosen angegeben.")
-            user_diagnostics = st.session_state.get("user_diagnostics", "Keine diagnostischen Maßnahmen angegeben.")
-            befunde = st.session_state.get("befunde", "Keine Befunde generiert.")
+            # user_diagnostics = st.session_state.get("user_diagnostics", "Keine diagnostischen Maßnahmen angegeben.")
+            # befunde = st.session_state.get("befunde", "Keine Befunde generiert.")
             koerperlich_U = st.session_state.get("koerper_befund", "Keine Körperliche Untersuchung generiert")
             final_diagnose = st.session_state.get("final_diagnose", "Keine finale Diagnose eingegeben.")
             therapie_vorschlag = st.session_state.get("therapie_vorschlag", "Kein Therapiekonzept eingegeben.")
             user_verlauf = "\n".join([
                 msg["content"] for msg in st.session_state.messages
                 if msg["role"] == "user"
+            diagnostik_und_befunde_routine(client)
+            user_diagnostics, gpt_befunde = diagnostik_und_befunde_routine(client, start_runde=2)
+            anzahl_runden = st.session_state.get("diagnostik_runden_gesamt", 1)
             ])
-           
-
+          
             feedback_prompt_final = f"""
 Ein Medizinstudierender hat eine vollständige virtuelle Fallbesprechung mit einer Patientin durchgeführt. Du bist ein erfahrener medizinischer Prüfer.
 
@@ -606,12 +608,15 @@ GPT-generierter körperlicher Untersuchungsbefund (nur als Hintergrund, bitte ni
 Erhobene Differentialdiagnosen (Nutzerangaben):
 {user_ddx2}
 
-Geplante diagnostische Maßnahmen (Nutzerangaben):
-{user_diagnostics}
+Diagnostische Maßnahmen (Nutzerangaben):
+{diagnostik_eingaben}
+
+Notwendige Untersuchungstermine
+{anzahl_runden}
 
 GPT-generierte Befunde (nur als Hintergrund, bitte nicht bewerten):
 {koerperlich_U}
-{befunde}
+{gpt_befunde}
 
 Finale Diagnose (Nutzereingabe):
 {final_diagnose}
@@ -631,8 +636,9 @@ Nenne vorab das zugrunde liegende Szennario. Gib an, ob die Daignose richtig ges
 5. Ist das Therapiekonzept leitliniengerecht, plausibel und auf die Diagnose abgestimmt?
 
 **Berücksichtige und kommentiere zusätzlich**:
-- ökologische Aspekte (z. B. überflüssige Diagnostik, zuviele Anforderungen, CO₂-Bilanz, Strahlenbelastung bei CT oder Röntgen, Ressourcenverbrauch)
+- ökologische Aspekte (z. B. überflüssige Diagnostik, zuviele Anforderungen, zuviele Termine, CO₂-Bilanz, Strahlenbelastung bei CT oder Röntgen, Ressourcenverbrauch).  
 - ökonomische Sinnhaftigkeit (Kosten-Nutzen-Verhältnis)
+- Beachte und begründe auch, warum zuwenig Diagnostik unwirtschaftlich und nicht nachhaltig sein kann.
 
 """
         # muss eingerückt bleiben
