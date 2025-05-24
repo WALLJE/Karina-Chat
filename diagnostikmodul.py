@@ -48,17 +48,6 @@ Gib die Befunde strukturiert und sachlich wieder. Ergänze keine nicht angeforde
             st.markdown("✅ **Befunde für diesen Termin:**")
             st.markdown(st.session_state[f"befunde_runde_{runde}"])
 
-        # Radiobutton nur in aktiver Runde anzeigen
-        if befund_existiert and runde == aktive_runde:
-            weitere = st.radio(
-                f"Möchten Sie weitere Diagnostik nach Termin {runde} anfordern?",
-                ["Nein", "Ja"],
-                key=f"weiter_diag_{runde}"
-            )
-            if weitere == "Ja":
-                st.session_state["diagnostik_runden_gesamt"] = runde + 1
-                st.rerun()
-
     # --- Zusammenfassung ---
     diagnostik_eingaben = ""
     gpt_befunde = ""
