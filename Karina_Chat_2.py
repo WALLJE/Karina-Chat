@@ -36,6 +36,9 @@ supabase: Client = create_client(supabase_url, supabase_key)
 # Open AI API-Key setzen
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
+# externe Codes einbinden
+from diagnostikmodul import diagnostik_und_befunde_routine
+
 # Zugriff via Streamlit Secrets
 # nextcloud_url = st.secrets["nextcloud"]["url"]
 # nextcloud_user = st.secrets["nextcloud"]["user"]
@@ -286,6 +289,11 @@ def copyright_footer():
 
 #---------------- Routinen Ende -------------------
 initialisiere_session_state()
+
+#####
+# Testlauf
+diagnostik_und_befunde_routine(client)
+#####
 
 # Zufälliger Patientenname und Alter
 if "patient_name" not in st.session_state:
