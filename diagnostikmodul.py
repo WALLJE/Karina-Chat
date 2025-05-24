@@ -4,7 +4,7 @@ import streamlit as st
 from openai import OpenAI
 
 def diagnostik_und_befunde_routine(client: OpenAI, runde=1):
-    st.markdown(f"### 🔎 Diagnostik-Runde {runde}")
+    st.markdown(f"### 🔎 Diagnostik - Termin {runde}")
     
     with st.form(f"diagnostik_formular_runde_{runde}"):
         neue_diagnostik = st.text_area("Welche zusätzlichen diagnostischen Maßnahmen möchten Sie anfordern?")
@@ -23,7 +23,7 @@ Erstelle ausschließlich Befunde zu diesen Maßnahmen..."""
             response = client.chat.completions.create(
                 model="gpt-4",
                 messages=[{"role": "user", "content": prompt}],
-                temperature=0.5
+                temperature=0.4
             )
             befund = response.choices[0].message.content
             st.session_state[f"befunde_runde_{runde}"] = befund
@@ -31,6 +31,6 @@ Erstelle ausschließlich Befunde zu diesen Maßnahmen..."""
             st.markdown(befund)
 
     if st.session_state.get(f"befunde_runde_{runde}", ""):
-        weitere = st.radio(f"Möchten Sie weitere Diagnostik nach Runde {runde} anfordern?", ["Nein", "Ja"], key=f"weiter_diag_{runde}")
+        weitere = st.radio(f"Möchten Sie weitere Diagnostik {runde} anfordern?", ["Nein", "Ja"], key=f"weiter_diag_{runde}")
         if weitere == "Ja":
             diagnostik_und_befunde_routine(client, runde=runde+1)
