@@ -578,6 +578,11 @@ if diagnose_eingegeben and therapie_eingegeben:
         st.markdown(st.session_state.final_feedback)
     else:
         if st.button("📋 Abschluss-Feedback anzeigen"):
+            # Diagnostikverlauf erzeugen
+            user_diagnostics, gpt_befunde = diagnostik_und_befunde_routine(client, start_runde=2)
+            anzahl_runden = st.session_state.get("diagnostik_runden_gesamt", 1)
+
+            # weitere Variablen sammeln
             user_ddx2 = st.session_state.get("user_ddx2", "Keine Differentialdiagnosen angegeben.")
             # user_diagnostics = st.session_state.get("user_diagnostics", "Keine diagnostischen Maßnahmen angegeben.")
             # befunde = st.session_state.get("befunde", "Keine Befunde generiert.")
@@ -587,8 +592,6 @@ if diagnose_eingegeben and therapie_eingegeben:
             user_verlauf = "\n".join([
                 msg["content"] for msg in st.session_state.messages
                 if msg["role"] == "user"
-            user_diagnostics, gpt_befunde = diagnostik_und_befunde_routine(client, start_runde=2)
-            anzahl_runden = st.session_state.get("diagnostik_runden_gesamt", 1)
             ])
           
             feedback_prompt_final = f"""
