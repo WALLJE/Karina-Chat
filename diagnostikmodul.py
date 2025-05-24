@@ -30,7 +30,7 @@ Erstelle ausschließlich Befunde zu den genannten Untersuchungen. Falls **Laborw
 **Wichtig:** Interpretationen oder Diagnosen sind nicht erlaubt. Nenne auf keinen Fall das Diagnose-Szenario. Bewerte oder diskutiere nicht die Anforderungen.
 
 Gib die Befunde strukturiert und sachlich wieder. Ergänze keine nicht angeforderten Untersuchungen."""
-
+# Nach dem GPT-Befund
                 with st.spinner("GPT erstellt Befunde..."):
                     response = client.chat.completions.create(
                         model="gpt-4",
@@ -41,8 +41,9 @@ Gib die Befunde strukturiert und sachlich wieder. Ergänze keine nicht angeforde
                     st.session_state[f"befunde_runde_{runde}"] = befund
                     st.success("✅ Zusätzliche Befunde erstellt")
                     st.markdown(befund)
-
-                st.session_state["diagnostik_runden_gesamt"] = runde
+                
+                    st.session_state["diagnostik_runden_gesamt"] = runde
+                    st.rerun()  # 🔁 App sofort neu laden – Eingabefeld verschwindet
 
         if befund_existiert:
             st.markdown("✅ **Befunde für diese Runde:**")
