@@ -38,6 +38,6 @@ Gib die Befunde strukturiert und sachlich wieder. Ergänze keine nicht angeforde
             st.markdown(befund)
 
     if st.session_state.get(f"befunde_runde_{runde}", ""):
-        weitere = st.radio(f"Möchten Sie weitere Diagnostik {runde} anfordern?", ["Nein", "Ja"], key=f"weiter_diag_{runde}")
+        weitere = st.radio(f"Möchten Sie weitere Untersuchungen anfordern?", ["Nein", "Ja"], key=f"weiter_diag_{runde}")
         if weitere == "Ja":
             diagnostik_und_befunde_routine(client, runde=runde+1)
