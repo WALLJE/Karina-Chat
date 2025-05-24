@@ -6,7 +6,7 @@ def diagnostik_und_befunde_routine(client: OpenAI, start_runde=2):
     aktuelle_runde = st.session_state.get("diagnostik_runden_gesamt", start_runde - 1)
 
     for runde in range(start_runde, aktuelle_runde + 2):
-        st.markdown(f"### 🔎 Diagnostik – Termin {runde}")
+        # st.markdown(f"### 🔎 Diagnostik – Termin {runde}")
         befund_existiert = f"befunde_runde_{runde}" in st.session_state
         aktive_runde = st.session_state.get("diagnostik_runden_gesamt", 1)
 
@@ -45,7 +45,7 @@ Gib die Befunde strukturiert und sachlich wieder. Ergänze keine nicht angeforde
 
         # Befund anzeigen
         if befund_existiert:
-            st.markdown("✅ **Befunde für diesen Termin:**")
+            # st.markdown("✅ **Befunde für diesen Termin:**")
             st.markdown(st.session_state[f"befunde_runde_{runde}"])
 
     # --- Zusammenfassung ---
