@@ -540,8 +540,9 @@ else:
     st.info("❗Bitte führen Sie zuerst die körperliche Untersuchung durch.")
 
 # Weitere Diagnostik-Termine 
-diagnostik_eingaben, gpt_befunde = diagnostik_und_befunde_routine(client, start_runde=2)
-
+if not st.session_state.get("final_diagnose", "").strip():
+    diagnostik_eingaben, gpt_befunde = diagnostik_und_befunde_routine(client, start_runde=2)
+    
 # Ergebnis  speichern (für GPT-Feedback, Download etc.)
 st.session_state["diagnostik_eingaben"] = diagnostik_eingaben
 st.session_state["gpt_befunde"] = gpt_befunde
