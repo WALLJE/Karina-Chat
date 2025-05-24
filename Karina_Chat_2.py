@@ -539,14 +539,12 @@ else:
     st.button("🧪 Befunde generieren lassen", disabled=True)
     st.info("❗Bitte führen Sie zuerst die körperliche Untersuchung durch.")
 
-#weitere Befundanforderungen
-if "diagnostik_eingaben" not in st.session_state:
-    diagnostik_eingaben, gpt_befunde = diagnostik_und_befunde_routine(client, start_runde=2)
-    st.session_state["diagnostik_eingaben"] = diagnostik_eingaben
-    st.session_state["gpt_befunde"] = gpt_befunde
-else:
-    diagnostik_eingaben = st.session_state["diagnostik_eingaben"]
-    gpt_befunde = st.session_state["gpt_befunde"]
+# Weitere Diagnostik-Termine 
+diagnostik_eingaben, gpt_befunde = diagnostik_und_befunde_routine(client, start_runde=2)
+
+# Ergebnis  speichern (für GPT-Feedback, Download etc.)
+st.session_state["diagnostik_eingaben"] = diagnostik_eingaben
+st.session_state["gpt_befunde"] = gpt_befunde
 
 # Diagnose und Therapie
 if "befunde" in st.session_state:
@@ -581,7 +579,7 @@ if diagnose_eingegeben and therapie_eingegeben:
         st.markdown(st.session_state.final_feedback)
     else:
         if st.button("📋 Abschluss-Feedback anzeigen"):
-
+            anzahl_termine = st.session_state.get("diagnostik_runden_gesamt", 1)
             # Variablen sammeln
             user_ddx2 = st.session_state.get("user_ddx2", "Keine Differentialdiagnosen angegeben.")
             # user_diagnostics = st.session_state.get("user_diagnostics", "Keine diagnostischen Maßnahmen angegeben.")
@@ -614,7 +612,7 @@ Diagnostische Maßnahmen (Nutzerangaben):
 {diagnostik_eingaben}
 
 Notwendige Untersuchungstermine
-{anzahl_runden}
+{anzahl_termine}
 
 GPT-generierte Befunde (nur als Hintergrund, bitte nicht bewerten):
 {koerperlich_U}
