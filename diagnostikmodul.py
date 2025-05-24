@@ -17,7 +17,14 @@ def diagnostik_und_befunde_routine(client: OpenAI, runde=1):
         szenario = st.session_state.get("diagnose_szenario", "")
         prompt = f"""Die Patientin hat laut Szenario: {szenario}.
 Folgende zusätzliche Diagnostik wurde angefordert:\n{neue_diagnostik}
-Erstelle ausschließlich Befunde zu diesen Maßnahmen..."""
+
+Erstelle ausschließlich Befunde zu den genannten Untersuchungen. Falls **Laborwerte** angefordert wurden, gib  diese **ausschliesslich in einer strukturierten Tabelle** aus, verwende dabei immer das Internationale Einheitensystem SI und dieses Tabellenformat:
+
+**Parameter** | **Wert** | **Referenzbereich (SI-Einheit)**. 
+
+**Wichtig:** Interpretationen oder das Nennen von Diagnosen sind nicht erlaubt. Nenne auf keinen Fall das Diagnose-Szenario. Bewerte oder diskutiere nicht die Anforderungen.
+
+Gib die Befunde strukturiert und sachlich wieder. Ergänze keine nicht angeforderten Untersuchungen. Erstelle ausschließlich Befunde zu diesen Maßnahmen."""
 
         with st.spinner("GPT erstellt Befunde..."):
             response = client.chat.completions.create(
