@@ -295,7 +295,7 @@ initialisiere_session_state()
 diagnostik_und_befunde_routine(client)
 diagnostik_eingaben, gpt_befunde = diagnostik_und_befunde_routine(client, runde=2)
 anzahl_runden = st.session_state.get("diagnostik_runden_gesamt", 1)
-st.write ("Status:"diagnostik_eingaben, gpt_befunde, anzahl_runden)
+st.write ("Status:", diagnostik_eingaben, gpt_befunde, anzahl_runden)
 #####
 
 # Zufälliger Patientenname und Alter
