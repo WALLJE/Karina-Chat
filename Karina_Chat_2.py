@@ -585,26 +585,7 @@ if diagnose_eingegeben and therapie_eingegeben:
                 msg["content"] for msg in st.session_state.messages
                 if msg["role"] == "user"
             ])
-
-#Befunde zusammenfügen            
-            alle_befunde = ""
-            
-            # Runde 1 (erste Diagnostik, die nicht in der Wiederholungsroutine lief)
-            befund_1 = st.session_state.get("befunde", "")
-            if befund_1:
-                alle_befunde += "\n---\n📄 Befunde Runde 1:\n"
-                alle_befunde += befund_1
-            
-            # Folge-Runden aus der Routine
-            for i in range(2, 10):
-                if f"befunde_runde_{i}" in st.session_state:
-                    alle_befunde += f"\n---\n📄 Befunde Termin {i}:\n"
-                    alle_befunde += st.session_state[f"befunde_runde_{i}"]
-                    diag = st.session_state.get(f"diagnostik_runde_{i}", "")
-                    if diag:
-                        alle_befunde += f"\n🧪 Angeforderte Diagnostik:\n{diag}\n"
-
-            
+           
 
             feedback_prompt_final = f"""
 Ein Medizinstudierender hat eine vollständige virtuelle Fallbesprechung mit einer Patientin durchgeführt. Du bist ein erfahrener medizinischer Prüfer.
