@@ -539,8 +539,14 @@ else:
     st.button("🧪 Befunde generieren lassen", disabled=True)
     st.info("❗Bitte führen Sie zuerst die körperliche Untersuchung durch.")
 
-
-
+#weitere Befundanforderungen
+if "diagnostik_eingaben" not in st.session_state:
+    diagnostik_eingaben, gpt_befunde = diagnostik_und_befunde_routine(client, start_runde=2)
+    st.session_state["diagnostik_eingaben"] = diagnostik_eingaben
+    st.session_state["gpt_befunde"] = gpt_befunde
+else:
+    diagnostik_eingaben = st.session_state["diagnostik_eingaben"]
+    gpt_befunde = st.session_state["gpt_befunde"]
 
 # Diagnose und Therapie
 if "befunde" in st.session_state:
@@ -560,9 +566,6 @@ if "befunde" in st.session_state:
             st.success("✅ Entscheidung gespeichert")
             st.rerun()
 
-
-
-
 # Abschlussfeedback
 st.markdown("---")
 st.subheader("📋 Feedback durch KI")
@@ -578,11 +581,8 @@ if diagnose_eingegeben and therapie_eingegeben:
         st.markdown(st.session_state.final_feedback)
     else:
         if st.button("📋 Abschluss-Feedback anzeigen"):
-            # Diagnostikverlauf erzeugen
-            user_diagnostics, gpt_befunde = diagnostik_und_befunde_routine(client, start_runde=2)
-            anzahl_runden = st.session_state.get("diagnostik_runden_gesamt", 1)
 
-            # weitere Variablen sammeln
+            # Variablen sammeln
             user_ddx2 = st.session_state.get("user_ddx2", "Keine Differentialdiagnosen angegeben.")
             # user_diagnostics = st.session_state.get("user_diagnostics", "Keine diagnostischen Maßnahmen angegeben.")
             # befunde = st.session_state.get("befunde", "Keine Befunde generiert.")
