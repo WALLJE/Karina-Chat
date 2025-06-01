@@ -4,11 +4,13 @@ from openai import OpenAI
 
 def diagnostik_und_befunde_routine(client: OpenAI, start_runde=2):
     aktuelle_runde = st.session_state.get("diagnostik_runden_gesamt", start_runde - 1)
-# DEBUG
-    st.write(f"🛠️ Aktuelle Runde: {runde}, Aktive Runde: {aktive_runde}, Key: diagnostik_formular_runde_{runde}_{aktive_runde}")
-#
+
     for runde in range(start_runde, aktuelle_runde + 2):
+        # DEBUG
         # st.markdown(f"### 🔎 Diagnostik – Termin {runde}")
+        # DEBUG
+        st.write(f"🛠️ Aktuelle Runde: {runde}, Aktive Runde: {aktive_runde}, Key: diagnostik_formular_runde_{runde}_{aktive_runde}")
+        #
         befund_existiert = f"befunde_runde_{runde}" in st.session_state
         aktive_runde = st.session_state.get("diagnostik_runden_gesamt", 1)
 
