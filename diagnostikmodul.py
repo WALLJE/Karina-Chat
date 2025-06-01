@@ -29,6 +29,7 @@ def diagnostik_und_befunde_routine(client: OpenAI, start_runde=2):
             not befund_existiert
             and runde not in vorhandene_runden
             and st.session_state.get("diagnostik_aktiv", False)
+            and weitere_diagnostik_aktiv  # <-- neue Kontrolle, amit macht das Modul nur dann neue Formulare, wenn es explizit zulässt.
         ):
             with st.form(f"diagnostik_formular_runde_{runde}"):
                 neue_diagnostik = st.text_area("Welche zusätzlichen diagnostischen Maßnahmen möchten Sie anfordern?")
