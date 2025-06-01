@@ -641,6 +641,10 @@ if diagnose_eingegeben and therapie_eingegeben:
         st.markdown(st.session_state.final_feedback)
     else:
         if st.button("📋 Abschluss-Feedback anzeigen"):
+            # Rückfall auf gespeicherte Diagnostik-Eingaben, falls nötig
+            diagnostik_eingaben = st.session_state.get("diagnostik_eingaben", "Keine weiteren diagnostischen Maßnahmen gespeichert.")
+            gpt_befunde = st.session_state.get("gpt_befunde", "")
+
             anzahl_termine = st.session_state.get("diagnostik_runden_gesamt", 1)
             # Variablen sammeln
             user_ddx2 = st.session_state.get("user_ddx2", "Keine Differentialdiagnosen angegeben.")
