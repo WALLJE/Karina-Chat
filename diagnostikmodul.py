@@ -10,9 +10,22 @@ def diagnostik_und_befunde_routine(client: OpenAI, start_runde=2):
     
     # Durchlaufe alle bisherigen Runden plus eine neue
     # for runde in range(start_runde, aktive_runde + 2):
-    max_runde = st.session_state.get("diagnostik_runden_gesamt", start_runde - 1)
+    # max_runde = st.session_state.get("diagnostik_runden_gesamt", start_runde - 1)
+    # if st.session_state.get("diagnostik_aktiv", False):
+    #    max_runde += 1  # eine zusätzliche Runde erlauben
+
+    # Ermittle alle existierenden Befunde
+    vorhandene_runden = [
+        int(k.split("_")[-1])
+        for k in st.session_state.keys()
+        if k.startswith("befunde_runde_")
+        and k.split("_")[-1].isdigit()
+    ]
+
+    max_runde = max(vorhandene_runden, default=start_runde - 1)
+
     if st.session_state.get("diagnostik_aktiv", False):
-        max_runde += 1  # eine zusätzliche Runde erlauben
+        max_runde += 1
 
     for runde in range(start_runde, max_runde + 1):
         befund_existiert = f"befunde_runde_{runde}" in st.session_state
