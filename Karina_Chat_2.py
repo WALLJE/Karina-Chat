@@ -558,8 +558,37 @@ if not st.session_state.get("final_diagnose", "").strip():
         gpt_befunde = st.session_state["gpt_befunde"]
         
      # 🔽 Ausgabe der zusammengefassten Befunde (aus allen Runden)
-    st.markdown(gpt_befunde)
+
+    # Alle bisherigen Befunde anzeigen
+    gesamt = st.session_state.get("diagnostik_runden_gesamt", 1)
     
+    for i in range(2, gesamt + 1):
+        bef_key = f"befunde_runde_{i}"
+        bef = st.session_state.get(bef_key, "")
+        if bef:
+            st.markdown(f"### 📅 Termin {i}")
+            st.markdown(bef)
+    
+    # Neuen Termin vorbereiten
+    neuer_termin = gesamt + 1
+    
+    # Nur Eingabe zeigen, wenn Button gedrückt wurde
+    if st.session_state.get("diagnostik_aktiv", False):
+        st.markdown(f"### 📅 Termin {neuer_termin}")
+        with st.form(f"diagnostik_formular_runde_{neuer_termin}"):
+            neue_diagnostik = st.text_area("Welche zusätzlichen diagnostischen Maßnahmen möchten Sie anfordern?")
+            submitted = st.form_submit_button("✅ Diagnostik anfordern")
+        if submitted and neue_diagnostik.strip():
+            neue_diagnostik = neue_diagnostik.strip()
+            st.session_state[f"diagnostik_runde_{neuer_termin}"] = neue_diagnostik
+            st.session_state["diagnostik_aktiv"] = False
+            st.rerun()
+    else:
+        if "befunde" in st.session_state or gesamt >= 2:
+            if st.button("➕ Weitere Diagnostik anfordern"):
+                st.session_state["diagnostik_aktiv"] = True
+                st.rerun()
+
 # Wegen Fehlermeldung (doppelter Aufruf) angepasst.
 # 
 #if not st.session_state.get("final_diagnose", "").strip():
