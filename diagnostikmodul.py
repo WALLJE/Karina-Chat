@@ -16,7 +16,12 @@ def diagnostik_und_befunde_routine(client: OpenAI, start_runde=2):
         st.write(f"🛠️ Runde: {runde}, Aktive Runde: {aktive_runde}, Key: diagnostik_formular_runde_{runde}")
 
         # Eingabeformular nur in nächster Runde anzeigen, wenn noch kein Befund vorhanden ist
-        if not befund_existiert and runde == aktive_runde + 1:
+        if (
+            not befund_existiert
+            and runde == aktive_runde + 1
+            and st.session_state.get("diagnostik_aktiv", False)
+        ):
+
             with st.form(f"diagnostik_formular_runde_{runde}"):
                 neue_diagnostik = st.text_area("Welche zusätzlichen diagnostischen Maßnahmen möchten Sie anfordern?")
                 submitted = st.form_submit_button("✅ Diagnostik anfordern")
@@ -46,6 +51,7 @@ Gib die Befunde strukturiert und sachlich wieder. Ergänze keine nicht angeforde
                     befund = response.choices[0].message.content
                     st.session_state[f"befunde_runde_{runde}"] = befund
                     st.session_state["diagnostik_runden_gesamt"] = runde
+                    st.session_state["diagnostik_aktiv"] = False  # ← FLAG zurücksetzen
                     st.rerun()
 
         # Bereits vorhandene Befunde anzeigen
