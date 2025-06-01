@@ -556,7 +556,10 @@ if not st.session_state.get("final_diagnose", "").strip():
     else:
         diagnostik_eingaben = st.session_state["diagnostik_eingaben"]
         gpt_befunde = st.session_state["gpt_befunde"]
-
+        
+     # 🔽 Ausgabe der zusammengefassten Befunde (aus allen Runden)
+    st.markdown(gpt_befunde)
+    
 # Wegen Fehlermeldung (doppelter Aufruf) angepasst.
 # 
 #if not st.session_state.get("final_diagnose", "").strip():
