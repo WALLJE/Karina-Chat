@@ -4,7 +4,9 @@ from openai import OpenAI
 
 def diagnostik_und_befunde_routine(client: OpenAI, start_runde=2):
     aktuelle_runde = st.session_state.get("diagnostik_runden_gesamt", start_runde - 1)
-
+# DEBUG
+    st.write(f"🛠️ Aktuelle Runde: {runde}, Aktive Runde: {aktive_runde}, Key: diagnostik_formular_runde_{runde}_{aktive_runde}")
+#
     for runde in range(start_runde, aktuelle_runde + 2):
         # st.markdown(f"### 🔎 Diagnostik – Termin {runde}")
         befund_existiert = f"befunde_runde_{runde}" in st.session_state
@@ -12,7 +14,7 @@ def diagnostik_und_befunde_routine(client: OpenAI, start_runde=2):
 
         # Eingabe nur in aktiver Runde, wenn noch kein Befund existiert
         if not befund_existiert and runde == aktive_runde + 1:
-            with st.form(f"diagnostik_formular_runde_{runde}_{aktive_runde}"):
+            with st.form(f"diagnostik_formular_runde_{runde}"):
                 neue_diagnostik = st.text_area("Welche zusätzlichen diagnostischen Maßnahmen möchten Sie anfordern?")
                 submitted = st.form_submit_button("✅ Diagnostik anfordern")
 
