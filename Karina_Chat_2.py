@@ -571,6 +571,7 @@ if not st.session_state.get("final_diagnose", "").strip():
             st.markdown(bef)
 
 # Anzeige für neuen Termin (nur nach Button)
+gesamt = st.session_state.get("diagnostik_runden_gesamt", 1)
 neuer_termin = gesamt + 1
 
 if (
