@@ -4,7 +4,7 @@
 import streamlit as st
 from openai import OpenAI
 
-def diagnostik_und_befunde_routine(client: OpenAI, start_runde=2):
+def diagnostik_und_befunde_routine(client: OpenAI, start_runde=2, weitere_diagnostik_aktiv=False):
     # Ermittle höchste vorhandene Befund-Runde
     vorhandene_runden = [
         int(k.split("_")[-1])
