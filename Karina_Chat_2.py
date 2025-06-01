@@ -550,7 +550,11 @@ if not st.session_state.get("final_diagnose", "").strip():
         or "gpt_befunde" not in st.session_state
         or st.session_state.get("diagnostik_aktiv", False)
     ):
-        diagnostik_eingaben, gpt_befunde = diagnostik_und_befunde_routine(client, start_runde=2)
+        diagnostik_eingaben, gpt_befunde = diagnostik_und_befunde_routine(
+            client,
+            start_runde=2,
+            weitere_diagnostik_aktiv=False  # wichtig!
+        )
         st.session_state["diagnostik_eingaben"] = diagnostik_eingaben
         st.session_state["gpt_befunde"] = gpt_befunde
     else:
