@@ -575,7 +575,7 @@ if not st.session_state.get("final_diagnose", "").strip():
         st.markdown(f"📅 Termin {neuer_termin}")
         with st.form(key=f"diagnostik_formular_runde_{neuer_termin}_hauptskript"):
             neue_diagnostik = st.text_area("Welche zusätzlichen diagnostischen Maßnahmen möchten Sie anfordern?", key=f"eingabe_diag_r{neuer_termin}")
-            submitted = st.form_submit_button("✅ Diagnostik anfordern", key=f"absenden_diag_r{neuer_termin}")
+            submitted = st.form_submit_button("✅ Diagnostik anfordern")
         if submitted and neue_diagnostik.strip():
             neue_diagnostik = neue_diagnostik.strip()
             st.session_state[f"diagnostik_runde_{neuer_termin}"] = neue_diagnostik
