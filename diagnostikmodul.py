@@ -61,9 +61,9 @@ Gib die Befunde strukturiert und sachlich wieder. Ergänze keine nicht angeforde
                     st.session_state["diagnostik_aktiv"] = False  # zurücksetzen
                     st.rerun()
 
-        # 📄 Befundanzeige: immer, wenn vorhanden
-        if befund_existiert:
-            st.markdown(st.session_state[befund_key])
+        # 📄 Befundanzeige: immer, wenn vorhanden, entfällt, da in Karina_Chat schon enthalten.
+        # if befund_existiert:
+        #    st.markdown(st.session_state[befund_key])
 
     # 🔁 Zusammenfassung
     diagnostik_eingaben = ""
