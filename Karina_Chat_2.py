@@ -580,36 +580,60 @@ if not st.session_state.get("final_diagnose", "").strip():
         with st.form(key=f"diagnostik_formular_runde_{neuer_termin}_hauptskript"):
             neue_diagnostik = st.text_area("Welche zusätzlichen diagnostischen Maßnahmen möchten Sie anfordern?", key=f"eingabe_diag_r{neuer_termin}")
             submitted = st.form_submit_button("✅ Diagnostik anfordern")
+            
         if submitted and neue_diagnostik.strip():
             neue_diagnostik = neue_diagnostik.strip()
             st.session_state[f"diagnostik_runde_{neuer_termin}"] = neue_diagnostik
-            st.session_state["diagnostik_aktiv"] = False
-            st.rerun()
-    else:
-        if "befunde" in st.session_state or gesamt >= 2:
-            if st.button("➕ Weitere Diagnostik anfordern", key="btn_neue_diagnostik"):
-                st.session_state["diagnostik_aktiv"] = True
+        
+            szenario = st.session_state.get("diagnose_szenario", "")
+            prompt = f"""Die Patientin hat laut Szenario: {szenario}.
+        Folgende zusätzliche Diagnostik wurde angefordert:\n{neue_diagnostik}
+        
+        Erstelle ausschließlich Befunde zu den genannten Untersuchungen. Falls **Laborwerte** angefordert wurden, gib diese **ausschließlich in einer strukturierten Tabelle** aus, verwende dabei das Internationale Einheitensystem (SI) und folgendes Tabellenformat:
+        
+        **Parameter** | **Wert** | **Referenzbereich (SI-Einheit)**.
+        
+        **Wichtig:** Interpretationen oder Diagnosen sind nicht erlaubt. Nenne auf keinen Fall das Diagnose-Szenario. Bewerte oder diskutiere nicht die Anforderungen.
+        
+        Gib die Befunde strukturiert und sachlich wieder. Ergänze keine nicht angeforderten Untersuchungen."""
+        
+            with st.spinner("GPT erstellt Befunde..."):
+                response = client.chat.completions.create(
+                    model="gpt-4",
+                    messages=[{"role": "user", "content": prompt}],
+                    temperature=0.4
+                )
+                befund = response.choices[0].message.content
+                st.session_state[f"befunde_runde_{neuer_termin}"] = befund
+                st.session_state["diagnostik_runden_gesamt"] = neuer_termin
+                st.session_state["diagnostik_aktiv"] = False
                 st.rerun()
-
-# Wegen Fehlermeldung (doppelter Aufruf) angepasst.
-# 
-#if not st.session_state.get("final_diagnose", "").strip():
-#    diagnostik_eingaben, gpt_befunde = diagnostik_und_befunde_routine(client, start_runde=2)
-    
-# Ergebnis  speichern (für GPT-Feedback, Download etc.)
-# if not st.session_state.get("final_diagnose", "").strip():
-#   diagnostik_eingaben, gpt_befunde = diagnostik_und_befunde_routine(client, start_runde=2)
-#    st.session_state["diagnostik_eingaben"] = diagnostik_eingaben
-#    st.session_state["gpt_befunde"] = gpt_befunde
-# else:
-#    diagnostik_eingaben = st.session_state.get("diagnostik_eingaben", "")
-#    gpt_befunde = st.session_state.get("gpt_befunde", "")
-
-# Option für weitere Diagnostikrunden
-#if "befunde" in st.session_state or st.session_state.get("diagnostik_runden_gesamt", 1) > 1:
-#    if st.button("➕ Weitere Diagnostik anfordern"):
-#        st.session_state["diagnostik_aktiv"] = True
-#        st.rerun()
+        
+            else:
+                if "befunde" in st.session_state or gesamt >= 2:
+                    if st.button("➕ Weitere Diagnostik anfordern", key="btn_neue_diagnostik"):
+                        st.session_state["diagnostik_aktiv"] = True
+                        st.rerun()
+        
+        # Wegen Fehlermeldung (doppelter Aufruf) angepasst.
+        # 
+        #if not st.session_state.get("final_diagnose", "").strip():
+        #    diagnostik_eingaben, gpt_befunde = diagnostik_und_befunde_routine(client, start_runde=2)
+            
+        # Ergebnis  speichern (für GPT-Feedback, Download etc.)
+        # if not st.session_state.get("final_diagnose", "").strip():
+        #   diagnostik_eingaben, gpt_befunde = diagnostik_und_befunde_routine(client, start_runde=2)
+        #    st.session_state["diagnostik_eingaben"] = diagnostik_eingaben
+        #    st.session_state["gpt_befunde"] = gpt_befunde
+        # else:
+        #    diagnostik_eingaben = st.session_state.get("diagnostik_eingaben", "")
+        #    gpt_befunde = st.session_state.get("gpt_befunde", "")
+        
+        # Option für weitere Diagnostikrunden
+        #if "befunde" in st.session_state or st.session_state.get("diagnostik_runden_gesamt", 1) > 1:
+        #    if st.button("➕ Weitere Diagnostik anfordern"):
+        #        st.session_state["diagnostik_aktiv"] = True
+        #        st.rerun()
 
 
 # Diagnose und Therapie
