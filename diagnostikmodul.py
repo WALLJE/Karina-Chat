@@ -1,20 +1,21 @@
-# Version 6
+# Version 7 (korrigiert)
+#
+
 import streamlit as st
 from openai import OpenAI
 
 def diagnostik_und_befunde_routine(client: OpenAI, start_runde=2):
-    aktuelle_runde = st.session_state.get("diagnostik_runden_gesamt", start_runde - 1)
-
-    for runde in range(start_runde, aktuelle_runde + 2):
-        # DEBUG
-        # st.markdown(f"### 🔎 Diagnostik – Termin {runde}")
-        # DEBUG
-        st.write(f"🛠️ Aktuelle Runde: {runde}, Aktive Runde: {aktive_runde}, Key: diagnostik_formular_runde_{runde}_{aktive_runde}")
-        #
+    # aktuelle Runde bestimmen (aus Session-State oder Default)
+    aktive_runde = st.session_state.get("diagnostik_runden_gesamt", start_runde - 1)
+    
+    # Durchlaufe alle bisherigen Runden plus eine neue
+    for runde in range(start_runde, aktive_runde + 2):
         befund_existiert = f"befunde_runde_{runde}" in st.session_state
-        aktive_runde = st.session_state.get("diagnostik_runden_gesamt", 1)
 
-        # Eingabe nur in aktiver Runde, wenn noch kein Befund existiert
+        # Debug-Ausgabe
+        st.write(f"🛠️ Runde: {runde}, Aktive Runde: {aktive_runde}, Key: diagnostik_formular_runde_{runde}")
+
+        # Eingabeformular nur in nächster Runde anzeigen, wenn noch kein Befund vorhanden ist
         if not befund_existiert and runde == aktive_runde + 1:
             with st.form(f"diagnostik_formular_runde_{runde}"):
                 neue_diagnostik = st.text_area("Welche zusätzlichen diagnostischen Maßnahmen möchten Sie anfordern?")
@@ -47,16 +48,15 @@ Gib die Befunde strukturiert und sachlich wieder. Ergänze keine nicht angeforde
                     st.session_state["diagnostik_runden_gesamt"] = runde
                     st.rerun()
 
-        # Befund anzeigen
+        # Bereits vorhandene Befunde anzeigen
         if befund_existiert:
-            # st.markdown("✅ **Befunde für diesen Termin:**")
             st.markdown(st.session_state[f"befunde_runde_{runde}"])
 
-    # --- Zusammenfassung ---
+    # --- Zusammenfassung aller Befunde ---
     diagnostik_eingaben = ""
     gpt_befunde = ""
 
-    # Termin 1 aus Hauptprogramm
+    # Runde 1 aus Hauptprogramm
     diag1 = st.session_state.get("user_diagnostics", "")
     bef1 = st.session_state.get("befunde", "")
     if diag1:
