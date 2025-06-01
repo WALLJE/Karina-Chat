@@ -604,10 +604,10 @@ if not st.session_state.get("final_diagnose", "").strip():
 #    gpt_befunde = st.session_state.get("gpt_befunde", "")
 
 # Option für weitere Diagnostikrunden
-if "befunde" in st.session_state or st.session_state.get("diagnostik_runden_gesamt", 1) > 1:
-    if st.button("➕ Weitere Diagnostik anfordern"):
-        st.session_state["diagnostik_aktiv"] = True
-        st.rerun()
+#if "befunde" in st.session_state or st.session_state.get("diagnostik_runden_gesamt", 1) > 1:
+#    if st.button("➕ Weitere Diagnostik anfordern"):
+#        st.session_state["diagnostik_aktiv"] = True
+#        st.rerun()
 
 
 # Diagnose und Therapie
