@@ -124,7 +124,7 @@ def sprach_check(text_input):
     prompt = f"""
 Bitte überprüfe die folgenden stichpunktartigen medizinischen Fachbegriffe hinsichtlich Orthographie und Zeichensetzung, schreibe Abkürzung aus.
 Gib den korrigierten Text direkt und ohne Vorbemerkung und ohne Kommentar zurück.
-Verwende zur strukturierten Ausgabe von Diagnosen und Anforderungen von Untersuchungen dieses Format:
+Verwende zur strukturierten Ausgabe von Diagnosen und Anforderungen von Untersuchungen dieses Format mit Zeilenwechseln:
 
 - Beispieltext_1  
 - Beispieltext_2  
