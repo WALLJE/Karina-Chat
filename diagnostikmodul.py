@@ -21,7 +21,8 @@ def diagnostik_und_befunde_routine(client: OpenAI, start_runde=2):
         befund_key = f"befunde_runde_{runde}"
         befund_existiert = befund_key in st.session_state
 
-        st.write(f"📅 Termin: {runde}")
+        # Debug
+        # st.write(f"📅 Termin: {runde}")
 
         # 📝 Eingabeformular nur, wenn explizit aktiviert
         if (
