@@ -355,6 +355,10 @@ st.markdown("<br>", unsafe_allow_html=True)
 if "startzeit" not in st.session_state:
     st.session_state.startzeit = datetime.now()
 
+# zur STeuerung der Diagnostik Abfragen zurücksetzten
+st.session_state.setdefault("diagnostik_aktiv", False)
+
+
 ####### Debug
 # st.write("Szenario:", st.session_state.diagnose_szenario)
 # st.write("Features:", st.session_state.diagnose_features)
@@ -541,7 +545,11 @@ else:
 
 # Weitere Diagnostik-Termine 
 if not st.session_state.get("final_diagnose", "").strip():
-    if "diagnostik_eingaben" not in st.session_state or "gpt_befunde" not in st.session_state:
+    if (
+    "diagnostik_eingaben" not in st.session_state
+    or "gpt_befunde" not in st.session_state
+    or st.session_state.get("diagnostik_aktiv", False)
+    ):
         diagnostik_eingaben, gpt_befunde = diagnostik_und_befunde_routine(client, start_runde=2)
         st.session_state["diagnostik_eingaben"] = diagnostik_eingaben
         st.session_state["gpt_befunde"] = gpt_befunde
@@ -562,6 +570,12 @@ if not st.session_state.get("final_diagnose", "").strip():
 # else:
 #    diagnostik_eingaben = st.session_state.get("diagnostik_eingaben", "")
 #    gpt_befunde = st.session_state.get("gpt_befunde", "")
+
+# Option für weitere Diagnostikrunden
+if "befunde" in st.session_state or st.session_state.get("diagnostik_runden_gesamt", 1) > 1:
+    if st.button("➕ Weitere Diagnostik anfordern"):
+        st.session_state["diagnostik_aktiv"] = True
+        st.rerun()
 
 
 # Diagnose und Therapie
