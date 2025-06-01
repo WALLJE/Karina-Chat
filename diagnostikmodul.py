@@ -65,24 +65,18 @@ Gib die Befunde strukturiert und sachlich wieder. Ergänze keine nicht angeforde
         # if befund_existiert:
         #    st.markdown(st.session_state[befund_key])
 
-    # 🔁 Zusammenfassung
+    # 🔁 Zusammenfassung aller Runden
+    
     diagnostik_eingaben = ""
     gpt_befunde = ""
 
-    diag1 = st.session_state.get("user_diagnostics", "")
-    bef1 = st.session_state.get("befunde", "")
-    if diag1:
-        diagnostik_eingaben += f"\n---\n### Termin 1\n{diag1}\n"
-    if bef1:
-        gpt_befunde += f"\n---\n### Termin 1\n{bef1}\n"
-
-    gesamt = st.session_state.get("diagnostik_runden_gesamt", start_runde - 1)
-    for i in range(2, gesamt + 1):
+    for i in range(1, st.session_state.get("diagnostik_runden_gesamt", start_runde - 1) + 1):
         diag = st.session_state.get(f"diagnostik_runde_{i}", "")
         bef = st.session_state.get(f"befunde_runde_{i}", "")
         if diag:
             diagnostik_eingaben += f"\n---\n### Termin {i}\n{diag}\n"
         if bef:
             gpt_befunde += f"\n---\n### Termin {i}\n{bef}\n"
+
 
     return diagnostik_eingaben.strip(), gpt_befunde.strip()
