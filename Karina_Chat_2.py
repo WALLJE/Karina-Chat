@@ -546,9 +546,9 @@ else:
 # Weitere Diagnostik-Termine 
 if not st.session_state.get("final_diagnose", "").strip():
     if (
-    "diagnostik_eingaben" not in st.session_state
-    or "gpt_befunde" not in st.session_state
-    or st.session_state.get("diagnostik_aktiv", False)
+        "diagnostik_eingaben" not in st.session_state
+        or "gpt_befunde" not in st.session_state
+        or st.session_state.get("diagnostik_aktiv", False)
     ):
         diagnostik_eingaben, gpt_befunde = diagnostik_und_befunde_routine(client, start_runde=2)
         st.session_state["diagnostik_eingaben"] = diagnostik_eingaben
@@ -556,28 +556,23 @@ if not st.session_state.get("final_diagnose", "").strip():
     else:
         diagnostik_eingaben = st.session_state["diagnostik_eingaben"]
         gpt_befunde = st.session_state["gpt_befunde"]
-        
-     # 🔽 Ausgabe der zusammengefassten Befunde (aus allen Runden)
 
-    # Alle bisherigen Befunde anzeigen
+    # Ausgabe der bisherigen Befunde
     gesamt = st.session_state.get("diagnostik_runden_gesamt", 1)
-    
     for i in range(2, gesamt + 1):
         bef_key = f"befunde_runde_{i}"
         bef = st.session_state.get(bef_key, "")
         if bef:
             st.markdown(f"### 📅 Termin {i}")
             st.markdown(bef)
-    
-    # Neuen Termin vorbereiten
+
+    # Anzeige für neuen Termin (nur nach Button)
     neuer_termin = gesamt + 1
-    
-    # Nur Eingabe zeigen, wenn Button gedrückt wurde
     if st.session_state.get("diagnostik_aktiv", False):
         st.markdown(f"### 📅 Termin {neuer_termin}")
-        with st.form(f"diagnostik_formular_runde_{neuer_termin}"):
-            neue_diagnostik = st.text_area("Welche zusätzlichen diagnostischen Maßnahmen möchten Sie anfordern?")
-            submitted = st.form_submit_button("✅ Diagnostik anfordern")
+        with st.form(key=f"diagnostik_formular_runde_{neuer_termin}_hauptskript"):
+            neue_diagnostik = st.text_area("Welche zusätzlichen diagnostischen Maßnahmen möchten Sie anfordern?", key=f"eingabe_diag_r{neuer_termin}")
+            submitted = st.form_submit_button("✅ Diagnostik anfordern", key=f"absenden_diag_r{neuer_termin}")
         if submitted and neue_diagnostik.strip():
             neue_diagnostik = neue_diagnostik.strip()
             st.session_state[f"diagnostik_runde_{neuer_termin}"] = neue_diagnostik
@@ -585,7 +580,7 @@ if not st.session_state.get("final_diagnose", "").strip():
             st.rerun()
     else:
         if "befunde" in st.session_state or gesamt >= 2:
-            if st.button("➕ Weitere Diagnostik anfordern"):
+            if st.button("➕ Weitere Diagnostik anfordern", key="btn_neue_diagnostik"):
                 st.session_state["diagnostik_aktiv"] = True
                 st.rerun()
 
