@@ -563,13 +563,13 @@ if not st.session_state.get("final_diagnose", "").strip():
         bef_key = f"befunde_runde_{i}"
         bef = st.session_state.get(bef_key, "")
         if bef:
-            st.markdown(f"### 📅 Termin {i}")
+            st.markdown(f"## 📅 Termin {i}")
             st.markdown(bef)
 
     # Anzeige für neuen Termin (nur nach Button)
     neuer_termin = gesamt + 1
     if st.session_state.get("diagnostik_aktiv", False):
-        st.markdown(f"### 📅 Termin {neuer_termin}")
+        st.markdown(f"## 📅 Termin {neuer_termin}")
         with st.form(key=f"diagnostik_formular_runde_{neuer_termin}_hauptskript"):
             neue_diagnostik = st.text_area("Welche zusätzlichen diagnostischen Maßnahmen möchten Sie anfordern?", key=f"eingabe_diag_r{neuer_termin}")
             submitted = st.form_submit_button("✅ Diagnostik anfordern", key=f"absenden_diag_r{neuer_termin}")
