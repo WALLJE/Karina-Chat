@@ -7,13 +7,16 @@ def sprach_check(text_input, client):
     prompt = f"""
 Bitte überprüfe die folgenden stichpunktartigen medizinischen Fachbegriffe hinsichtlich Orthographie und Zeichensetzung, schreibe Abkürzungen aus.
 Gib den korrigierten Text direkt und ohne Vorbemerkung und ohne Kommentar zurück.
+*Stichpunkte*
+Gib stichpunktartige Begriffe bitte **mit je einem Zeilenumbruch pro Eintrag** in folgendem Format zurück:
 
-Verwende zur strukturierten Ausgabe dieses Format * mit Zeilenwechseln *:
+- Begriff 1  
+- Begriff 2  
+- Begriff 3
 
-- Beispieltext_1  
-- Beispieltext_2  
-- Beispieltext_3
+⚠️ Verwende für jeden Stichpunkt eine **eigene Zeile mit einem Spiegelstrich (-)**. Niemals mehrere Begriffe in einer Zeile.
 
+*Freier Text*
 Freie Texte wie Therapiebegründungen werden als sprachlich und grammatikalisch korrigierter Fließtext zurückgegeben und **ohne Spiegelstriche**.
 
 Text:
