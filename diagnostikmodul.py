@@ -3,6 +3,7 @@
 
 import streamlit as st
 from openai import OpenAI
+from sprachmodul import sprach_check
 
 def diagnostik_und_befunde_routine(client: OpenAI, start_runde=2, weitere_diagnostik_aktiv=False):
     # Ermittle höchste vorhandene Befund-Runde
@@ -36,7 +37,7 @@ def diagnostik_und_befunde_routine(client: OpenAI, start_runde=2, weitere_diagno
                 submitted = st.form_submit_button("✅ Diagnostik anfordern")
 
             if submitted and neue_diagnostik.strip():
-                neue_diagnostik = neue_diagnostik.strip()
+                neue_diagnostik = sprach_check(neue_diagnostik.strip(), client)
                 st.session_state[f"diagnostik_runde_{runde}"] = neue_diagnostik
 
                 szenario = st.session_state.get("diagnose_szenario", "")
