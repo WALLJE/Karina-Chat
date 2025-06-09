@@ -5,7 +5,7 @@ def feedback_erzeugen(
     user_ddx2,
     diagnostik_eingaben,
     gpt_befunde,
-    koerperlich_U,
+    koerper_befund,
     user_verlauf,
     anzahl_termine,
     diagnose_szenario
@@ -21,7 +21,7 @@ Hier ist der Gesprächsverlauf mit den Fragen und Aussagen des Nutzers:
 {user_verlauf}
 
 GPT-generierte Befunde (nur als Hintergrund, bitte nicht bewerten):
-{koerperlich_U}
+{koerper_befund}
 {gpt_befunde}
 
 Erhobene Differentialdiagnosen (Nutzerangaben):
