@@ -624,7 +624,7 @@ if diagnose_eingegeben and therapie_eingegeben:
     if st.session_state.get("final_feedback", "").strip():
         # Feedback wurde schon erzeugt
         # st.success("✅ Feedback erstellt.")
-        st.markdown("### Strukturierte Rückmeldung zur Fallbearbeitung:")
+        # st.markdown("### Strukturierte Rückmeldung zur Fallbearbeitung:")
         st.markdown(st.session_state.final_feedback)
     else:
         if st.button("📋 Abschluss-Feedback anzeigen"):
