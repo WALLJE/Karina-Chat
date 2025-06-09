@@ -640,6 +640,7 @@ if diagnose_eingegeben and therapie_eingegeben:
             koerperlich_U = st.session_state.get("koerper_befund", "Keine Körperliche Untersuchung generiert")
             final_diagnose = st.session_state.get("final_diagnose", "Keine finale Diagnose eingegeben.")
             therapie_vorschlag = st.session_state.get("therapie_vorschlag", "Kein Therapiekonzept eingegeben.")
+            diagnose_szenario=st.session_state.get("diagnose_szenario", "")
             user_verlauf = "\n".join([
                 msg["content"] for msg in st.session_state.messages
                 if msg["role"] == "user"
@@ -655,6 +656,7 @@ if diagnose_eingegeben and therapie_eingegeben:
                 koerperlich_U,
                 user_verlauf,
                 anzahl_termine
+                diagnose_szenario
             )
             st.session_state.final_feedback = feedback
             speichere_gpt_feedback_in_supabase()
