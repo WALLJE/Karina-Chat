@@ -512,37 +512,21 @@ if (
         st.session_state[f"diagnostik_runde_{neuer_termin}"] = neue_diagnostik
 
         szenario = st.session_state.get("diagnose_szenario", "")
-        prompt = f"""Die Patientin hat laut Szenario: {szenario}.
-Folgende zusätzliche Diagnostik wurde angefordert:\n{neue_diagnostik}
-
-Erstelle ausschließlich Befunde zu den genannten Untersuchungen. Falls **Laborwerte** angefordert wurden, gib diese **ausschließlich in einer strukturierten Tabelle** aus, verwende dabei das Internationale Einheitensystem (SI) und folgendes Tabellenformat:
-
-**Parameter** | **Wert** | **Referenzbereich (SI-Einheit)**.
-
-**Wichtig:** Interpretationen oder Diagnosen sind nicht erlaubt. Nenne auf keinen Fall das Diagnose-Szenario. Bewerte oder diskutiere nicht die Anforderungen.
-
-Gib die Befunde strukturiert und sachlich wieder. Ergänze keine nicht angeforderten Untersuchungen."""
-
         with st.spinner("GPT erstellt Befunde..."):
-            response = client.chat.completions.create(
-                model="gpt-4",
-                messages=[{"role": "user", "content": prompt}],
-                temperature=0.4
-            )
-            befund = response.choices[0].message.content
+            befund = generiere_befund(client, szenario, neue_diagnostik)
             st.session_state[f"befunde_runde_{neuer_termin}"] = befund
             st.session_state["diagnostik_runden_gesamt"] = neuer_termin
             st.session_state["diagnostik_aktiv"] = False
             st.rerun()
-
-# 🔄 Button wieder anzeigen, wenn kein Formular aktiv ist
-if (
-    not st.session_state.get("diagnostik_aktiv", False)
-    and ("befunde" in st.session_state or gesamt >= 2)
-):
-    if st.button("➕ Weitere Diagnostik anfordern", key="btn_neue_diagnostik"):
-        st.session_state["diagnostik_aktiv"] = True
-        st.rerun()
+    
+    # 🔄 Button wieder anzeigen, wenn kein Formular aktiv ist
+    if (
+        not st.session_state.get("diagnostik_aktiv", False)
+        and ("befunde" in st.session_state or gesamt >= 2)
+    ):
+        if st.button("➕ Weitere Diagnostik anfordern", key="btn_neue_diagnostik"):
+            st.session_state["diagnostik_aktiv"] = True
+            st.rerun()
 
 
 # Diagnose und Therapie
