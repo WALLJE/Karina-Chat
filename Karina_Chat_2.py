@@ -38,6 +38,8 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 # externe Codes einbinden
 from diagnostikmodul import diagnostik_und_befunde_routine
+from feedbackmodul import feedback_erzeugen
+
 
 # Zugriff via Streamlit Secrets
 # nextcloud_url = st.secrets["nextcloud"]["url"]
