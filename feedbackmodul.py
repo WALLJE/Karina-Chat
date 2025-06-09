@@ -11,26 +11,33 @@ def feedback_erzeugen(
     diagnose_szenario
 ):
     prompt = f"""
-Die Nutzerin hat folgende finale Diagnose angegeben:
-{final_diagnose}
+Ein Medizinstudierender hat eine vollständige virtuelle Fallbesprechung mit einer Patientin durchgeführt. Du bist ein erfahrener medizinischer Prüfer.
 
-Therapiekonzept:
-{therapie_vorschlag}
+Beurteile ausschließlich die Eingaben und Entscheidungen des Studierenden – NICHT die Antworten der Patientin oder automatisch generierte Inhalte.
 
-Differentialdiagnosen:
+Die zugrunde liegende Erkrankung im Szenario lautet: **{diagnose_szenario}**.
+
+Hier ist der Gesprächsverlauf mit den Fragen und Aussagen des Nutzers:
+{user_verlauf}
+
+GPT-generierter körperlicher Untersuchungsbefund (nur als Hintergrund, bitte nicht bewerten):
+{koerperlich_U}
+
+Erhobene Differentialdiagnosen (Nutzerangaben):
 {user_ddx2}
 
-Durchgeführte Diagnostik:
-{diagnostik_eingaben}
+Geplante diagnostische Maßnahmen (Nutzerangaben):
+{user_diagnostics}
 
-Befunde (GPT-generiert):
-{gpt_befunde}
+GPT-generierte Befunde (nur als Hintergrund, bitte nicht bewerten):
+{körper_befund}
+{befunde}
 
-Körperliche Untersuchung:
-{koerper_befund}
+Finale Diagnose (Nutzereingabe):
+{final_diagnose}
 
-Benutzereingaben im Chat:
-{user_verlauf}
+Therapiekonzept (Nutzereingabe):
+{therapie_vorschlag}
 
 Die Fallbearbeitung umfasste {anzahl_termine} Diagnostik-Termine.
 
