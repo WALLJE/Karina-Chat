@@ -584,19 +584,6 @@ if diagnose_eingegeben and therapie_eingegeben:
                 msg["content"] for msg in st.session_state.messages
                 if msg["role"] == "user"
             ])
-
-            # DEBUG
-            st.subheader("🛠️ Debug: übergebene Variablen")
-            st.write("Finale Diagnose:", final_diagnose)
-            st.write("Therapievorschlag:", therapie_vorschlag)
-            st.write("Differentialdiagnosen:", user_ddx2)
-            st.write("Diagnostik-Eingaben:", diagnostik_eingaben)
-            st.write("GPT-Befunde:", gpt_befunde)
-            st.write("Körperlicher Befund:", koerperlich_U)
-            st.write("Benutzereingaben:", user_verlauf)
-            st.write("Anzahl Termine:", anzahl_termine)
-            st.write("Szenario:", diagnose_szenario)
-
           
             feedback = feedback_erzeugen(
                 client,
