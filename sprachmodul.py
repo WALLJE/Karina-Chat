@@ -30,7 +30,7 @@ Text:
             temperature=0.3
         )
         korrigiert = response.choices[0].message.content.strip()
-        korrigiert = korrigiert.replace("- ", "• ")
+        # korrigiert = korrigiert.replace("- ", "• ") # zerschiesst das Format.
         return korrigiert
 
     except Exception as e:
