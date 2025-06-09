@@ -584,6 +584,9 @@ if diagnose_eingegeben and therapie_eingegeben:
                 msg["content"] for msg in st.session_state.messages
                 if msg["role"] == "user"
             ])
+            
+            #DEBUG
+            st.write("DEBUG: diagnostik_eingaben =", diagnostik_eingaben)
           
             feedback = feedback_erzeugen(
                 client,
