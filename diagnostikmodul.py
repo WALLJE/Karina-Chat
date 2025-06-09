@@ -41,24 +41,9 @@ def diagnostik_und_befunde_routine(client: OpenAI, start_runde=2, weitere_diagno
                 st.session_state[f"diagnostik_runde_{runde}"] = neue_diagnostik
 
                 szenario = st.session_state.get("diagnose_szenario", "")
-                prompt = f"""Die Patientin hat laut Szenario: {szenario}.
-Folgende zusätzliche Diagnostik wurde angefordert:\n{neue_diagnostik}
-
-Erstelle ausschließlich Befunde zu den genannten Untersuchungen. Falls **Laborwerte** angefordert wurden, gib diese **ausschließlich in einer strukturierten Tabelle** aus, verwende dabei SI bzw  Internationale Einheiten wie mmol/l oder Gpt/l und folgendes Tabellenformat:
-
-**Parameter** | **Wert** | **Referenzbereich (SI-Einheit)**.
-
-**Wichtig:** Interpretationen oder Diagnosen sind nicht erlaubt. Nenne auf keinen Fall das Diagnose-Szenario. Bewerte oder diskutiere nicht die Anforderungen.
-
-Gib die Befunde strukturiert und sachlich wieder. Ergänze keine nicht angeforderten Untersuchungen."""
 
                 with st.spinner("GPT erstellt Befunde..."):
-                    response = client.chat.completions.create(
-                        model="gpt-4",
-                        messages=[{"role": "user", "content": prompt}],
-                        temperature=0.4
-                    )
-                    befund = response.choices[0].message.content
+                    befund = generiere_befund(client, szenario, neue_diagnostik)                
                     st.session_state[befund_key] = befund
                     st.session_state["diagnostik_runden_gesamt"] = runde
                     st.session_state["diagnostik_aktiv"] = False  # zurücksetzen
