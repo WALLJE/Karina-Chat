@@ -39,7 +39,7 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 # externe Codes einbinden
 from diagnostikmodul import diagnostik_und_befunde_routine
 from feedbackmodul import feedback_erzeugen
-
+from sprachmodul import sprach_check
 
 # Zugriff via Streamlit Secrets
 # nextcloud_url = st.secrets["nextcloud"]["url"]
@@ -119,38 +119,7 @@ Im Wartezimmer sitzen weitere Patientinnen mit anderen Krankheitsbildern, die Si
             st.session_state.instruktion_bestätigt = True
             st.rerun()
         st.stop()  # ⛔ Stoppt die App bis zum Klick
-    
-def sprach_check(text_input):
-    if not text_input.strip():
-        return ""
-    prompt = f"""
-Bitte überprüfe die folgenden stichpunktartigen medizinischen Fachbegriffe hinsichtlich Orthographie und Zeichensetzung, schreibe Abkürzung aus.
-Gib den korrigierten Text direkt und ohne Vorbemerkung und ohne Kommentar zurück.
-Verwende zur strukturierten Ausgabe von Diagnosen und Anforderungen von Untersuchungen dieses Format mit Zeilenwechseln:
 
-- Beispieltext_1  
-- Beispieltext_2  
-- Beispieltext_3
-
-Freie Texte wie Therapiebegründungen werden als sprachlich und grammatikalisch korrigierter Text zurückgegeben ohne Spiegelstriche. 
-
-Text:
-{text_input}
-    """
-    try:
-        response = client.chat.completions.create(
-            model="gpt-4",
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.3
-        )
-        korrigiert = response.choices[0].message.content.strip()
-        # Verhindere Excel-Interpretation von Spiegelstrichen
-        korrigiert = korrigiert.replace("- ", "• ")
-        return korrigiert
-
-    except Exception as e:
-        st.error(f"Fehler bei GPT-Anfrage: {e}")
-        return text_input  # Fallback: Originaltext zurückgeben
         
 def initialisiere_session_state():
     st.session_state.setdefault("final_feedback", "") #test
@@ -362,10 +331,10 @@ st.session_state.setdefault("diagnostik_aktiv", False)
 
 
 ####### Debug
-st.write("Szenario:", st.session_state.diagnose_szenario)
-st.write("Features:", st.session_state.diagnose_features)
-st.write("Prompt:", st.session_state.SYSTEM_PROMPT)
-speichere_gpt_feedback_in_supabase()
+#st.write("Szenario:", st.session_state.diagnose_szenario)
+#st.write("Features:", st.session_state.diagnose_features)
+#st.write("Prompt:", st.session_state.SYSTEM_PROMPT)
+#speichere_gpt_feedback_in_supabase()
 
 
 # Chat-Verlauf starten
@@ -474,8 +443,8 @@ if "koerper_befund" in st.session_state:
             submitted_diag = st.form_submit_button("✅ Eingaben speichern")
 
         if submitted_diag:
-            st.session_state.user_ddx2 = sprach_check(ddx_input2)
-            st.session_state.user_diagnostics = sprach_check(diag_input2)
+            st.session_state.user_ddx2 = sprach_check(ddx_input2, client)
+            st.session_state.user_diagnostics = sprach_check(diag_input2, client)
             st.success("✅ Angaben gespeichert. Befunde können jetzt generiert werden.")
             st.rerun()
 
