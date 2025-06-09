@@ -625,27 +625,6 @@ if (
         st.session_state["diagnostik_aktiv"] = True
         st.rerun()
 
-        
-        # Wegen Fehlermeldung (doppelter Aufruf) angepasst.
-        # 
-        #if not st.session_state.get("final_diagnose", "").strip():
-        #    diagnostik_eingaben, gpt_befunde = diagnostik_und_befunde_routine(client, start_runde=2)
-            
-        # Ergebnis  speichern (für GPT-Feedback, Download etc.)
-        # if not st.session_state.get("final_diagnose", "").strip():
-        #   diagnostik_eingaben, gpt_befunde = diagnostik_und_befunde_routine(client, start_runde=2)
-        #    st.session_state["diagnostik_eingaben"] = diagnostik_eingaben
-        #    st.session_state["gpt_befunde"] = gpt_befunde
-        # else:
-        #    diagnostik_eingaben = st.session_state.get("diagnostik_eingaben", "")
-        #    gpt_befunde = st.session_state.get("gpt_befunde", "")
-        
-        # Option für weitere Diagnostikrunden
-        #if "befunde" in st.session_state or st.session_state.get("diagnostik_runden_gesamt", 1) > 1:
-        #    if st.button("➕ Weitere Diagnostik anfordern"):
-        #        st.session_state["diagnostik_aktiv"] = True
-        #        st.rerun()
-
 
 # Diagnose und Therapie
 if "befunde" in st.session_state:
@@ -697,70 +676,22 @@ if diagnose_eingegeben and therapie_eingegeben:
                 if msg["role"] == "user"
             ])
           
-            feedback_prompt_final = f"""
-Ein Medizinstudierender hat eine vollständige virtuelle Fallbesprechung mit einer Patientin durchgeführt. Du bist ein erfahrener medizinischer Prüfer.
-
-Beurteile ausschließlich die Eingaben und Entscheidungen des Studierenden – NICHT die Antworten der Patientin oder automatisch generierte Inhalte.
-
-Die zugrunde liegende Erkrankung im Szenario lautet: **{st.session_state.diagnose_szenario}**.
-
-Hier ist der Gesprächsverlauf mit den Fragen und Aussagen des Nutzers:
-{user_verlauf}
-
-GPT-generierter körperlicher Untersuchungsbefund (nur als Hintergrund, bitte nicht bewerten):
-{koerperlich_U}
-
-Erhobene Differentialdiagnosen (Nutzerangaben):
-{user_ddx2}
-
-Diagnostische Maßnahmen (Nutzerangaben):
-{diagnostik_eingaben}
-
-Notwendige Untersuchungstermine
-{anzahl_termine}
-
-GPT-generierte Befunde (nur als Hintergrund, bitte nicht bewerten):
-{koerperlich_U}
-{gpt_befunde}
-
-Finale Diagnose (Nutzereingabe):
-{final_diagnose}
-
-Therapiekonzept (Nutzereingabe):
-{therapie_vorschlag}
-
----
-Strukturiere dein Feedback klar, hilfreich und differenziert – wie ein persönlicher Kommentar bei einer mündlichen Prüfung, schreibe in der zweiten Person.
-
-Nenne vorab das zugrunde liegende Szennario. Gib an, ob die Daignose richtig gestellt wurde.
-
-1. Wurden im Gespräch alle relevanten anamnestischen Informationen erhoben?
-2. War die gewählte Diagnostik nachvollziehbar, vollständig und passend zur Szenariodiagnose **{st.session_state.diagnose_szenario}**?
-3. War die gewählte Diagnostik nachvollziehbar, vollständig und passend zu den Differentialdiagnosen **{user_ddx2}**?
-4. Beurteile, ob die diagnostische Strategie sinnvoll aufgebaut war, beachte dabei die Zahl der notwendigen UNtersuchungstermine. Gab es unnötige Doppeluntersuchungen, sinnvolle Eskalation, fehlende Folgeuntersuchungen? Beziehe dich ausdrücklich auf die Reihenfolge und den Inhalt der Runden.
-5. Ist die finale Diagnose nachvollziehbar, insbesondere im Hinblick auf Differenzierung zu anderen Möglichkeiten?
-6. Ist das Therapiekonzept leitliniengerecht, plausibel und auf die Diagnose abgestimmt?
-
-**Berücksichtige und kommentiere zusätzlich**:
-- ökologische Aspekte (z. B. überflüssige Diagnostik, zuviele Anforderungen, zuviele Termine, CO₂-Bilanz, Strahlenbelastung bei CT oder Röntgen, Ressourcenverbrauch).  
-- ökonomische Sinnhaftigkeit (Kosten-Nutzen-Verhältnis)
-- Beachte und begründe auch, warum zuwenig Diagnostik unwirtschaftlich und nicht nachhaltig sein kann.
-
-"""
-        # muss eingerückt bleiben
-
-            with st.spinner("Evaluation wird erstellt..."):
-                eval_response = client.chat.completions.create(
-                    model="gpt-4",
-                    messages=[{"role": "user", "content": feedback_prompt_final}],
-                    temperature=0.4
-                )
-                final_feedback = eval_response.choices[0].message.content
-                st.session_state.final_feedback = final_feedback
-                speichere_gpt_feedback_in_supabase()
-                st.session_state.feedback_prompt_final = feedback_prompt_final
-                st.success("✅ Evaluation erstellt")
-                st.rerun()
+            feedback = feedback_erzeugen(
+                client,
+                final_diagnose,
+                therapie_vorschlag,
+                user_ddx2,
+                diagnostik_eingaben,
+                gpt_befunde,
+                koerperlich_U,
+                user_verlauf,
+                anzahl_termine
+            )
+            st.session_state.final_feedback = feedback
+            speichere_gpt_feedback_in_supabase()
+            st.session_state.feedback_prompt_final = feedback_prompt_final
+            st.success("✅ Evaluation erstellt")
+            st.rerun()
 else:
     st.button("📋 Abschluss-Feedback anzeigen", disabled=True)
     st.info("❗Bitte tragen Sie eine finale Diagnose und ein Therapiekonzept ein.")
