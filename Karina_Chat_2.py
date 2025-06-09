@@ -576,7 +576,7 @@ if diagnose_eingegeben and therapie_eingegeben:
             user_ddx2 = st.session_state.get("user_ddx2", "Keine Differentialdiagnosen angegeben.")
             # user_diagnostics = st.session_state.get("user_diagnostics", "Keine diagnostischen Maßnahmen angegeben.")
             # befunde = st.session_state.get("befunde", "Keine Befunde generiert.")
-            koerperlich_U = st.session_state.get("koerper_befund", "Keine Körperliche Untersuchung generiert")
+            koerper_befund = st.session_state.get("koerper_befund", "Keine Körperliche Untersuchung generiert")
             final_diagnose = st.session_state.get("final_diagnose", "Keine finale Diagnose eingegeben.")
             therapie_vorschlag = st.session_state.get("therapie_vorschlag", "Kein Therapiekonzept eingegeben.")
             diagnose_szenario=st.session_state.get("diagnose_szenario", "")
@@ -592,7 +592,7 @@ if diagnose_eingegeben and therapie_eingegeben:
                 user_ddx2,
                 diagnostik_eingaben,
                 gpt_befunde,
-                koerperlich_U,
+                koerper_befund,
                 user_verlauf,
                 anzahl_termine,
                 diagnose_szenario
