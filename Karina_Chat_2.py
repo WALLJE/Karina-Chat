@@ -416,7 +416,7 @@ if "koerper_befund" in st.session_state:
             st.rerun()
 
     else:
-        st.markdown("📝 **Ihre gespeicherten Eingaben:**")
+        # st.markdown("📝 **Ihre gespeicherten Eingaben:**")
         st.markdown(f"**Differentialdiagnosen:**  \n{st.session_state.user_ddx2}")
         st.markdown(f"**Diagnostische Maßnahmen:**  \n{st.session_state.user_diagnostics}")
 
