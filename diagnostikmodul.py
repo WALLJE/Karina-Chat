@@ -44,7 +44,7 @@ def diagnostik_und_befunde_routine(client: OpenAI, start_runde=2, weitere_diagno
                 prompt = f"""Die Patientin hat laut Szenario: {szenario}.
 Folgende zusätzliche Diagnostik wurde angefordert:\n{neue_diagnostik}
 
-Erstelle ausschließlich Befunde zu den genannten Untersuchungen. Falls **Laborwerte** angefordert wurden, gib diese **ausschließlich in einer strukturierten Tabelle** aus, verwende dabei das Internationale Einheitensystem (SI) und folgendes Tabellenformat:
+Erstelle ausschließlich Befunde zu den genannten Untersuchungen. Falls **Laborwerte** angefordert wurden, gib diese **ausschließlich in einer strukturierten Tabelle** aus, verwende dabei SI bzw  Internationale Einheiten wie mmol/l oder Gpt/l und folgendes Tabellenformat:
 
 **Parameter** | **Wert** | **Referenzbereich (SI-Einheit)**.
 
