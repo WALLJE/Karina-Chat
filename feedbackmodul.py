@@ -20,18 +20,15 @@ Die zugrunde liegende Erkrankung im Szenario lautet: **{diagnose_szenario}**.
 Hier ist der Gesprächsverlauf mit den Fragen und Aussagen des Nutzers:
 {user_verlauf}
 
-GPT-generierter körperlicher Untersuchungsbefund (nur als Hintergrund, bitte nicht bewerten):
-{koerperlich_U}
+GPT-generierte Befunde (nur als Hintergrund, bitte nicht bewerten):
+{koerper_befund}
+{gpt_befunde}
 
 Erhobene Differentialdiagnosen (Nutzerangaben):
 {user_ddx2}
 
 Geplante diagnostische Maßnahmen (Nutzerangaben):
 {user_diagnostics}
-
-GPT-generierte Befunde (nur als Hintergrund, bitte nicht bewerten):
-{körper_befund}
-{befunde}
 
 Finale Diagnose (Nutzereingabe):
 {final_diagnose}
