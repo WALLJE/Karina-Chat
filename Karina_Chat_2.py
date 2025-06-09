@@ -689,7 +689,6 @@ if diagnose_eingegeben and therapie_eingegeben:
             )
             st.session_state.final_feedback = feedback
             speichere_gpt_feedback_in_supabase()
-            st.session_state.feedback_prompt_final = feedback_prompt_final
             st.success("✅ Evaluation erstellt")
             st.rerun()
 else:
