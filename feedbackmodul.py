@@ -7,7 +7,7 @@ def feedback_erzeugen(
     gpt_befunde,
     koerper_befund,
     user_verlauf,
-    anzahl_termine
+    anzahl_termine,
     diagnose_szenario
 ):
     prompt = f"""
