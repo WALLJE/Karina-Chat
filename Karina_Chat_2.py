@@ -615,6 +615,11 @@ if diagnose_eingegeben and therapie_eingegeben:
             # Rückfall auf gespeicherte Diagnostik-Eingaben, falls nötig
             diagnostik_eingaben = st.session_state.get("diagnostik_eingaben", "Keine weiteren diagnostischen Maßnahmen gespeichert.")
             gpt_befunde = st.session_state.get("gpt_befunde", "")
+            # Fallback: Termin 1 verwenden, wenn keine späteren diagnostik_eingaben gespeichert sind
+            if not diagnostik_eingaben.strip() and not gpt_befunde.strip():
+                diagnostik_eingaben = f"### Termin 1\n{st.session_state.get('user_diagnostics', 'Keine Angabe')}"
+                gpt_befunde = f"### Termin 1\n{st.session_state.get('befunde', 'Kein Befund erzeugt')}"
+
 
             anzahl_termine = st.session_state.get("diagnostik_runden_gesamt", 1)
             # Variablen sammeln
