@@ -40,6 +40,7 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 from diagnostikmodul import diagnostik_und_befunde_routine
 from feedbackmodul import feedback_erzeugen
 from sprachmodul import sprach_check
+from untersuchungsmodul import generiere_koerperbefund
 
 # Zugriff via Streamlit Secrets
 # nextcloud_url = st.secrets["nextcloud"]["url"]
@@ -396,36 +397,19 @@ if anzahl_fragen > 0:
         st.markdown(st.session_state.koerper_befund)
     else:
         if st.button("Untersuchung durchführen"):
-            untersuchung_prompt = f"""
-Die Patientin hat eine zufällig simulierte Erkrankung. Diese lautet: {st.session_state.diagnose_szenario}.
-Weitere relevante anamnestische Hinweise: {st.session_state.diagnose_features}
-Zusatzinformationen: {st.session_state.koerper_befund_tip}
-Erstelle einen körperlichen Untersuchungsbefund, der zu dieser Erkrankung passt, ohne sie explizit zu nennen oder zu diagnostizieren. Berücksichtige Befunde, die sich aus den Zusatzinformationen ergeben könnten. 
-Erstelle eine klinisch konsistente Befundlage für die simulierte Erkankung. Interpretiere die Befund nicht, gibt keine Hinweise auf die Diagnose.
-
-Strukturiere den Befund bitte in folgende Abschnitte:
-
-**Allgemeinzustand:**  
-**Abdomen:**   
-**Auskultation Herz/Lunge:**  
-**Haut:**  
-**Extremitäten:**  
-
-Gib ausschließlich körperliche Untersuchungsbefunde an – keine Bildgebung, Labordiagnostik oder Zusatzverfahren. Vermeide jede Form von Bewertung, Hypothese oder Krankheitsnennung.
-
-Formuliere neutral, präzise und sachlich – so, wie es in einem klinischen Untersuchungsprotokoll stehen würde.
-"""
             with st.spinner(f"{st.session_state.patient_name} wird untersucht..."):
                 try:
-                    response = client.chat.completions.create(
-                        model="gpt-4",
-                        messages=[{"role": "user", "content": untersuchung_prompt}],
-                        temperature=0.5
+                    koerper_befund = generiere_koerperbefund(
+                        client,
+                        st.session_state.diagnose_szenario,
+                        st.session_state.diagnose_features,
+                        st.session_state.koerper_befund_tip
                     )
-                    st.session_state.koerper_befund = response.choices[0].message.content
+                    st.session_state.koerper_befund = koerper_befund
                     st.rerun()
                 except RateLimitError:
                     st.error("🚫 Die Untersuchung konnte nicht erstellt werden. Die OpenAI-API ist derzeit überlastet.")
+           
 else:
     st.subheader("Körperliche Untersuchung")
     st.button("Untersuchung durchführen", disabled=True)
