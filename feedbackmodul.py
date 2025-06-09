@@ -1,37 +1,37 @@
 def feedback_erzeugen(
     client,
-    diagnose,
-    therapie,
-    ddx,
-    untersuchungen,
-    befunde,
-    koerperlich,
-    user_input,
-    termine
+    final_diagnose,
+    therapie_vorschlag,
+    user_ddx2,
+    diagnostik_eingaben,
+    gpt_befunde,
+    koerper_befund,
+    user_verlauf,
+    anzahl_termine
 ):
     prompt = f"""
 Die Nutzerin hat folgende finale Diagnose angegeben:
-{diagnose}
+{final_diagnose}
 
 Therapiekonzept:
-{therapie}
+{therapie_vorschlag}
 
 Differentialdiagnosen:
-{ddx}
+{user_ddx2}
 
 Durchgeführte Diagnostik:
-{untersuchungen}
+{diagnostik_eingaben}
 
 Befunde (GPT-generiert):
-{befunde}
+{gpt_befunde}
 
 Körperliche Untersuchung:
-{koerperlich}
+{koerper_befund}
 
 Benutzereingaben im Chat:
-{user_input}
+{user_verlauf}
 
-Die Fallbearbeitung umfasste {termine} Diagnostik-Termine.
+Die Fallbearbeitung umfasste {anzahl_termine} Diagnostik-Termine.
 
 Bitte gib eine strukturierte Rückmeldung in drei Teilen:
 1. Vollständigkeit und Relevanz der Differentialdiagnosen
