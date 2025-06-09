@@ -655,7 +655,7 @@ if diagnose_eingegeben and therapie_eingegeben:
                 gpt_befunde,
                 koerperlich_U,
                 user_verlauf,
-                anzahl_termine
+                anzahl_termine,
                 diagnose_szenario
             )
             st.session_state.final_feedback = feedback
