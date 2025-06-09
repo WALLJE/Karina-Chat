@@ -33,12 +33,19 @@ Benutzereingaben im Chat:
 
 Die Fallbearbeitung umfasste {anzahl_termine} Diagnostik-Termine.
 
-Bitte gib eine strukturierte Rückmeldung in drei Teilen:
-1. Vollständigkeit und Relevanz der Differentialdiagnosen
-2. Qualität und Zielgerichtetheit der diagnostischen Strategie
-3. Schlüssigkeit und Praktikabilität des Therapievorschlags
+Strukturiere dein Feedback klar, hilfreich und differenziert – wie ein persönlicher Kommentar bei einer mündlichen Prüfung, schreibe in der zweiten Person.
 
-Jeder Teil soll in einem Absatz beantwortet werden.
+Nenne vorab das zugrunde liegende Szennario. Gib an, ob die Diagnose richtig gestellt wurde. Gib an, wieviele Termine für die Diagnostik benötigt wurden.
+
+1. Wurden im Gespräch alle relevanten anamnestischen Informationen erhoben?
+2. War die gewählte Diagnostik nachvollziehbar, vollständig und passend zur Szenariodiagnose **{st.session_state.diagnose_szenario}**?
+3. War die gewählte Diagnostik nachvollziehbar, vollständig und passend zu den Differentialdiagnosen **{user_ddx2}**?
+4. Ist die finale Diagnose nachvollziehbar, insbesondere im Hinblick auf Differenzierung zu anderen Möglichkeiten?
+5. Ist das Therapiekonzept leitliniengerecht, plausibel und auf die Diagnose abgestimmt?
+
+**Berücksichtige und kommentiere zusätzlich**:
+- ökologische Aspekte (z. B. überflüssige Diagnostik, zuviele Anforderungen, CO₂-Bilanz, Strahlenbelastung bei CT oder Röntgen, Ressourcenverbrauch)
+- ökonomische Sinnhaftigkeit (Kosten-Nutzen-Verhältnis)
 """
 
     response = client.chat.completions.create(
