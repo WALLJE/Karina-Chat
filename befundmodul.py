@@ -3,13 +3,17 @@ def generiere_befund(client, szenario, neue_diagnostik):
 Folgende zusätzliche Diagnostik wurde angefordert:
 {neue_diagnostik}
 
-Erstelle ausschließlich Befunde zu den genannten Untersuchungen. Falls **Laborwerte** angefordert wurden, gib diese **ausschließlich in einer strukturierten Tabelle** aus, verwende dabei SI bzw. Internationale Einheiten wie mmol/l oder Gpt/l und folgendes Tabellenformat:
+Erstelle ausschließlich Befunde zu den genannten Untersuchungen.
 
-**Parameter** | **Wert** | **Referenzbereich (SI-Einheit)**.
+Falls **Laborwerte** angefordert wurden, gib sie bitte **nur in folgender Tabellenform** aus:
 
-**Wichtig:** Interpretationen oder Diagnosen sind nicht erlaubt. Nenne auf keinen Fall das Diagnose-Szenario. Bewerte oder diskutiere nicht die Anforderungen.
+**Parameter** | **Wert** | **Referenzbereich (SI-Einheit)**
 
-Gib die Befunde strukturiert und sachlich wieder. Ergänze keine nicht angeforderten Untersuchungen."""
+🔒 Verwende **ausschließlich SI-Einheiten** (z. B. mmol/l, µmol/l, Gpt/l, g/L, U/l). Werte in mg/dL oder µg/mL sind **nicht erlaubt**.
+
+📌 Nutze niemals Einheiten wie mg/dL, ng/mL, µg/L oder % – ersetze diese durch SI-konforme Angaben.  
+
+Gib die Befunde **strukturiert, sachlich und ohne Interpretation** wieder. Nenne **nicht das Diagnose-Szenario**. Ergänze keine nicht angeforderten Untersuchungen."""
 
     response = client.chat.completions.create(
         model="gpt-4",
