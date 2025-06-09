@@ -608,8 +608,8 @@ if "befunde" in st.session_state:
             submitted_final = st.form_submit_button("✅ Entscheidung abschließen")
 
         if submitted_final:
-            st.session_state.final_diagnose = sprach_check(input_diag)
-            st.session_state.therapie_vorschlag = sprach_check(input_therapie)
+            st.session_state.final_diagnose = sprach_check(input_diag, client)
+            st.session_state.therapie_vorschlag = sprach_check(input_therapie, client)
             st.success("✅ Entscheidung gespeichert")
             st.rerun()
 
