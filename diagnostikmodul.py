@@ -4,6 +4,7 @@
 import streamlit as st
 from openai import OpenAI
 from sprachmodul import sprach_check
+from befundmodul import generiere_befund
 
 def diagnostik_und_befunde_routine(client: OpenAI, start_runde=2, weitere_diagnostik_aktiv=False):
     # Ermittle höchste vorhandene Befund-Runde
