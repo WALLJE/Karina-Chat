@@ -41,6 +41,7 @@ from diagnostikmodul import diagnostik_und_befunde_routine
 from feedbackmodul import feedback_erzeugen
 from sprachmodul import sprach_check
 from untersuchungsmodul import generiere_koerperbefund
+from befundmodul import generiere_befund
 
 # Zugriff via Streamlit Secrets
 # nextcloud_url = st.secrets["nextcloud"]["url"]
@@ -444,59 +445,42 @@ else:
 
 # Abschnitt: Ergebnisse der diagnostischen Maßnahmen
 st.markdown("---")
-#if "koerper_befund" in st.session_state: # geändert 6.5.
-if "koerper_befund" in st.session_state and "user_diagnostics" in st.session_state and "user_ddx2" in st.session_state:
+
+if (
+    "koerper_befund" in st.session_state
+    and "user_diagnostics" in st.session_state
+    and "user_ddx2" in st.session_state
+):
     st.subheader("📄 Befunde")
+
     if "befunde" in st.session_state:
         st.success("✅ Befunde wurden erstellt.")
         st.markdown(st.session_state.befunde)
     else:
         if st.button("🧪 Befunde generieren lassen"):
-            if "user_diagnostics" in st.session_state:
+            from befundmodul import generiere_befund
+
+            try:
                 diagnostik_eingabe = st.session_state.user_diagnostics
-            else:
-                st.warning("Bitte geben Sie zuerst diagnostische Maßnahmen ein, bevor Sie Befunde generieren.")
+                diagnose_szenario = st.session_state.diagnose_szenario
 
-# Debug
-            #st.write("Szenario:", st.session_state.diagnose_szenario)
-            #st.write("Features:", st.session_state.diagnose_features)
-            #st.write("Prompt:", st.session_state.SYSTEM_PROMPT)
-            
-            diagnose_szenario = st.session_state.diagnose_szenario
-            prompt_befunde = f"""
-Die Patientin hat laut Szenario das Krankheitsbild **{diagnose_szenario}**.
-Weitere relevante anamnestische Hinweise: {st.session_state.diagnose_features}
+                with st.spinner("Befunde werden generiert..."):
+                    befund = generiere_befund(client, diagnose_szenario, diagnostik_eingabe)
 
-Ein Medizinstudierender hat folgende diagnostische Maßnahmen konkret angefordert:
+                st.session_state.befunde = befund
+                st.success("✅ Befunde generiert")
+                st.rerun()
 
-{diagnostik_eingabe}
+            except RateLimitError:
+                st.error("🚫 Befunde konnten nicht generiert werden. Die OpenAI-API ist aktuell überlastet.")
+            except Exception as e:
+                st.error(f"❌ Fehler bei der Befundgenerierung: {e}")
 
-Erstelle ausschließlich Befunde zu den genannten Untersuchungen. Falls **Laborwerte** angefordert wurden, gib  diese **ausschliesslich in einer strukturierten Tabelle** aus, verwende dabei immer das Internationale Einheitensystem und dieses Tabellenformat:
-
-**Parameter** | **Wert** | **Referenzbereich (SI-Einheit)**. 
-
-**Wichtig:** Interpretationen oder Diagnosen sind nicht erlaubt. Nenne auf keinen Fall das Diagnose-Szenario. Bewerte oder diskutiere nicht die Anforderungen.
-
-Gib die Befunde strukturiert und sachlich wieder. Ergänze keine nicht angeforderten Untersuchungen.
-Beginne den Befund mit:
-"Diese Befunde wurden automatisiert durch eine KI (GPT-4) erstellt und dienen der Simulation. Sie können unvollständig oder fehlerhaft sein."
-"""
-            with st.spinner("Die Befunde werden erstellt."):
-                try:
-                    response = client.chat.completions.create(
-                        model="gpt-4",
-                        messages=[{"role": "user", "content": prompt_befunde}],
-                        temperature=0.5
-                    )
-                    st.session_state.befunde = response.choices[0].message.content
-                    st.success("✅ Befunde generiert")
-                    st.rerun()
-                except RateLimitError:
-                    st.error("🚫 Befunde konnten nicht generiert werden. Die OpenAI-API ist aktuell überlastet.")
 else:
     st.subheader("📄 Befunde")
     st.button("🧪 Befunde generieren lassen", disabled=True)
     st.info("❗Bitte führen Sie zuerst die körperliche Untersuchung durch.")
+
 
 # Weitere Diagnostik-Termine 
 if not st.session_state.get("final_diagnose", "").strip():
