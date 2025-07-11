@@ -303,7 +303,7 @@ else:
 # Anweisungen anzeigen
 zeige_instruktionen_vor_start()
 
-st.title("Virtuelles Fallbeispiel")
+st.title("Virtuelle Sprechstunde")
 st.markdown("<br>", unsafe_allow_html=True)
 
 # Startzeit einfügen
