@@ -33,6 +33,7 @@ supabase: Client = create_client(supabase_url, supabase_key)
 
 # Open AI API-Key setzen
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+st.session_state["openai_client"] = client
 
 # externe Codes einbinden
 from diagnostikmodul import diagnostik_und_befunde_routine
