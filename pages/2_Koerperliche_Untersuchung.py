@@ -37,10 +37,6 @@ elif fragen_gestellt:
     if st.button("🩺 Untersuchung durchführen"):
         with st.spinner(f"{st.session_state.patient_name} wird untersucht..."):
             try:
-                                from module.untersuchungsmodul import generiere_koerperbefund
-from openai import RateLimitError
-                client = st.session_state["openai_client"]
-
                 koerper_befund = generiere_koerperbefund(
                     client,
                     st.session_state.diagnose_szenario,
