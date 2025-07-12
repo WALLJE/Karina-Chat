@@ -8,7 +8,8 @@ show_sidebar()
 
 # Voraussetzungen prüfen
 if "SYSTEM_PROMPT" not in st.session_state or "patient_name" not in st.session_state:
-    st.warning("⚠️ Die Patientin wurde noch nicht initialisiert. Bitte starte über die Startseite.")
+    st.warning("⚠️ Der Fall ist noch nicht geladen. Bitte beginne über die Startseite.")
+    st.page_link("karina_chat2", label="⬅ Zur Startseite", icon="🏠")
     st.stop()
 
 # OpenAI-Client initialisieren (nur wenn nicht bereits vorhanden)
