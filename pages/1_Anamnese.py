@@ -1,69 +1,71 @@
 import streamlit as st
-from openai import OpenAI, RateLimitError
-import os
 from datetime import datetime
+import streamlit.components.v1 as components
+from module.untersuchungsmodul import generiere_koerperbefund
+from openai import RateLimitError
 
 # Voraussetzungen prüfen
-if "SYSTEM_PROMPT" not in st.session_state or "patient_name" not in st.session_state:
+if (
+    "diagnose_szenario" not in st.session_state or
+    "patient_name" not in st.session_state or
+    "patient_age" not in st.session_state or
+    "patient_job" not in st.session_state or
+    "diagnose_features" not in st.session_state
+):
     st.warning("⚠️ Die Patientin wurde noch nicht initialisiert. Bitte starte über die Startseite.")
     st.stop()
 
-# OpenAI-Client initialisieren (nur wenn nicht bereits vorhanden)
-if "openai_client" not in st.session_state:
-    st.session_state["openai_client"] = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-
-client = st.session_state["openai_client"]
-
 # Titel
-st.title(f"🩺 Anamnese mit {st.session_state.patient_name}")
+st.title(f"🩻 Körperliche Untersuchung bei {st.session_state.patient_name}")
 
-# Startzeit setzen, falls noch nicht erfolgt
-if "startzeit" not in st.session_state:
-    st.session_state.startzeit = datetime.now()
+# Optional: Startzeit merken (z. B. für spätere Auswertung)
+if "start_untersuchung" not in st.session_state:
+    st.session_state.start_untersuchung = datetime.now()
 
-# Nachrichtenverlauf initialisieren (außer system-Prompt)
-if "messages" not in st.session_state:
-    eintritt = f"{st.session_state.patient_name} ({st.session_state.patient_age} Jahre), {st.session_state.patient_job}, betritt den Raum."
-    start_text = "Guten Tag, ich bin froh, dass ich mich heute bei Ihnen vorstellen kann."
-    st.session_state.messages = [
-        {"role": "system", "content": st.session_state.SYSTEM_PROMPT},
-        {"role": "assistant", "content": eintritt},
-        {"role": "assistant", "content": start_text}
-    ]
+# Körperlicher Befund generieren oder anzeigen
 
-# Nachrichtenverlauf anzeigen (ohne System-Prompt)
-for msg in st.session_state.messages[1:]:
-    sender = f"👩 {st.session_state.patient_name}" if msg["role"] == "assistant" else "🧑 Du"
-    st.markdown(f"**{sender}:** {msg['content']}")
+# Bedingung: mindestens eine Anamnesefrage gestellt
+fragen_gestellt = any(m["role"] == "user" for m in st.session_state.get("messages", []))
 
-# Eingabeformular
-with st.form(key="eingabe_formular", clear_on_submit=True):
-    user_input = st.text_input(f"Deine Frage an {st.session_state.patient_name}:")
-    submit_button = st.form_submit_button(label="Absenden")
+if "koerper_befund" in st.session_state:
+    st.success("✅ Körperliche Untersuchung erfolgt.")
+    st.subheader("🔍 Befund")
+    st.markdown(f"<div style='background-color:#f0f5f3; padding: 1em; border-radius: 8px;'>"
+                f"{st.session_state.koerper_befund}</div>", unsafe_allow_html=True)
 
-if submit_button and user_input:
-    st.session_state.messages.append({"role": "user", "content": user_input})
-    with st.spinner(f"{st.session_state.patient_name} antwortet..."):
-        try:
-            response = client.chat.completions.create(
-                model="gpt-4",
-                messages=st.session_state.messages,
-                temperature=0.6
-            )
-            reply = response.choices[0].message.content
-            st.session_state.messages.append({"role": "assistant", "content": reply})
-        except RateLimitError:
-            st.error("🚫 Die Anfrage konnte nicht verarbeitet werden, da die OpenAI-API derzeit überlastet ist. Bitte versuchen Sie es in einigen Minuten erneut.")
-    st.rerun()
+elif fragen_gestellt:
+    if st.button("🩺 Untersuchung durchführen"):
+        with st.spinner(f"{st.session_state.patient_name} wird untersucht..."):
+            try:
+                                from module.untersuchungsmodul import generiere_koerperbefund
+from openai import RateLimitError
+                client = st.session_state["openai_client"]
 
-# Abschlussoption anzeigen
-# st.markdown("---")
-# if st.button("✅ Anamnese abgeschlossen"):
-#    st.session_state.anamnese_done = True
-#    st.success("Anamnese wurde als abgeschlossen markiert.")
+                koerper_befund = generiere_koerperbefund(
+                    client,
+                    st.session_state.diagnose_szenario,
+                    st.session_state.diagnose_features,
+                    st.session_state.get("koerper_befund_tip", "")
+                )
+                st.session_state.koerper_befund = koerper_befund
+                st.rerun()
+            except RateLimitError:
+                st.error("🚫 Die Untersuchung konnte nicht erstellt werden. Die OpenAI-API ist derzeit überlastet.")
+else:
+    st.subheader("🩺 Körperliche Untersuchung")
+    st.button("Untersuchung durchführen", disabled=True)
+    st.info("❗Bitte stellen Sie zunächst mindestens eine anamnestische Frage.")
+
+# Verlauf sichern (optional für spätere Analyse)
+if "untersuchung_done" not in st.session_state:
+    st.session_state.untersuchung_done = True
+
+# Trennlinie zum Navigationslink
+st.markdown("---")
 
 # Weiter-Link zur Diagnostik
 # Hinweis: "href='/Diagnostik'" sorgt für internen Seitenwechsel, nicht für neues Fenster
 
-st.page_link("pages/2_Koerperliche_Untersuchung.py", label="🩺 Weiter zur Körperlichen Untersuchung", icon=None)
+st.page_link("pages/3_Diagnostik.py", label="🧪 Weiter zur Diagnostik", icon=None)
+
 
