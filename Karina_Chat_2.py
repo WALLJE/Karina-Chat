@@ -165,9 +165,17 @@ def student_feedback():
     with st.form("studierenden_feedback_formular"):
         st.markdown("Bitte bewerten Sie die folgenden Aspekte auf einer Schulnoten-Skala von 1 (sehr gut) bis 6 (ungenügend):")
         f1 = st.radio("1. Wie realistisch war das Fallbeispiel?", [1, 2, 3, 4, 5, 6], horizontal=True)
+        if f1 in [5, 6]:
+            st.info("❗Helfen Sie uns, Ihre Kritik besser zu verstehen. Bitte konkretisieren Sie Ihre Kritik im Freitextfeld unten.")
         f2 = st.radio("2. Wie hilfreich war die Simulation für das Training der Anamnese?", [1, 2, 3, 4, 5, 6], horizontal=True)
+        if f2 in [5, 6]:
+            st.info("❗Was hätten Sie sich beim Anamnese-Training anders gewünscht? Bitte erläutern Sie unten.")
         f3 = st.radio("3. Wie verständlich und relevant war das automatische Feedback?", [1, 2, 3, 4, 5, 6], horizontal=True)
+        if f3 in [5, 6]:
+            st.info("❗Bitte beschreiben Sieim Freitextfeld bitte konkret, worauf Ihre Kritik am Feedback abzielt.")
         f4 = st.radio("4. Wie bewerten Sie den didaktischen Gesamtwert der Simulation?", [1, 2, 3, 4, 5, 6], horizontal=True)
+        if f4 in [5, 6]:
+            st.info("❗Helfen Sie uns bitte, die App zu verbessern: was hat aus Ihrer Sicht den didaktischen Wert eingeschränkt? Bitte erläutern Sie unten.")
         # f6 nicht definiert.
         # f6 = st.radio("5. Wie bewerten Sie den didaktischen Gesamtwert der Simulation?", [1, 2, 3, 4, 5, 6], horizontal=True)
         f5 = st.radio("5. Wie schwierig fanden Sie den Fall? \n\n *1 -sehr einfach 6 - sehr schwer?*", [1, 2, 3, 4, 5, 6], horizontal=True)
