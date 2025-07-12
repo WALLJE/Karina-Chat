@@ -3,6 +3,9 @@ from datetime import datetime
 import streamlit.components.v1 as components
 from module.untersuchungsmodul import generiere_koerperbefund
 from openai import RateLimitError
+from module.sidebar import show_sidebar
+
+show_sidebar()
 
 # Voraussetzungen prüfen
 if (
