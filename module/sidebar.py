@@ -3,6 +3,7 @@ import os
 import random
 from PIL import Image
 
+
 def show_sidebar():
     with st.sidebar:
         st.markdown("### Patientin")
