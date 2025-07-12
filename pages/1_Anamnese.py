@@ -2,6 +2,9 @@ import streamlit as st
 from openai import OpenAI, RateLimitError
 import os
 from datetime import datetime
+from module.sidebar import show_sidebar
+
+show_sidebar()
 
 # Voraussetzungen prüfen
 if "SYSTEM_PROMPT" not in st.session_state or "patient_name" not in st.session_state:
