@@ -62,7 +62,7 @@ if submit_button and user_input:
 #    st.session_state.anamnese_done = True
 #    st.success("Anamnese wurde als abgeschlossen markiert.")
 
-sst.markdown("""
+st.markdown("""
     <div style='text-align: center; margin-top: 2em;'>
         <a href="#/Koerperliche_Untersuchung" style='
             display: inline-block;
