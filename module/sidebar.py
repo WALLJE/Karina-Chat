@@ -34,14 +34,22 @@ def show_sidebar():
 
         st.markdown("### Navigation")
         st.page_link("Anamnese", label="🩺 Anamnese")
+
+# Nur wenn mind. eine Frage gestellt wurde (Chatverlauf existiert)
         if "messages" in st.session_state and any(m["role"] == "user" for m in st.session_state["messages"]):
-            st.page_link("Koerperliche_Untersuchung", label="🩻 Untersuchung")
+            st.page_link("pages/2_Koerperliche_Untersuchung.py", label="Untersuchung", icon="🩺")
+    
+        # Nur wenn Untersuchung erfolgt ist
         if "koerper_befund" in st.session_state:
-            st.page_link("Diagnostik_und_Befunde", label="🧪 Diagnostik")
+            sst.page_link("pages/4_Diagnostik_und_Befunde.py", label="Diagnostik", icon="🧪")
+    
+        # Nur wenn Diagnostik abgeschlossen (Verdachtsdiagnosen vorliegen)
         if "diagnose_vorschlaege" in st.session_state:
-            st.page_link("Diagnose_und_Therapie", label="💊 Diagnose und Therapie")
+            sst.page_link("pages/5_Diagnose_und_Therapie.py", label="Diagnose und Therapie", icon="🧪")
+    
+        # Nur wenn finale Diagnose gesetzt
         if "diagnose_final" in st.session_state:
-            st.page_link("Feedback_und_Download", label="📝 Feedback & Download")
+            st.page_link("Feedback_und_Download", label="📝 Feedback & Download")  
 
         st.markdown("---")
         st.caption("🔒 Seiten erscheinen automatisch, sobald Schritte abgeschlossen wurden.")
