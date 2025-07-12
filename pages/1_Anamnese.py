@@ -64,7 +64,7 @@ if submit_button and user_input:
 
 st.markdown("""
     <div style='text-align: center; margin-top: 2em;'>
-        <a href="#/Koerperliche_Untersuchung" style='
+        <a href="#/Körperliche_Untersuchung" style='
             display: inline-block;
             padding: 0.75em 1.5em;
             background-color: #4CAF50;
