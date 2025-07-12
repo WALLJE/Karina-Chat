@@ -39,7 +39,7 @@ st.session_state["openai_client"] = client
 from diagnostikmodul import diagnostik_und_befunde_routine
 from feedbackmodul import feedback_erzeugen
 from sprachmodul import sprach_check
-from untersuchungsmodul import generiere_koerperbefund
+from module.untersuchungsmodul import generiere_koerperbefund
 from befundmodul import generiere_befund
 
 # Zugriff via Streamlit Secrets
