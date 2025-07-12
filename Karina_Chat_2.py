@@ -19,7 +19,6 @@ import pandas as pd
 from datetime import datetime
 import requests
 from requests.auth import HTTPBasicAuth
-from PIL import Image
 
 # Für einlesen Excel Datei
 from io import BytesIO
@@ -30,6 +29,7 @@ from feedbackmodul import feedback_erzeugen
 from sprachmodul import sprach_check
 from module.untersuchungsmodul import generiere_koerperbefund
 from befundmodul import generiere_befund
+from module.sidebar import show_sidebar
 
 # Für Einbinden Supabase Tabellen
 
@@ -43,60 +43,8 @@ supabase: Client = create_client(supabase_url, supabase_key)
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 st.session_state["openai_client"] = client
 
-with st.sidebar:
-    st.markdown("### 🩺 Patientin")
+show_sidebar()
 
-    # Nur funktionierende PNGs auswählen
-    valid_images = []
-    for f in os.listdir("pics"):
-        if f.endswith(".png"):
-            path = os.path.join("pics", f)
-            try:
-                with Image.open(path) as img:
-                    img.verify()
-                valid_images.append(path)
-            except:
-                pass
-
-    if "patient_logo" not in st.session_state and valid_images:
-        st.session_state.patient_logo = random.choice(valid_images)
-
-    # Bild direkt anzeigen
-    try:
-        st.image(st.session_state.patient_logo, width=120)
-    except Exception as e:
-        st.warning(f"⚠️ Bild konnte nicht geladen werden: {e}")
-
-    # Patientenname und Alter (optional Beruf)
-    if all(k in st.session_state for k in ["patient_name", "patient_age"]):
-        patient_text = f"**{st.session_state.patient_name} ({st.session_state.patient_age} Jahre)**"
-        if "patient_job" in st.session_state:
-            patient_text += f", {st.session_state.patient_job}"
-        st.markdown(patient_text)
-
-# Sidebar füllen    
-    st.markdown("### Navigation")
-    
-    st.page_link("pages/1_Anamnese.py", label="🩺 Anamnese")
-
-    # Nur wenn mind. eine Frage gestellt wurde (Chatverlauf existiert)
-    if "messages" in st.session_state and any(m["role"] == "user" for m in st.session_state["messages"]):
-        st.page_link("pages/2_Koerperliche_Untersuchung.py", label="Untersuchung", icon="🩺")
-
-    # Nur wenn Untersuchung erfolgt ist
-    if "koerper_befund" in st.session_state:
-        sst.page_link("pages/4_Diagnostik_und_Befunde.py", label="Diagnostik", icon="🧪")
-
-    # Nur wenn Diagnostik abgeschlossen (Verdachtsdiagnosen vorliegen)
-    if "diagnose_vorschlaege" in st.session_state:
-        sst.page_link("pages/5_Diagnose_und_Therapie.py", label="Diagnose und Therapie", icon="🧪")
-
-    # Nur wenn finale Diagnose gesetzt
-    if "diagnose_final" in st.session_state:
-        st.page_link("Feedback_und_Download", label="📝 Feedback & Download")
-
-    st.markdown("---")
-    st.caption("🔒 Seiten erscheinen automatisch, sobald Schritte abgeschlossen wurden.")
 
 # Zugriff via Streamlit Secrets
 # nextcloud_url = st.secrets["nextcloud"]["url"]
