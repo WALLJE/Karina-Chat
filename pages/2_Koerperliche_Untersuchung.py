@@ -38,7 +38,7 @@ elif fragen_gestellt:
         with st.spinner(f"{st.session_state.patient_name} wird untersucht..."):
             try:
                 koerper_befund = generiere_koerperbefund(
-                    client,
+                    st.session_state["openai_client"],
                     st.session_state.diagnose_szenario,
                     st.session_state.diagnose_features,
                     st.session_state.get("koerper_befund_tip", "")
