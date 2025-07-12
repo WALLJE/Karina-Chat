@@ -4,7 +4,9 @@ import streamlit.components.v1 as components
 from module.untersuchungsmodul import generiere_koerperbefund
 from openai import RateLimitError
 from module.sidebar import show_sidebar
+from module.footer import copyright_footer
 
+copyright_footer()
 show_sidebar()
 
 # Voraussetzungen prüfen
