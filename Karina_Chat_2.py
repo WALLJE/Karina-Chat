@@ -43,16 +43,26 @@ supabase: Client = create_client(supabase_url, supabase_key)
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 st.session_state["openai_client"] = client
 
+# Bild laden
 with st.sidebar:
     st.markdown("### 🩺 Patientin")
 
-    # Logo nur einmal zufällig setzen
-    if "patient_logo" not in st.session_state:
-        pic_files = [f for f in os.listdir("pics") if f.endswith(".png")]
-        chosen = os.path.join("pics", random.choice(pic_files))
-        st.session_state.patient_logo = chosen
+    # Nur funktionierende Bilder berücksichtigen
+    valid_images = []
+    for f in os.listdir("pics"):
+        if f.endswith(".png"):
+            path = os.path.join("pics", f)
+            try:
+                with Image.open(path) as img:
+                    img.verify()
+                valid_images.append(path)
+            except:
+                pass
 
-    # Bild aus Datei als Bytes laden
+    if "patient_logo" not in st.session_state and valid_images:
+        st.session_state.patient_logo = random.choice(valid_images)
+
+    # Bild aus Datei anzeigen (über Bytes)
     try:
         with open(st.session_state.patient_logo, "rb") as file:
             img_bytes = file.read()
@@ -60,10 +70,7 @@ with st.sidebar:
     except Exception as e:
         st.warning(f"⚠️ Bild konnte nicht geladen werden: {e}")
 
-# In der Sidebar anzeigen
-with st.sidebar:
-    st.text(f"Lade Bild: {st.session_state.patient_logo}")
-    st.image(st.session_state.patient_logo, width=120)
+# Sidebar füllen    
     st.markdown("### Navigation")
     
     st.page_link("pages/1_Anamnese.py", label="🩺 Anamnese")
