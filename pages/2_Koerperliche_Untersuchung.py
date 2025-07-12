@@ -51,7 +51,7 @@ else:
     st.subheader("🩺 Körperliche Untersuchung")
     st.button("Untersuchung durchführen", disabled=True)
     st.info("❗Bitte stellen Sie zunächst mindestens eine anamnestische Frage.")
-    st.page_link("pages/1_Anamnese.py", label="⬅ Zurück zur Anamnese", icon="⬅")
+    st.page_link("pages/1_Anamnese.py", label="Zurück zur Anamnese", icon="⬅")
     
 # Verlauf sichern (optional für spätere Analyse)
 if "untersuchung_done" not in st.session_state:
@@ -70,5 +70,5 @@ st.page_link(
 )
 
 if "koerper_befund" not in st.session_state:
-    st.info("🔒 Dieser Schritt wird verfügbar, sobald die körperliche Untersuchung abgeschlossen ist.")
+    st.info(:grey[Dieser Schritt wird verfügbar, sobald die körperliche Untersuchung abgeschlossen ist.], icon="🔒")
 
