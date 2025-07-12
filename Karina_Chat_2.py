@@ -23,6 +23,13 @@ from requests.auth import HTTPBasicAuth
 # Für einlesen Excel Datei
 from io import BytesIO
 
+# externe Codes einbinden
+from diagnostikmodul import diagnostik_und_befunde_routine
+from feedbackmodul import feedback_erzeugen
+from sprachmodul import sprach_check
+from module.untersuchungsmodul import generiere_koerperbefund
+from befundmodul import generiere_befund
+
 # Für Einbinden Supabase Tabellen
 
 from supabase import create_client, Client
@@ -34,13 +41,48 @@ supabase: Client = create_client(supabase_url, supabase_key)
 # Open AI API-Key setzen
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 st.session_state["openai_client"] = client
+with st.sidebar:
+    st.image("pics/logo.png", width=120)  # Optionales Logo
+    st.markdown("### Navigation")
 
-# externe Codes einbinden
-from diagnostikmodul import diagnostik_und_befunde_routine
-from feedbackmodul import feedback_erzeugen
-from sprachmodul import sprach_check
-from module.untersuchungsmodul import generiere_koerperbefund
-from befundmodul import generiere_befund
+    st.page_link("Anamnese", label="🩺 Anamnese")
+
+    # Nur wenn mind. eine Frage gestellt wurde (Chatverlauf existiert)
+    if "messages" in st.session_state and any(m["role"] == "user" for m in st.session_state["messages"]):
+        st.page_link("pages/2_Koerperliche_Untersuchung.py", label="Untersuchung", icon="🩺")
+
+    # Nur wenn Untersuchung erfolgt ist
+    if "koerper_befund" in st.session_state:
+        sst.page_link("pages/4_Diagnostik_und_Befunde.py", label="Diagnostik", icon="🧪")
+
+    # Nur wenn Diagnostik abgeschlossen (Verdachtsdiagnosen vorliegen)
+    if "diagnose_vorschlaege" in st.session_state:
+        sst.page_link("pages/5_Diagnose_und_Therapie.py", label="Diagnose und Therapie", icon="🧪")
+
+    # Nur wenn finale Diagnose gesetzt
+    if "diagnose_final" in st.session_state:
+        st.page_link("Feedback_und_Download", label="📝 Feedback & Download")
+
+    st.markdown("---")
+    st.caption("🔒 Seiten erscheinen automatisch, sobald Schritte abgeschlossen wurden.")
+
+with st.sidebar:
+    st.image("logo.png", width=120)  # Optional
+    st.markdown("### Navigation")
+
+    st.page_link("pages/1_Anamnese.py", label="Anamnese")
+
+    if st.session_state.get("messages"):
+        
+
+    if st.session_state.get("koerper_befund"):
+        
+
+    if st.session_state.get("koerper_befund"):
+        
+    
+    if st.session_state.get("diagnose_final"):
+        st.page_link("6_Feedback_und_Evaluation", label="Feedback", icon="📝")
 
 # Zugriff via Streamlit Secrets
 # nextcloud_url = st.secrets["nextcloud"]["url"]
