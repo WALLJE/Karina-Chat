@@ -69,7 +69,7 @@ with st.sidebar:
 
     # Patientenname und Alter (optional Beruf)
     if all(k in st.session_state for k in ["patient_name", "patient_age"]):
-        patient_text = f"**{st.session_state.patient_name} ({st.session_state.patient_age})**"
+        patient_text = f"**{st.session_state.patient_name} ({st.session_state.patient_age} Jahre)**"
         if "patient_job" in st.session_state:
             patient_text += f", {st.session_state.patient_job}"
         st.markdown(patient_text)
