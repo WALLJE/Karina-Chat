@@ -62,6 +62,21 @@ if submit_button and user_input:
 #    st.session_state.anamnese_done = True
 #    st.success("Anamnese wurde als abgeschlossen markiert.")
 
-st.markdown("---")
-st.markdown("[➡ Weiter zur körperlichen Untersuchung](#/Körperliche_Untersuchung)")
+sst.markdown("""
+    <div style='text-align: center; margin-top: 2em;'>
+        <a href="#/Koerperliche_Untersuchung" style='
+            display: inline-block;
+            padding: 0.75em 1.5em;
+            background-color: #4CAF50;
+            color: white;
+            border-radius: 10px;
+            text-decoration: none;
+            font-weight: bold;
+            font-size: 1.1em;
+            transition: background-color 0.3s ease;
+        ' onmouseover="this.style.backgroundColor='#45a049'" onmouseout="this.style.backgroundColor='#4CAF50'">
+            ➡ Weiter zur körperlichen Untersuchung
+        </a>
+    </div>
+""", unsafe_allow_html=True)
 
