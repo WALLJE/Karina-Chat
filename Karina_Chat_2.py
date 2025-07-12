@@ -43,11 +43,10 @@ supabase: Client = create_client(supabase_url, supabase_key)
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 st.session_state["openai_client"] = client
 
-# Bild laden
 with st.sidebar:
-    st.markdown("### Patientin")
+    st.markdown("### 🩺 Patientin")
 
-    # Nur funktionierende Bilder berücksichtigen
+    # Nur funktionierende PNGs auswählen
     valid_images = []
     for f in os.listdir("pics"):
         if f.endswith(".png"):
@@ -62,13 +61,18 @@ with st.sidebar:
     if "patient_logo" not in st.session_state and valid_images:
         st.session_state.patient_logo = random.choice(valid_images)
 
-    # Bild aus Datei anzeigen (über Bytes)
+    # Bild direkt anzeigen
     try:
-        with open(st.session_state.patient_logo, "rb") as file:
-            img_bytes = file.read()
-        st.image(img_bytes, width=120)
+        st.image(st.session_state.patient_logo, width=120)
     except Exception as e:
         st.warning(f"⚠️ Bild konnte nicht geladen werden: {e}")
+
+    # Patientenname und Alter (optional Beruf)
+    if all(k in st.session_state for k in ["patient_name", "patient_age"]):
+        patient_text = f"**{st.session_state.patient_name} ({st.session_state.patient_age})**"
+        if "patient_job" in st.session_state:
+            patient_text += f", {st.session_state.patient_job}"
+        st.markdown(patient_text)
 
 # Sidebar füllen    
     st.markdown("### Navigation")
