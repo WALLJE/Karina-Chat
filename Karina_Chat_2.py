@@ -45,7 +45,7 @@ st.session_state["openai_client"] = client
 
 # Bild laden
 with st.sidebar:
-    st.markdown("### 🩺 Patientin")
+    st.markdown("### Patientin")
 
     # Nur funktionierende Bilder berücksichtigen
     valid_images = []
