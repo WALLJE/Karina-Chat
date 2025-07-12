@@ -3,6 +3,7 @@ from datetime import datetime
 from sprachmodul import sprach_check
 from feedbackmodul import feedback_erzeugen
 from supabase import create_client, Client
+from module.feedback_ui import student_feedback
 
 client = st.session_state["openai_client"]
 
