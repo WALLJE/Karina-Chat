@@ -436,6 +436,87 @@ zeige_instruktionen_vor_start()
 
 st.title("Virtuelles Fallbeispiel")
 st.markdown("<br>", unsafe_allow_html=True)
+#############################
+
+import streamlit as st
+
+# Seitensteuerung mit Fortschrittskontrolle
+st.set_page_config(page_title="Karina Simulation", layout="wide")
+
+menu = ["Start", "Anamnese", "Körperliche Untersuchung"]
+
+if st.session_state.get("anamnese_done"):
+    menu.append("Diagnostik & Befunde")
+else:
+    menu.append("🔒 Diagnostik & Befunde")
+
+if st.session_state.get("diagnostik_done"):
+    menu.append("Diagnose & Therapie")
+else:
+    menu.append("🔒 Diagnose & Therapie")
+
+if st.session_state.get("diagnose_done"):
+    menu.append("Feedback & Evaluation")
+else:
+    menu.append("🔒 Feedback & Evaluation")
+
+seite = st.session_state.get("seite", "Start")
+auswahl = st.sidebar.radio("📋 Navigation", menu, index=menu.index(seite) if seite in menu else 0)
+st.session_state.seite = auswahl
+
+# STARTSEITE – Einführung, Instruktionen, Fallauswahl
+if auswahl == "Start":
+    st.title("👩‍⚕️ Virtuelle Sprechstunde – Karina")
+    st.markdown("Willkommen zur Patientinnensimulation. Bitte wähle links einen Abschnitt, um zu starten.")
+    # Hier bleibt der bisherige Code zur Instruktion, Patientenname, Fallauswahl usw. vollständig erhalten
+
+# ANAMNESE
+elif auswahl == "Anamnese":
+    st.title("🩺 Anamnese")
+    # Hier bleibt der bisherige Chatverlauf inkl. Nachrichtenspeicherung
+    if st.button("✅ Anamnese abgeschlossen"):
+        st.session_state.anamnese_done = True
+        st.experimental_rerun()
+
+# KÖRPERLICHE UNTERSUCHUNG
+elif auswahl == "Körperliche Untersuchung":
+    st.title("🔍 Körperliche Untersuchung")
+    # Hier bleibt der Untersuchungscode mit Button und Befundanzeige bestehen
+
+# DIAGNOSTIK & BEFUNDE
+elif auswahl == "Diagnostik & Befunde" or auswahl == "🔒 Diagnostik & Befunde":
+    if not st.session_state.get("anamnese_done"):
+        st.warning("🔒 Bitte zuerst die Anamnese abschließen.")
+        st.stop()
+    st.title("🧪 Diagnostik & Befunde")
+    # Hier bleiben DDx-Eingabe, Diagnostik, GPT-Befunde, Zusatzrunden erhalten
+    if st.button("✅ Diagnostik abgeschlossen"):
+        st.session_state.diagnostik_done = True
+        st.experimental_rerun()
+
+# DIAGNOSE & THERAPIE
+elif auswahl == "Diagnose & Therapie" or auswahl == "🔒 Diagnose & Therapie":
+    if not st.session_state.get("diagnostik_done"):
+        st.warning("🔒 Bitte zuerst die Diagnostik abschließen.")
+        st.stop()
+    st.title("🧠 Diagnose & Therapie")
+    # Hier bleibt die finale Eingabe von Diagnose und Therapie vollständig erhalten
+    if st.button("✅ Diagnose abgeschlossen"):
+        st.session_state.diagnose_done = True
+        st.experimental_rerun()
+
+# FEEDBACK & EVALUATION
+elif auswahl == "Feedback & Evaluation" or auswahl == "🔒 Feedback & Evaluation":
+    if not st.session_state.get("diagnose_done"):
+        st.warning("🔒 Bitte zuerst Diagnose und Therapie eintragen.")
+        st.stop()
+    st.title("📋 Feedback & Evaluation")
+    # Hier folgen GPT-Feedback, Protokoll, Download, Studierendenfeedback wie gehabt
+
+
+
+######################################
+
 
 # Startzeit einfügen
 if "startzeit" not in st.session_state:
