@@ -5,7 +5,7 @@ from PIL import Image
 
 def show_sidebar():
     with st.sidebar:
-        st.markdown("### 🩺 Patientin")
+        st.markdown("### Patientin")
 
         valid_images = []
         for f in os.listdir("pics"):
