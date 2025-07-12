@@ -438,12 +438,39 @@ st.title("Virtuelles Fallbeispiel")
 st.markdown("<br>", unsafe_allow_html=True)
 #############################
 
-import streamlit as st
-
 # Seitensteuerung mit Fortschrittskontrolle
 st.set_page_config(page_title="Karina Simulation", layout="wide")
 
-menu = ["Start", "Anamnese", "Körperliche Untersuchung"]
+# Modernes Styling für Radiobuttons
+st.markdown("""
+    <style>
+    div[role="radiogroup"] > label {
+        background-color: #f0f0f5;
+        padding: 8px 16px;
+        margin-bottom: 4px;
+        border-radius: 8px;
+        border: 1px solid #d0d0d0;
+        transition: background-color 0.3s ease;
+        cursor: pointer;
+        display: block;
+    }
+    div[role="radiogroup"] > label:hover {
+        background-color: #e0e0ef;
+    }
+    div[role="radiogroup"] > label[data-selected="true"] {
+        background-color: #4CAF50 !important;
+        color: white;
+        border: none;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
+menu = ["Start", "Anamnese"]
+
+if st.session_state.get("anamnese_done"):
+    menu.append("Körperliche Untersuchung")
+else:
+    menu.append("🔒 Körperliche Untersuchung")
 
 if st.session_state.get("anamnese_done"):
     menu.append("Diagnostik & Befunde")
@@ -479,7 +506,10 @@ elif auswahl == "Anamnese":
         st.experimental_rerun()
 
 # KÖRPERLICHE UNTERSUCHUNG
-elif auswahl == "Körperliche Untersuchung":
+elif auswahl == "Körperliche Untersuchung" or auswahl == "🔒 Körperliche Untersuchung":
+    if not st.session_state.get("anamnese_done"):
+        st.warning("🔒 Bitte zuerst die Anamnese abschließen.")
+        st.stop()
     st.title("🔍 Körperliche Untersuchung")
     # Hier bleibt der Untersuchungscode mit Button und Befundanzeige bestehen
 
