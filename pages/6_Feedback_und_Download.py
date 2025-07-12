@@ -7,9 +7,9 @@ from supabase import create_client, Client
 client = st.session_state["openai_client"]
 
 
-if not st.session_state.get("final_diagnose") or not st.session_state.get("therapie_vorschlag"):
-    st.warning("⚠️ Bitte zuerst Diagnose und Therapie eingeben.")
-    st.stop()
+#if not st.session_state.get("final_diagnose") or not st.session_state.get("therapie_vorschlag"):
+#    st.warning("⚠️ Bitte zuerst Diagnose und Therapie eingeben.")
+#    st.stop()
 
 
 # feedback
