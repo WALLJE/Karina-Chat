@@ -61,11 +61,28 @@ if submit_button and user_input:
 # if st.button("✅ Anamnese abgeschlossen"):
 #    st.session_state.anamnese_done = True
 #    st.success("Anamnese wurde als abgeschlossen markiert.")
-# Trennlinie zum Navigationslink
-st.markdown("---")
 
 # Weiter-Link zur Diagnostik
 # Hinweis: "href='/Diagnostik'" sorgt für internen Seitenwechsel, nicht für neues Fenster
-st.page_link("pages/2_Koerperliche_Untersuchung.py", label="➡ Weiter zur Körperlichen Untersuchung", icon="🩺")
 
+st.markdown("""
+    <style>
+        .button-link {
+            display: inline-block;
+            padding: 0.75em 1.5em;
+            background-color: #7EC384;
+            color: white;
+            border-radius: 10px;
+            text-decoration: none;
+            font-weight: bold;
+            font-size: 1.05em;
+            margin-top: 1em;
+        }
+    </style>
+    <div class="button-link">
+""", unsafe_allow_html=True)
+
+st.page_link("pages/2_Koerperliche_Untersuchung.py", label="🩺 Weiter zur Körperlichen Untersuchung", icon=None)
+
+st.markdown("""</div>""", unsafe_allow_html=True)
 
