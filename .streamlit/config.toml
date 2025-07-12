@@ -1,3 +1,4 @@
-[ui]
-hide_sidebar_nav = true
+[client]
+showSidebarNavigation = false
+
 
