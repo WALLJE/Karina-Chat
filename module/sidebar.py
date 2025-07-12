@@ -22,7 +22,7 @@ def show_sidebar():
             st.session_state.patient_logo = random.choice(valid_images)
 
         try:
-            st.image(st.session_state.patient_logo, width=120)
+            st.image(st.session_state.patient_logo, width=160)
         except Exception as e:
             st.warning(f"⚠️ Bild konnte nicht geladen werden: {e}")
 
