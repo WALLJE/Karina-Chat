@@ -58,8 +58,7 @@ def student_feedback():
             bef_key = f"befunde_runde_{i}"
             inhalt = st.session_state.get(bef_key, "")
             if inhalt:
-                weitere_befunde += f"\n\n📅 Termin {i}:
-{inhalt}"
+                weitere_befunde += f"\n\n📅 Termin {i}:{inhalt}"
 
         eintrag = {
             "datum": jetzt.strftime("%Y-%m-%d"),
