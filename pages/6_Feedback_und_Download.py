@@ -44,3 +44,69 @@ else:
         st.session_state.final_feedback = feedback
         st.success("✅ Evaluation erstellt")
         st.rerun()
+
+# Downloadbereich
+# Zusammenfassung und Download vorbereiten
+st.markdown("---")
+st.subheader("📄 Download")
+
+if "final_feedback" in st.session_state:
+    protokoll = ""
+
+    # Szenario
+    protokoll += f"Simuliertes Krankheitsbild: {st.session_state.diagnose_szenario}\n\n"
+
+    # Gesprächsverlauf
+    protokoll += "---\n💬 Gesprächsverlauf (nur Fragen des Studierenden):\n"
+    for msg in st.session_state.messages[1:]:
+        rolle = st.session_state.patient_name if msg["role"] == "assistant" else "Du"
+        protokoll += f"{rolle}: {msg['content']}\n"
+
+    # Körperlicher Untersuchungsbefund
+    if "koerper_befund" in st.session_state:
+        protokoll += "\n---\nKörperlicher Untersuchungsbefund:\n"
+        protokoll += st.session_state.koerper_befund + "\n"
+
+    # Differentialdiagnosen
+    if "user_ddx2" in st.session_state:
+        protokoll += "\n---\nErhobene Differentialdiagnosen:\n"
+        protokoll += st.session_state.user_ddx2 + "\n"
+
+    # Diagnostische Maßnahmen
+    if "user_diagnostics" in st.session_state:
+        protokoll += "\n---\n🔬 Geplante diagnostische Maßnahmen:\n"
+        protokoll += st.session_state.user_diagnostics + "\n"
+
+    # Generierte Befunde
+    if "befunde" in st.session_state:
+        protokoll += "\n---\n📄 Ergebnisse der diagnostischen Maßnahmen:\n"
+        protokoll += st.session_state.befunde + "\n"
+
+    # Finale Diagnose
+    if "final_diagnose" in st.session_state:
+        protokoll += "\n---\nFinale Diagnose:\n"
+        protokoll += st.session_state.final_diagnose + "\n"
+
+    # Therapiekonzept
+    if "therapie_vorschlag" in st.session_state:
+        protokoll += "\n---\n Therapiekonzept:\n"
+        protokoll += st.session_state.therapie_vorschlag + "\n"
+
+    # Abschlussfeedback
+    protokoll += "\n---\n Strukturierte Rückmeldung:\n"
+    protokoll += st.session_state.final_feedback + "\n"
+
+    # Download-Button
+    st.download_button(
+        label="⬇️ Gespräch & Feedback herunterladen",
+        data=protokoll,
+        file_name="karina_chatprotokoll.txt",
+        mime="text/plain"
+    )
+else:
+    st.info("💬 Das Protokoll kann nach der Evaluation heruntergeladen werden.")
+
+# Abschnitt: Evaluation durch Studierende mit Schulnoten und Sammeldatei
+
+if st.session_state.final_feedback:
+    student_feedback()
