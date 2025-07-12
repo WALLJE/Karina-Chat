@@ -1,6 +1,8 @@
 import streamlit as st
 from datetime import datetime
 import streamlit.components.v1 as components
+from module.untersuchungsmodul import generiere_koerperbefund
+from openai import RateLimitError
 
 # Voraussetzungen prüfen
 if (
@@ -35,8 +37,8 @@ elif fragen_gestellt:
     if st.button("🩺 Untersuchung durchführen"):
         with st.spinner(f"{st.session_state.patient_name} wird untersucht..."):
             try:
-                from module.koerperbefund_generator import generiere_koerperbefund
-                from openai import RateLimitError
+                                from module.untersuchungsmodul import generiere_koerperbefund
+from openai import RateLimitError
                 client = st.session_state["openai_client"]
 
                 koerper_befund = generiere_koerperbefund(
@@ -64,22 +66,23 @@ st.markdown("---")
 # Weiter-Link zur Diagnostik
 # Hinweis: "href='/Diagnostik'" sorgt für internen Seitenwechsel, nicht für neues Fenster
 
-col1, col2, col3 = st.columns([1, 5, 1])
-with col2:
-    st.markdown("""
-        <style>
-            .button-link {
-                display: inline-block;
-                padding: 0.75em 1.5em;
-                background-color: #7EC384;
-                color: white;
-                border-radius: 10px;
-                text-decoration: none;
-                font-weight: bold;
-                font-size: 1.05em;
-            }
-        </style>
-        <div class="button-link">
-    """, unsafe_allow_html=True)
-    st.page_link("pages/3_Diagnostik.py", label="🧪 Weiter zur Diagnostik", icon=None)
-    st.markdown("""</div>""", unsafe_allow_html=True)
+st.markdown("""
+    <style>
+        .button-link {
+            display: inline-block;
+            padding: 0.75em 1.5em;
+            background-color: #7EC384;
+            color: white;
+            border-radius: 10px;
+            text-decoration: none;
+            font-weight: bold;
+            font-size: 1.05em;
+            margin-top: 1em;
+        }
+    </style>
+    <div class="button-link">
+""", unsafe_allow_html=True)
+
+st.page_link("pages/3_Diagnostik.py", label="🧪 Weiter zur Diagnostik", icon=None)
+
+st.markdown("""</div>""", unsafe_allow_html=True)
