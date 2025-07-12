@@ -19,19 +19,19 @@ def student_feedback():
 
     f1 = st.radio("1. Wie realistisch war das Fallbeispiel?", [1, 2, 3, 4, 5, 6], horizontal=True)
     if f1 in [5, 6]:
-        st.info("❗Bitte konkretisieren Sie Ihre Kritik zum Realismus im Freitextfeld unten.")
+        st.info("❗Vielen Dank für die kritische Rückmeldung. Erklären Sie gern Ihre Bewertung im Freitext unten konkreter.")
 
     f2 = st.radio("2. Wie hilfreich war die Simulation für das Training der Anamnese?", [1, 2, 3, 4, 5, 6], horizontal=True)
     if f2 in [5, 6]:
-        st.info("❗Was hätten Sie sich beim Anamnese-Training anders gewünscht? Bitte erläutern Sie unten.")
+        st.info("❗Was hätten Sie sich beim Anamnese-Training anders gewünscht? Bitte erläutern Sie unten, damit wir Ihr Feedback besser verstehen und die App anpassen können.")
 
     f3 = st.radio("3. Wie verständlich und relevant war das automatische Feedback?", [1, 2, 3, 4, 5, 6], horizontal=True)
     if f3 in [5, 6]:
-        st.info("❗Wenn Sie die Feedbackqualität bemängeln, beschreiben Sie bitte konkret warum.")
+        st.info("❗Sie sind mit dem Feedback unzufrieden. Wir möchten gern besser werden. Beschreiben Sie deswegen bitte im folgenden Freitext warum.")
 
     f4 = st.radio("4. Wie bewerten Sie den didaktischen Gesamtwert der Simulation?", [1, 2, 3, 4, 5, 6], horizontal=True)
     if f4 in [5, 6]:
-        st.info("❗Was hat aus Ihrer Sicht den didaktischen Wert eingeschränkt? Bitte erläutern Sie.")
+        st.info("❗Was hat aus Ihrer Sicht den didaktischen Wert eingeschränkt? Bitte erläutern Sie uns Ihre Kritik.")
 
     f5 = st.radio("5. Wie schwierig fanden Sie den Fall? *1 = sehr einfach, 6 = sehr schwer*", [1, 2, 3, 4, 5, 6], horizontal=True)
 
