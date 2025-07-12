@@ -15,7 +15,7 @@ if "openai_client" not in st.session_state:
 client = st.session_state["openai_client"]
 
 # Titel
-st.title(f"🩺 Anamnese mit {st.session_state.patient_name}")
+st.title(f"Anamnese mit {st.session_state.patient_name}")
 
 # Startzeit setzen, falls noch nicht erfolgt
 if "startzeit" not in st.session_state:
