@@ -43,9 +43,6 @@ supabase: Client = create_client(supabase_url, supabase_key)
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 st.session_state["openai_client"] = client
 
-import os
-import random
-
 with st.sidebar:
     st.markdown("### 🩺 Patientin")
 
