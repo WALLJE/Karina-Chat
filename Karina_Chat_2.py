@@ -66,24 +66,6 @@ with st.sidebar:
     st.markdown("---")
     st.caption("🔒 Seiten erscheinen automatisch, sobald Schritte abgeschlossen wurden.")
 
-with st.sidebar:
-    st.image("logo.png", width=120)  # Optional
-    st.markdown("### Navigation")
-
-    st.page_link("pages/1_Anamnese.py", label="Anamnese")
-
-    if st.session_state.get("messages"):
-        
-
-    if st.session_state.get("koerper_befund"):
-        
-
-    if st.session_state.get("koerper_befund"):
-        
-    
-    if st.session_state.get("diagnose_final"):
-        st.page_link("6_Feedback_und_Evaluation", label="Feedback", icon="📝")
-
 # Zugriff via Streamlit Secrets
 # nextcloud_url = st.secrets["nextcloud"]["url"]
 # nextcloud_user = st.secrets["nextcloud"]["user"]
