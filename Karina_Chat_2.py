@@ -62,6 +62,7 @@ with st.sidebar:
 
 # In der Sidebar anzeigen
 with st.sidebar:
+    st.text(f"Lade Bild: {st.session_state.patient_logo}")
     st.image(st.session_state.patient_logo, width=120)
     st.markdown("### Navigation")
     
