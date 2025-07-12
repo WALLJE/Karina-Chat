@@ -437,17 +437,20 @@ zeige_instruktionen_vor_start()
 st.title("Virtuelles Fallbeispiel")
 st.markdown("<br>", unsafe_allow_html=True)
 #######################################################
-import streamlit as st
-
 # Seitensteuerung mit Fortschrittskontrolle
 st.set_page_config(page_title="Karina Simulation", layout="wide")
 
 # Modernes Styling für Radiobuttons
 st.markdown("""
     <style>
-    [data-baseweb="radio"] input[type="radio"] {
-        display: none !important;
+    /* Radiobutton-Kreise ausblenden */
+    div[role="radiogroup"] input[type="radio"] {
+        opacity: 0;
+        position: absolute;
+        left: -9999px;
     }
+
+    /* Einheitlich gestylte Auswahlfelder */
     div[role="radiogroup"] > label {
         background-color: #f0f0f5;
         padding: 8px 16px;
@@ -468,7 +471,7 @@ st.markdown("""
         color: white;
         border: none;
     }
-    </style>
+</style>
 """, unsafe_allow_html=True)
 
 menu = ["Start", "Anamnese"]
@@ -548,8 +551,6 @@ elif auswahl == "Feedback & Evaluation" or auswahl == "🔒 Feedback & Evaluatio
         st.stop()
     st.title("📋 Feedback & Evaluation")
     # Hier folgen GPT-Feedback, Protokoll, Download, Studierendenfeedback wie gehabt
-
-
 #######################################################
 
 
