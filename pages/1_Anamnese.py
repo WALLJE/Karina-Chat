@@ -57,7 +57,11 @@ if submit_button and user_input:
     st.rerun()
 
 # Abschlussoption anzeigen
+# st.markdown("---")
+# if st.button("✅ Anamnese abgeschlossen"):
+#    st.session_state.anamnese_done = True
+#    st.success("Anamnese wurde als abgeschlossen markiert.")
+
 st.markdown("---")
-if st.button("✅ Anamnese abgeschlossen"):
-    st.session_state.anamnese_done = True
-    st.success("Anamnese wurde als abgeschlossen markiert.")
+st.markdown("[➡ Weiter zur körperlichen Untersuchung](#/Körperliche_Untersuchung)")
+
