@@ -42,9 +42,8 @@ def student_feedback():
 
     bugs = st.text_area("💬 Welche Ungenauigkeiten oder Fehler sind Ihnen aufgefallen (optional):", "")
     kommentar = st.text_area("💬 Freitext (optional):", "")
-    abgeschickt = st.form_submit_button("📩 Feedback absenden")
 
-    if abgeschickt:
+    if st.button("📩 Feedback absenden"):
         verlauf = "\n".join([
             f"👨 Du: {m['content']}" if m['role'] == 'user' else f"👩 Patientin: {m['content']}"
             for m in st.session_state.get("messages", [])[1:]  # ohne system-prompt
