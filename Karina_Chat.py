@@ -444,6 +444,10 @@ st.set_page_config(page_title="Karina Simulation", layout="wide")
 # Modernes Styling für Radiobuttons
 st.markdown("""
     <style>
+    div[role="radiogroup"] input[type="radio"] {
+        display: none;
+    }
+    
     div[role="radiogroup"] > label {
         background-color: #f0f0f5;
         padding: 8px 16px;
