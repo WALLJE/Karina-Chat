@@ -41,10 +41,20 @@ supabase: Client = create_client(supabase_url, supabase_key)
 # Open AI API-Key setzen
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 st.session_state["openai_client"] = client
-with st.sidebar:
-    st.image("pics/logo.png", width=120)  # Optionales Logo
-    st.markdown("### Navigation")
 
+import random
+import os
+
+# Nur einmal zuweisen, z. B. bei Start
+if "patient_logo" not in st.session_state:
+    pic_files = [f for f in os.listdir("pics") if f.endswith(".png")]
+    st.session_state.patient_logo = os.path.join("pics", random.choice(pic_files))
+
+# In der Sidebar anzeigen
+with st.sidebar:
+    st.image(st.session_state.patient_logo, width=120)
+    st.markdown("### Navigation")
+    
     st.page_link("Anamnese", label="🩺 Anamnese")
 
     # Nur wenn mind. eine Frage gestellt wurde (Chatverlauf existiert)
