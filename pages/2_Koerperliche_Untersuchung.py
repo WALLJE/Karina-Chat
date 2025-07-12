@@ -50,7 +50,7 @@ elif fragen_gestellt:
 else:
     st.subheader("🩺 Körperliche Untersuchung")
     st.button("Untersuchung durchführen", disabled=True)
-    st.info("❗Bitte stellen Sie zunächst mindestens eine anamnestische Frage.")
+    st.info(f"Zuerst bitte mit {st.session_state.patient_name} sprechen.", icon="🔒")
     st.page_link("pages/1_Anamnese.py", label="Zurück zur Anamnese", icon="⬅")
     
 # Verlauf sichern (optional für spätere Analyse)
