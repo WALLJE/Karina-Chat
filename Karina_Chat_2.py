@@ -42,9 +42,6 @@ supabase: Client = create_client(supabase_url, supabase_key)
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 st.session_state["openai_client"] = client
 
-import random
-import os
-
 # Nur einmal zuweisen, z. B. bei Start
 if "patient_logo" not in st.session_state:
     pic_files = [f for f in os.listdir("pics") if f.endswith(".png")]
