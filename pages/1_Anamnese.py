@@ -66,6 +66,6 @@ st.markdown("---")
 
 # Weiter-Link zur Diagnostik
 # Hinweis: "href='/Diagnostik'" sorgt für internen Seitenwechsel, nicht für neues Fenster
-st.page_link("pages/2_Koerperliche_Untersuchung.py", label="➡ Weiter zur Körperlichen Untersuchung", icon="🧪")
+st.page_link("pages/2_Koerperliche_Untersuchung.py", label="➡ Weiter zur Körperlichen Untersuchung", icon="🩺")
 
 
