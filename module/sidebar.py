@@ -41,11 +41,11 @@ def show_sidebar():
     
         # Nur wenn Untersuchung erfolgt ist
         if "koerper_befund" in st.session_state:
-            sst.page_link("pages/4_Diagnostik_und_Befunde.py", label="Diagnostik", icon="🧪")
+            st.page_link("pages/4_Diagnostik_und_Befunde.py", label="Diagnostik", icon="🧪")
     
         # Nur wenn Diagnostik abgeschlossen (Verdachtsdiagnosen vorliegen)
         if "diagnose_vorschlaege" in st.session_state:
-            sst.page_link("pages/5_Diagnose_und_Therapie.py", label="Diagnose und Therapie", icon="🧪")
+            st.page_link("pages/5_Diagnose_und_Therapie.py", label="Diagnose und Therapie", icon="🧪")
     
         # Nur wenn finale Diagnose gesetzt
         if "diagnose_final" in st.session_state:
