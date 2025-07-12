@@ -19,6 +19,7 @@ import pandas as pd
 from datetime import datetime
 import requests
 from requests.auth import HTTPBasicAuth
+from PIL import Image
 
 # Für einlesen Excel Datei
 from io import BytesIO
@@ -42,10 +43,25 @@ supabase: Client = create_client(supabase_url, supabase_key)
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 st.session_state["openai_client"] = client
 
-# Nur einmal zuweisen, z. B. bei Start
-if "patient_logo" not in st.session_state:
-    pic_files = [f for f in os.listdir("pics") if f.endswith(".png")]
-    st.session_state.patient_logo = os.path.join("pics", random.choice(pic_files))
+import os
+import random
+
+with st.sidebar:
+    st.markdown("### 🩺 Patientin")
+
+    # Logo nur einmal zufällig setzen
+    if "patient_logo" not in st.session_state:
+        pic_files = [f for f in os.listdir("pics") if f.endswith(".png")]
+        chosen = os.path.join("pics", random.choice(pic_files))
+        st.session_state.patient_logo = chosen
+
+    # Bild aus Datei als Bytes laden
+    try:
+        with open(st.session_state.patient_logo, "rb") as file:
+            img_bytes = file.read()
+        st.image(img_bytes, width=120)
+    except Exception as e:
+        st.warning(f"⚠️ Bild konnte nicht geladen werden: {e}")
 
 # In der Sidebar anzeigen
 with st.sidebar:
