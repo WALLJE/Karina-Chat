@@ -7,6 +7,11 @@ from module.feedback_ui import student_feedback
 
 client = st.session_state["openai_client"]
 
+# Voraussetzungen prüfen
+if "SYSTEM_PROMPT" not in st.session_state or "patient_name" not in st.session_state:
+    st.warning("⚠️ Der Fall ist noch nicht geladen. Bitte beginne über die Startseite.")
+    st.page_link("karina_chat2", label="⬅ Zur Startseite", icon="🏠")
+    st.stop()
 
 #if not st.session_state.get("final_diagnose") or not st.session_state.get("therapie_vorschlag"):
 #    st.warning("⚠️ Bitte zuerst Diagnose und Therapie eingeben.")
