@@ -62,7 +62,7 @@ if (
 else:
     st.subheader("📄 Befunde")
     st.button("🧪 Befunde generieren lassen", disabled=True)
-    st.info("❗Bitte führen Sie zuerst die körperliche Untersuchung durch.")
+    st.info("❗Bitte fordern Sie zunächst Untersuchungen an.")
 
 # Weitere Diagnostik-Termine
 if not st.session_state.get("final_diagnose", "").strip():
