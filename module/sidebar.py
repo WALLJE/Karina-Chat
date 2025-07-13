@@ -72,7 +72,7 @@ def show_sidebar():
             "final_diagnose" in st.session_state and
             "therapie_vorschlag" in st.session_state
         ):
-            st.page_link("Feedback_und_Download", label="📝 Feedback & Download")  
+            st.page_link("pages/6_Feedback_und_Evaluation.py", label="📝 Feedback & Download")  
 
         st.markdown("---")
         st.caption("🔒 Seiten erscheinen automatisch, sobald Schritte abgeschlossen wurden.")
