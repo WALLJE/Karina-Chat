@@ -6,7 +6,7 @@ from befundmodul import generiere_befund
 
 show_sidebar()
 
-st.subheader("Diagnostik und Befunde")
+# st.subheader("Diagnostik und Befunde")
 
 # --- Voraussetzungen wie in Hauptdatei beachten ---
 if "koerper_befund" in st.session_state:
