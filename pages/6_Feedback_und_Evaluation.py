@@ -55,12 +55,12 @@ else:
             anzahl_termine,
             diagnose_szenario
         )
-
         st.session_state.final_feedback = feedback
+        speichere_gpt_feedback_in_supabase()
         st.success("✅ Evaluation erstellt")
         st.rerun()
 
-speichere_gpt_feedback_in_supabase()
+
 
 # Downloadbereich
 # Zusammenfassung und Download vorbereiten
