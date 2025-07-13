@@ -1,6 +1,7 @@
 import streamlit as st
 from datetime import datetime
 from supabase import create_client, Client
+import json
 
 # Supabase initialisieren (Erwartung: in st.secrets definiert)
 supabase_url = st.secrets["supabase"]["url"]
@@ -85,8 +86,9 @@ def student_feedback():
         }
 
         try:
-            supabase.table("feedback_studi").insert(eintrag).execute()
+            # Automatisch JSON-kompatibel machen (int64 → int, None → null, etc.)
+            eintrag_serialisiert = json.loads(json.dumps(eintrag, default=str))
+            supabase.table("feedback_studi").insert(eintrag_serialisiert).execute()
             st.success("✅ Vielen Dank, Ihr Feedback wurde gespeichert.")
         except Exception as e:
             st.error(f"🚫 Fehler beim Speichern in Supabase: {repr(e)}")
-
