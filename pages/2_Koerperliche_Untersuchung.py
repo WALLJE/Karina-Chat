@@ -22,7 +22,7 @@ if (
     st.stop()
 
 # Titel
-st.header(f"🩺 Körperliche Untersuchung bei {st.session_state.patient_name}")
+st.subheader(f"Körperliche Untersuchung bei {st.session_state.patient_name}")
 
 # Optional: Startzeit merken (z. B. für spätere Auswertung)
 if "start_untersuchung" not in st.session_state:
