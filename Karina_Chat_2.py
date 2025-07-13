@@ -30,7 +30,7 @@ from sprachmodul import sprach_check
 from module.untersuchungsmodul import generiere_koerperbefund
 from befundmodul import generiere_befund
 from module.sidebar import show_sidebar
-from module.startinfo import zeige_instruktionen_vor_start()
+from module.startinfo import zeige_instruktionen_vor_start
 
 # Für Einbinden Supabase Tabellen
 
