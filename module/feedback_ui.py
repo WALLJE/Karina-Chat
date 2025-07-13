@@ -66,7 +66,7 @@ def student_feedback():
             "bearbeitungsdauer_min": round(bearbeitungsdauer, 1),
             "szenario": st.session_state.get("diagnose_szenario", ""),
             "patient_name": st.session_state.get("patient_name", ""),
-            "patient_age": st.session_state.get("patient_age", ""),
+            "patient_age": int(st.session_state.get("patient_age", 0)) if st.session_state.get("patient_age", "") != "" else "",
             "patient_job": st.session_state.get("patient_job", ""),
             "patient_verhalten": st.session_state.get("patient_verhalten_memo", "unbekannt"),
             "note_realismus": f1,
