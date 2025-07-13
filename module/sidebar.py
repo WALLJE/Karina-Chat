@@ -64,7 +64,7 @@ def show_sidebar():
             st.page_link("pages/5_Diagnose_und_Therapie.py", label="Diagnose und Therapie", icon="💊")
     
         # Nur wenn finale Diagnose gesetzt
-        if "diagnose_final" in st.session_state:
+        if "final_diagnose" in st.session_state:
             st.page_link("Feedback_und_Download", label="📝 Feedback & Download")  
 
         st.markdown("---")
