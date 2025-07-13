@@ -8,19 +8,32 @@ def show_sidebar():
     with st.sidebar:
         # st.markdown("### Patientin")
 
-        valid_images = []
-        for f in os.listdir("pics"):
-            if f.endswith(".png"):
-                path = os.path.join("pics", f)
-                try:
-                    with Image.open(path) as img:
-                        img.verify()
-                    valid_images.append(path)
-                except:
-                    pass
+# Standardverzeichnis
+pic_dir = "pics"
 
-        if "patient_logo" not in st.session_state and valid_images:
-            st.session_state.patient_logo = random.choice(valid_images)
+# Wenn Alter verfügbar und > 40: Senior-Verzeichnis verwenden
+if "patient_age" in st.session_state:
+    try:
+        if int(st.session_state["patient_age"]) > 40:
+            pic_dir = os.path.join("pics", "senior")
+    except:
+        pass  # falls Alter nicht korrekt als Zahl eingegeben wurde
+
+valid_images = []
+if os.path.isdir(pic_dir):
+    for f in os.listdir(pic_dir):
+        if f.endswith(".png"):
+            path = os.path.join(pic_dir, f)
+            try:
+                with Image.open(path) as img:
+                    img.verify()
+                valid_images.append(path)
+            except:
+                pass
+
+if "patient_logo" not in st.session_state and valid_images:
+    st.session_state.patient_logo = random.choice(valid_images)
+
 
         try:
             st.image(st.session_state.patient_logo, width=160)
