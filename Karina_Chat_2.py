@@ -69,7 +69,7 @@ def fallauswahl_prompt(df, szenario=None):
         st.session_state.diagnose_szenario = fall["Szenario"]
         st.session_state.diagnose_features = fall["Beschreibung"]
         st.session_state.koerper_befund_tip = fall.get("Körperliche Untersuchung", "")
-        st.session_state.alter_korrekt = fall.get["Alterskorrektur", ""]
+        st.session_state.alter_korrekt = fall.get("Alterskorrektur", 0)
         # Spalte Besonderheit noch offen
         # Mit der folgenden Zeile kann der Fall am Anfang zu Kontrollzwecken schon angezeigt werden
         # st.success(f"✅ Zufälliger Fall geladen: {fall['Szenario']}")
