@@ -73,5 +73,5 @@ st.page_link(
 )
 
 if "koerper_befund" not in st.session_state:
-    st.info(":grey[Dieser Schritt wird verfügbar, sobald die körperliche Untersuchung abgeschlossen ist.]", icon="🔒")
+    st.info(":grey[Diagnostik wird verfügbar, sobald die körperliche Untersuchung abgeschlossen ist.]", icon="🔒")
 
