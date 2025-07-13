@@ -51,7 +51,7 @@ elif fragen_gestellt:
             except RateLimitError:
                 st.error("🚫 Die Untersuchung konnte nicht erstellt werden. Die OpenAI-API ist derzeit überlastet.")
 else:
-    st.subheader("🩺 Körperliche Untersuchung")
+    st.subheader("🩺 Untersuchung")
     st.button("Untersuchung durchführen", disabled=True)
     st.info(f"Zuerst bitte mit {st.session_state.patient_name} sprechen.", icon="🔒")
     st.page_link("pages/1_Anamnese.py", label="Zurück zur Anamnese", icon="⬅")
