@@ -69,8 +69,8 @@ def show_sidebar():
         # Nur wenn finale Diagnose gesetzt
         if (
             "final_diagnose" in st.session_state and
-            
-            :
+            "therapie_vorschlag" in st.session_state
+        ):
             st.page_link("Feedback_und_Download", label="📝 Feedback & Download")  
 
         st.markdown("---")
