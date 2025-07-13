@@ -5,15 +5,12 @@ from diagnostikmodul import diagnostik_und_befunde_routine
 from befundmodul import generiere_befund
 
 show_sidebar()
-st.page_link("karina_chat2", label="⬅ Zur Startseite", icon="🏠")
 
-st.title("🤪 Diagnostik und Befunde")
+st.subheader("Diagnostik und Befunde")
 
 # --- Voraussetzungen wie in Hauptdatei beachten ---
 if "koerper_befund" in st.session_state:
-    st.subheader("Differentialdiagnosen und diagnostische Maßnahmen")
-
-    if "user_ddx2" not in st.session_state:
+        if "user_ddx2" not in st.session_state:
         with st.form("differentialdiagnosen_diagnostik_formular"):
             ddx_input2 = st.text_area("Welche drei Differentialdiagnosen halten Sie nach Anamnese und Untersuchung für möglich?", key="ddx_input2")
             diag_input2 = st.text_area("Welche konkreten diagnostischen Maßnahmen möchten Sie vorschlagen?", key="diag_input2")
