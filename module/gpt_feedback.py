@@ -50,6 +50,7 @@ def speichere_gpt_feedback_in_supabase():
         supabase = create_client(st.secrets["supabase"]["url"], st.secrets["supabase"]["key"])
         gpt_row_serialisiert = json.loads(json.dumps(gpt_row, default=str))
         supabase.table("feedback_gpt").insert(gpt_row_serialisiert).execute()
-        st.success("✅ GPT-Feedback wurde gespeichert.")
+        # DEBUG 
+        # st.success("✅ GPT-Feedback wurde gespeichert.")
     except Exception as e:
         st.error(f"🚫 Fehler beim Speichern in Supabase: {repr(e)}")
