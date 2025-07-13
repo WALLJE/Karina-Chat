@@ -5,7 +5,8 @@ from PIL import Image
 
 
 def show_sidebar():
-    st.sidebar.write("🧪 DEBUG: keys in session_state:", list(st.session_state.keys()))
+    # DEBUG
+    # st.sidebar.write("🧪 DEBUG: keys in session_state:", list(st.session_state.keys()))
 
     with st.sidebar:
         # st.markdown("### Patientin")
