@@ -18,7 +18,7 @@ if (
     "diagnose_features" not in st.session_state
 ):
     st.warning("⚠️ Der Fall ist noch nicht geladen. Bitte beginne über die Startseite.")
-    st.page_link("Karina_Chat_2.py", label="⬅ Zur Startseite", icon="🏠")
+    st.page_link("Karina_Chat_2.py", label="⬅ Zur Startseite")
     st.stop()
 
 # Titel
