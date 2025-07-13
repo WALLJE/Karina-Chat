@@ -15,7 +15,7 @@ client = st.session_state["openai_client"]
 # Voraussetzungen prüfen
 if "SYSTEM_PROMPT" not in st.session_state or "patient_name" not in st.session_state:
     st.warning("⚠️ Der Fall ist noch nicht geladen. Bitte beginne über die Startseite.")
-    st.page_link("karina_chat2", label="⬅ Zur Startseite", icon="🏠")
+    st.page_link("Karina_Chat_2.py", label="⬅ Zur Startseite")
     st.stop()
 
 #if not st.session_state.get("final_diagnose") or not st.session_state.get("therapie_vorschlag"):
