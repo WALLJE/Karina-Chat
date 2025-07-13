@@ -134,5 +134,16 @@ if (
 # if st.session_state.get("admin_mode"):
 #     st.page_link("pages/20_Fallbeispiel_Editor.py", label="🔧 Fallbeispiel-Editor", icon="🔧")
 
+# Weiter-Link zur Diagnose und Therapie
+st.page_link(
+    "pages/5_Diagnose_und_Therapie.py",
+    label="Weiter zur Diagnose und Therapie",
+    icon="💊",
+    disabled="befunde" not in st.session_state
+)
+
+if "befunde" not in st.session_state:
+    st.info(":grey[Dieser Schritt wird verfügbar, sobald Diagnostik erfolgt ist.]", icon="🔒")
+
 copyright_footer()
 
