@@ -33,4 +33,5 @@ Im Wartezimmer sitzen weitere Patientinnen mit anderen Krankheitsbildern, die Si
 ---
 """)
         st.page_link("pages/1_Anamnese.py", label="✅ Verstanden – weiter zur Anamnese")
+        st.stop ()
 
