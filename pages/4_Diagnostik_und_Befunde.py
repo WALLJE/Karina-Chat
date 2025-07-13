@@ -23,9 +23,9 @@ if "koerper_befund" in st.session_state:
                     st.session_state.user_diagnostics = sprach_check(diag_input2, client)
                     st.rerun()
 
-    else:
-        st.markdown(f"**Differentialdiagnosen:**  \n{st.session_state.user_ddx2}")
-        st.markdown(f"**Diagnostische Maßnahmen:**  \n{st.session_state.user_diagnostics}")
+        else:
+                st.markdown(f"**Differentialdiagnosen:**  \n{st.session_state.user_ddx2}")
+                st.markdown(f"**Diagnostische Maßnahmen:**  \n{st.session_state.user_diagnostics}")
 else:
     st.subheader("Diagnostik und Befunde")
     st.button("Untersuchung durchführen", disabled=True)
