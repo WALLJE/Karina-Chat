@@ -6,6 +6,7 @@ from supabase import create_client, Client
 from module.feedback_ui import student_feedback
 from module.sidebar import show_sidebar
 from module.footer import copyright_footer
+from module.gpt_feedback import speichere_gpt_feedback_in_supabase
 
 show_sidebar()
 copyright_footer()
@@ -58,6 +59,8 @@ else:
         st.session_state.final_feedback = feedback
         st.success("✅ Evaluation erstellt")
         st.rerun()
+
+speichere_gpt_feedback_in_supabase()
 
 # Downloadbereich
 # Zusammenfassung und Download vorbereiten
