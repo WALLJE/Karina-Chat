@@ -4,7 +4,7 @@ from module.footer import copyright_footer
 from diagnostikmodul import diagnostik_und_befunde_routine
 from befundmodul import generiere_befund
 
-show_sidebar()
+# show_sidebar()
 
 # st.subheader("Diagnostik und Befunde")
 
