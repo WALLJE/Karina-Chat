@@ -34,7 +34,7 @@ def show_sidebar():
             st.markdown(patient_text)
 
         st.markdown("### Navigation")
-        st.page_link("pages/1_Anamnese.py", label="🩺 Anamnese")
+        st.page_link("pages/1_Anamnese.py", label="Anamnese", icon="💬")
 
 # Nur wenn mind. eine Frage gestellt wurde (Chatverlauf existiert)
         if "messages" in st.session_state and any(m["role"] == "user" for m in st.session_state["messages"]):
