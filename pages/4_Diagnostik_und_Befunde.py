@@ -27,7 +27,7 @@ if "koerper_befund" in st.session_state:
         st.markdown(f"**Differentialdiagnosen:**  \n{st.session_state.user_ddx2}")
         st.markdown(f"**Diagnostische Maßnahmen:**  \n{st.session_state.user_diagnostics}")
 else:
-    st.subheader("Differentialdiagnosen und diagnostische Maßnahmen")
+    st.subheader("Diagnostik und Befunde")
     st.button("Untersuchung durchführen", disabled=True)
     st.info("❗Bitte führen Sie zuerst die körperliche Untersuchung durch.")
 
