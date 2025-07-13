@@ -4,6 +4,11 @@ from sprachmodul import sprach_check
 from feedbackmodul import feedback_erzeugen
 from supabase import create_client, Client
 from module.feedback_ui import student_feedback
+from module.sidebar import show_sidebar
+from module.footer import copyright_footer
+
+show_sidebar()
+copyright_footer()
 
 client = st.session_state["openai_client"]
 
