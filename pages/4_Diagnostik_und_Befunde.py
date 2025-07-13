@@ -1,6 +1,6 @@
 import streamlit as st
 from module.sidebar import show_sidebar
-from Karina_Chat_2 import copyright_footer
+from module.footer import copyright_footer
 from diagnostikmodul import diagnostik_und_befunde_routine
 from befundmodul import generiere_befund
 
