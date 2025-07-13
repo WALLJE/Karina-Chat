@@ -33,8 +33,7 @@ fragen_gestellt = any(m["role"] == "user" for m in st.session_state.get("message
 if "koerper_befund" in st.session_state:
     st.success("✅ Körperliche Untersuchung erfolgt.")
     st.subheader("🔍 Befund")
-    st.markdown(f"<div style='background-color:#f0f5f3; padding: 1em; border-radius: 8px;'>"
-                f"{st.session_state.koerper_befund}</div>", unsafe_allow_html=True)
+    st.markdown(st.session_state.koerper_befund)
 
 elif fragen_gestellt:
     if st.button("🩺 Untersuchung durchführen"):
