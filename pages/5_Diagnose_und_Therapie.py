@@ -32,5 +32,23 @@ else:
 # if st.session_state.get("admin_mode"):
 #     st.page_link("pages/20_Fallbeispiel_Editor.py", label="🔧 Fallbeispiel-Editor", icon="🔧")
 
+# Weiter-Link zum Feedback
+st.page_link(
+    "pages/6_Feedback_und_Evaluation.py",
+    label="Weiter zur Auswertung & Feedback",
+    icon="📝",
+    disabled=not (
+        st.session_state.get("final_diagnose", "").strip() and
+        st.session_state.get("therapie_vorschlag", "").strip()
+    )
+)
+
+if not (
+    st.session_state.get("final_diagnose", "").strip() and
+    st.session_state.get("therapie_vorschlag", "").strip()
+):
+    st.info(":grey[Dieser Schritt wird verfügbar, sobald Diagnose und Therapiekonzept eingegeben wurden.]", icon="🔒")
+
+
 copyright_footer()
 
