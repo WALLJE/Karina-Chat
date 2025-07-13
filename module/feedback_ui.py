@@ -86,9 +86,7 @@ def student_feedback():
         }
 
         try:
-            # Automatisch JSON-kompatibel machen (int64 → int, None → null, etc.)
-            eintrag_serialisiert = json.loads(json.dumps(eintrag, default=str))
-            supabase.table("feedback_studi").insert(eintrag_serialisiert).execute()
+            supabase.table("feedback_studi").insert(eintrag).execute()
             st.success("✅ Vielen Dank, Ihr Feedback wurde gespeichert.")
         except Exception as e:
             st.error(f"🚫 Fehler beim Speichern in Supabase: {repr(e)}")
