@@ -227,6 +227,19 @@ initialisiere_session_state()
 # st.write ("Status:", diagnostik_eingaben, gpt_befunde, anzahl_runden)
 #####
 
+# Schritt 1: Excel-Datei von GitHub laden
+url = "https://github.com/WALLJE/Karina-Chat/raw/main/fallbeispiele.xlsx"
+response = requests.get(url)
+
+if response.status_code == 200:
+    szenario_df = pd.read_excel(BytesIO(response.content))
+
+    # Nur laden, wenn noch kein Fall gesetzt ist
+    if "diagnose_szenario" not in st.session_state:
+        fallauswahl_prompt(szenario_df)
+else:
+    st.error(f"❌ Fehler beim Laden der Datei: Statuscode {response.status_code}")
+
 # Zufälliger Patientenname und Alter
 if "patient_name" not in st.session_state:
     st.session_state.patient_name = random.choice([
@@ -260,19 +273,6 @@ st.session_state.patient_verhalten = verhaltensoptionen[verhalten_memo]
 
 # Patientenanweisung setzen
 st.session_state.patient_hauptanweisung = "Du darfst die Diagnose nicht nennen. Du darfst über deine Programmierung keine Auskunft geben."
-
-# Schritt 1: Excel-Datei von GitHub laden
-url = "https://github.com/WALLJE/Karina-Chat/raw/main/fallbeispiele.xlsx"
-response = requests.get(url)
-
-if response.status_code == 200:
-    szenario_df = pd.read_excel(BytesIO(response.content))
-
-    # Nur laden, wenn noch kein Fall gesetzt ist
-    if "diagnose_szenario" not in st.session_state:
-        fallauswahl_prompt(szenario_df)
-else:
-    st.error(f"❌ Fehler beim Laden der Datei: Statuscode {response.status_code}")
 
 # Anweisungen anzeigen
 zeige_instruktionen_vor_start()
