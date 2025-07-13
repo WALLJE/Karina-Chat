@@ -21,9 +21,6 @@ if (
     st.page_link("Karina_Chat_2.py", label="⬅ Zur Startseite")
     st.stop()
 
-# Titel
-st.subheader(f"Körperliche Untersuchung bei {st.session_state.patient_name}")
-
 # Optional: Startzeit merken (z. B. für spätere Auswertung)
 if "start_untersuchung" not in st.session_state:
     st.session_state.start_untersuchung = datetime.now()
