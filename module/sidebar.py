@@ -61,7 +61,7 @@ def show_sidebar():
     
         # Nur wenn Diagnostik abgeschlossen (Verdachtsdiagnosen vorliegen)
         if "user_ddx2" in st.session_state:
-            st.page_link("pages/5_Diagnose_und_Therapie.py", label="Diagnose und Therapie", icon="🧪")
+            st.page_link("pages/5_Diagnose_und_Therapie.py", label="Diagnose und Therapie", icon="💊")
     
         # Nur wenn finale Diagnose gesetzt
         if "diagnose_final" in st.session_state:
