@@ -93,12 +93,12 @@ if "final_feedback" in st.session_state:
     if "diagnostik_eingaben_kumuliert" in st.session_state:
         protokoll += "\n---\n Geplante diagnostische Maßnahmen (alle Termine):\n"
         protokoll += st.session_state.diagnostik_eingaben_kumuliert + "\n"
+    
+    # KUmulierte Befunde
+    if "gpt_befunde_kumuliert" in st.session_state:
+        protokoll += "\n---\n📄 Ergebnisse der diagnostischen Maßnahmen:\n"
+        protokoll += st.session_state.gpt_befunde_kumuliert + "\n"
 
-
-    # Generierte Befunde
-    if "befunde" in st.session_state:
-        protokoll += "\n---\n Ergebnisse der diagnostischen Maßnahmen:\n"
-        protokoll += st.session_state.befunde + "\n"
 
     # Finale Diagnose
     if "final_diagnose" in st.session_state:
