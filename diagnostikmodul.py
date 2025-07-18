@@ -6,6 +6,23 @@ from openai import OpenAI
 from sprachmodul import sprach_check
 from befundmodul import generiere_befund
 
+def aktualisiere_diagnostik_zusammenfassung(start_runde=2):
+    """Erstellt die kumulative Zusammenfassung aller Diagnostik- und Befund-Runden und speichert sie im SessionState."""
+    diagnostik_eingaben = ""
+    gpt_befunde = ""
+
+    for i in range(1, st.session_state.get("diagnostik_runden_gesamt", start_runde - 1) + 1):
+        diag = st.session_state.get(f"diagnostik_runde_{i}", "")
+        bef = st.session_state.get(f"befunde_runde_{i}", "")
+        if diag:
+            diagnostik_eingaben += f"\n---\n### Termin {i}\n{diag}\n"
+        if bef:
+            gpt_befunde += f"\n---\n### Termin {i}\n{bef}\n"
+
+    st.session_state["diagnostik_eingaben_kumuliert"] = diagnostik_eingaben.strip()
+    st.session_state["gpt_befunde_kumuliert"] = gpt_befunde.strip()
+
+
 def diagnostik_und_befunde_routine(client: OpenAI, start_runde=2, weitere_diagnostik_aktiv=False):
     # Ermittle höchste vorhandene Befund-Runde
     vorhandene_runden = [
@@ -51,19 +68,6 @@ def diagnostik_und_befunde_routine(client: OpenAI, start_runde=2, weitere_diagno
                     st.rerun()
 
 # 🔁 Zusammenfassung aller Runden
-    
-    diagnostik_eingaben = ""
-    gpt_befunde = ""
-
-    for i in range(1, st.session_state.get("diagnostik_runden_gesamt", start_runde - 1) + 1):
-        diag = st.session_state.get(f"diagnostik_runde_{i}", "")
-        bef = st.session_state.get(f"befunde_runde_{i}", "")
-        if diag:
-            diagnostik_eingaben += f"\n---\n### Termin {i}\n{diag}\n"
-        if bef:
-            gpt_befunde += f"\n---\n### Termin {i}\n{bef}\n"
-
-    # ✅ Speichere kumulierte Diagnostik & Befunde zentral
-    st.session_state["diagnostik_eingaben_kumuliert"] = diagnostik_eingaben.strip()
-    st.session_state["gpt_befunde_kumuliert"] = gpt_befunde.strip()
+    aktualisiere_diagnostik_zusammenfassung(start_runde)
     return diagnostik_eingaben.strip(), gpt_befunde.strip()
+   
