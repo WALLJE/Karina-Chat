@@ -1,4 +1,4 @@
-# Version 7 (korrigiert)
+# Version 10 (korrigiert)
 #
 
 import streamlit as st
@@ -11,7 +11,16 @@ def aktualisiere_diagnostik_zusammenfassung(start_runde=2):
     diagnostik_eingaben = ""
     gpt_befunde = ""
 
-    for i in range(1, st.session_state.get("diagnostik_runden_gesamt", start_runde - 1) + 1):
+# Termin 1: Basisdiagnostik
+    erster_diag = st.session_state.get("user_diagnostics", "")
+    erster_befund = st.session_state.get("befunde", "")
+    
+    if erster_diag or erster_befund:
+        diagnostik_eingaben += f"\n---\n### Termin 1\n{erster_diag}\n"
+        gpt_befunde += f"\n---\n### Termin 1\n{erster_befund}\n"
+        
+    # Jetzt die restlichen Runden (ab Runde 2)
+    for i in range(2, st.session_state.get("diagnostik_runden_gesamt", start_runde - 1) + 1):
         diag = st.session_state.get(f"diagnostik_runde_{i}", "")
         bef = st.session_state.get(f"befunde_runde_{i}", "")
         if diag:
