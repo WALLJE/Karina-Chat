@@ -7,6 +7,7 @@ from module.feedback_ui import student_feedback
 from module.sidebar import show_sidebar
 from module.footer import copyright_footer
 from module.gpt_feedback import speichere_gpt_feedback_in_supabase
+from diagnostikmodul import aktualisiere_diagnostik_zusammenfassung
 
 show_sidebar()
 copyright_footer()
@@ -23,6 +24,7 @@ if "SYSTEM_PROMPT" not in st.session_state or "patient_name" not in st.session_s
 #    st.warning("⚠️ Bitte zuerst Diagnose und Therapie eingeben.")
 #    st.stop()
 
+aktualisiere_diagnostik_zusammenfassung()
 
 # feedback
 
