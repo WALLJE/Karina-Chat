@@ -82,6 +82,7 @@ def student_feedback():
             "befunde": befunde + weitere_befunde,
             "finale_diagnose": st.session_state.get("final_diagnose", "nicht angegeben"),
             "therapie": st.session_state.get("therapie_vorschlag", "nicht angegeben"),
+            "diagnostik": st.session_state.get("diagnostik_eingaben_kumuliert", ""),
             "gpt_feedback": st.session_state.get("final_feedback", "Kein KI-Feedback erzeugt")
         }
 
