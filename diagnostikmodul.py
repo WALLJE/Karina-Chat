@@ -24,6 +24,7 @@ def aktualisiere_diagnostik_zusammenfassung(start_runde=2):
 
 
 def diagnostik_und_befunde_routine(client: OpenAI, start_runde=2, weitere_diagnostik_aktiv=False):
+
     # Ermittle höchste vorhandene Befund-Runde
     vorhandene_runden = [
         int(k.split("_")[-1])
@@ -69,5 +70,9 @@ def diagnostik_und_befunde_routine(client: OpenAI, start_runde=2, weitere_diagno
 
 # 🔁 Zusammenfassung aller Runden
     aktualisiere_diagnostik_zusammenfassung(start_runde)
-    return diagnostik_eingaben.strip(), gpt_befunde.strip()
+    return (
+        st.session_state["diagnostik_eingaben_kumuliert"],
+        st.session_state["gpt_befunde_kumuliert"]
+    )
+
    
