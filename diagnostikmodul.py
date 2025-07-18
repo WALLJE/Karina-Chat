@@ -63,5 +63,7 @@ def diagnostik_und_befunde_routine(client: OpenAI, start_runde=2, weitere_diagno
         if bef:
             gpt_befunde += f"\n---\n### Termin {i}\n{bef}\n"
 
-
+    # ✅ Speichere kumulierte Diagnostik & Befunde zentral
+    st.session_state["diagnostik_eingaben_kumuliert"] = diagnostik_eingaben.strip()
+    st.session_state["gpt_befunde_kumuliert"] = gpt_befunde.strip()
     return diagnostik_eingaben.strip(), gpt_befunde.strip()
