@@ -37,7 +37,7 @@ def speichere_gpt_feedback_in_supabase():
         "beruf": st.session_state.get("patient_job", ""),
         "verhalten": st.session_state.get("patient_verhalten_memo", "unbekannt"),
         "verdachtsdiagnosen": st.session_state.get("user_ddx2", ""),
-        "diagnostik": st.session_state.get("user_diagnostics", ""),
+        "diagnostik": st.session_state.get("diagnostik_eingaben_kumuliert", ""),
         "finale_diagnose": st.session_state.get("final_diagnose", ""),
         "therapie": st.session_state.get("therapie_vorschlag", ""),
         "gpt_feedback": st.session_state.get("final_feedback", ""),
