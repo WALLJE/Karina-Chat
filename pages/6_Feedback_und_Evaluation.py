@@ -81,27 +81,28 @@ if "final_feedback" in st.session_state:
 
     # Körperlicher Untersuchungsbefund
     if "koerper_befund" in st.session_state:
-        protokoll += "\n---\nKörperlicher Untersuchungsbefund:\n"
+        protokoll += "\n---\n Körperlicher Untersuchungsbefund:\n"
         protokoll += st.session_state.koerper_befund + "\n"
 
     # Differentialdiagnosen
     if "user_ddx2" in st.session_state:
-        protokoll += "\n---\nErhobene Differentialdiagnosen:\n"
+        protokoll += "\n---\n Erhobene Differentialdiagnosen:\n"
         protokoll += st.session_state.user_ddx2 + "\n"
 
     # Diagnostische Maßnahmen
-    if "user_diagnostics" in st.session_state:
-        protokoll += "\n---\n🔬 Geplante diagnostische Maßnahmen:\n"
-        protokoll += st.session_state.user_diagnostics + "\n"
+    if "diagnostik_eingaben_kumuliert" in st.session_state:
+        protokoll += "\n---\n Geplante diagnostische Maßnahmen (alle Termine):\n"
+        protokoll += st.session_state.diagnostik_eingaben_kumuliert + "\n"
+
 
     # Generierte Befunde
     if "befunde" in st.session_state:
-        protokoll += "\n---\n📄 Ergebnisse der diagnostischen Maßnahmen:\n"
+        protokoll += "\n---\n Ergebnisse der diagnostischen Maßnahmen:\n"
         protokoll += st.session_state.befunde + "\n"
 
     # Finale Diagnose
     if "final_diagnose" in st.session_state:
-        protokoll += "\n---\nFinale Diagnose:\n"
+        protokoll += "\n---\n Finale Diagnose:\n"
         protokoll += st.session_state.final_diagnose + "\n"
 
     # Therapiekonzept
