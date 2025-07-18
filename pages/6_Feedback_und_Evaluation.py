@@ -30,8 +30,8 @@ if st.session_state.get("final_feedback", "").strip():
     st.markdown(st.session_state.final_feedback)
 else:
     if st.button("📋 Abschluss-Feedback anzeigen"):
-        diagnostik_eingaben = st.session_state.get("diagnostik_eingaben", "")
-        gpt_befunde = st.session_state.get("gpt_befunde", "")
+        diagnostik_eingaben = st.session_state.get("diagnostik_eingaben_kumuliert", "")
+        gpt_befunde = st.session_state.get("gpt_befunde_kumuliert", "")
         koerper_befund = st.session_state.get("koerper_befund", "")
         final_diagnose = st.session_state.get("final_diagnose", "")
         therapie_vorschlag = st.session_state.get("therapie_vorschlag", "")
