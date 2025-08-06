@@ -34,3 +34,4 @@ def show_impressum():
     Stand: August 2025
     """)
 
+show_impressum()
