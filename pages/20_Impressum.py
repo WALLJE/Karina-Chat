@@ -21,7 +21,7 @@ def show_impressum():
     ---
     ⚠️ Bitte beachten Sie, dass Sie mit einem **experimentellen, KI-basierten, simulierten Patientinnenmodell** kommunizieren, welches **ausschließlich zu Lehrzwecken** konzipiert ist. 
     
-    Wichtiges Lernziel bei der Verwendung der App ist es unter anderem, die Limitationen (**Fehlinterpretationen, falsche Informationen**) in der von der KI generierten Antworten zu identifizieren.
+    Wichtiges Lernziel bei der Verwendung der App ist es unter anderem, die Limitationen (**Fehlinterpretationen, falsche Informationen**) in den von der KI generierten Antworten zu identifizieren.
     
     ⚠️ Die von der KI generierten Informationen aus dieser App können fehlerhaft sein! Alle Informationen, die von der KI mitgeteilt werden, müssen mit geeigneter Fachliteratur abgeglichen werden bzw. können Diskussiongrundlage im Studentenunterricht sein.
     
