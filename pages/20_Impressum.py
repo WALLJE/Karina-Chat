@@ -1,8 +1,6 @@
 import streamlit as st
 
 def show_impressum():
-    st.title("Impressum")
-    
     st.markdown("""
     ## Impressum
     
