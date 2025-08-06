@@ -1,4 +1,4 @@
-reimport streamlit as st
+import streamlit as st
 import os
 import random
 from PIL import Image
