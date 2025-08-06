@@ -1,4 +1,4 @@
-import streamlit as st
+reimport streamlit as st
 import os
 import random
 from PIL import Image
@@ -75,5 +75,5 @@ def show_sidebar():
             st.page_link("pages/6_Feedback_und_Evaluation.py", label="📝 Feedback & Download")  
 
         st.markdown("---")
-        st.caption("🔒 Seiten erscheinen automatisch, sobald Schritte abgeschlossen wurden.")
+        st.caption("🔒 Weitere Seiten erscheinen automatisch, sobald diagnostische Schritte abgeschlossen wurden.")
 
