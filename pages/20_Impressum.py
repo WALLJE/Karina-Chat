@@ -1,4 +1,9 @@
 import streamlit as st
+from module.sidebar import show_sidebar
+from module.footer import copyright_footer
+
+copyright_footer()
+show_sidebar()
 
 def show_impressum():
     st.markdown("""
