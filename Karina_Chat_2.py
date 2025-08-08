@@ -31,6 +31,7 @@ from module.untersuchungsmodul import generiere_koerperbefund
 from befundmodul import generiere_befund
 from module.sidebar import show_sidebar
 from module.startinfo import zeige_instruktionen_vor_start
+from module.token_counter import init_token_counters, add_usage
 
 # Für Einbinden Supabase Tabellen
 
