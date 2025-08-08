@@ -1,4 +1,5 @@
 import streamlit as st
+from supabase import create_client
 from datetime import datetime
 import json
 from module.token_counter import init_token_counters, get_token_sums
@@ -54,10 +55,11 @@ def speichere_gpt_feedback_in_supabase():
     }
 
     try:
-        from supabase import create_client
         supabase = create_client(st.secrets["supabase"]["url"], st.secrets["supabase"]["key"])
-        gpt_row_serialisiert = json.loads(json.dumps(gpt_row, default=str))
-        supabase.table("feedback_gpt").insert(gpt_row_serialisiert).execute()
+        res = supabase.table("feedback_gpt").insert(gpt_row).select('ID').single().execute()
+        st.session_state["feedback_row_id"] = res.data["ID"]
+        # gpt_row_serialisiert = json.loads(json.dumps(gpt_row, default=str))
+        # supabase.table("feedback_gpt").insert(gpt_row_serialisiert).execute()
         # DEBUG 
         # st.success("✅ GPT-Feedback wurde gespeichert.")
     except Exception as e:
