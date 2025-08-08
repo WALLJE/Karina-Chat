@@ -31,10 +31,10 @@ aktualisiere_diagnostik_zusammenfassung()
 if st.session_state.get("final_feedback", "").strip():
     st.markdown(st.session_state.final_feedback)
     
-        # NEU: Nur wenn noch nicht gespeichert
-        if "feedback_row_id" not in st.session_state:
-            from module.gpt_feedback import speichere_gpt_feedback_in_supabase
-            speichere_gpt_feedback_in_supabase()
+    # NEU: Nur wenn noch nicht gespeichert
+    if "feedback_row_id" not in st.session_state:
+        from module.gpt_feedback import speichere_gpt_feedback_in_supabase
+        speichere_gpt_feedback_in_supabase()
 else:
     if st.button("📋 Abschluss-Feedback anzeigen"):
         diagnostik_eingaben = st.session_state.get("diagnostik_eingaben_kumuliert", "")
