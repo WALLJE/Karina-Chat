@@ -33,9 +33,11 @@ Text:
         )
         korrigiert = response.choices[0].message.content.strip()
         # korrigiert = korrigiert.replace("- ", "• ") # zerschiesst das Format.
-
-        ###
-        #### token zählen
+        add_usage(
+            prompt_tokens=response.usage.prompt_tokens,
+            completion_tokens=response.usage.completion_tokens,
+            total_tokens=response.usage.total_tokens
+        )
         return korrigiert
 
     except Exception as e:
