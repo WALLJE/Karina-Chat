@@ -56,8 +56,8 @@ def speichere_gpt_feedback_in_supabase():
 
     try:
         supabase = create_client(st.secrets["supabase"]["url"], st.secrets["supabase"]["key"])
-        res = supabase.table("feedback_gpt").insert(gpt_row).select('ID').single().execute()
-        st.session_state["feedback_row_id"] = res.data["ID"]
+        res = supabase.table("feedback_gpt").insert(gpt_row).execute()
+        st.session_state["feedback_row_id"] = res.data[0]["ID"]
         # gpt_row_serialisiert = json.loads(json.dumps(gpt_row, default=str))
         # supabase.table("feedback_gpt").insert(gpt_row_serialisiert).execute()
         # DEBUG 
