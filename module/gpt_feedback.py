@@ -8,6 +8,10 @@ def speichere_gpt_feedback_in_supabase():
     start = st.session_state.get("startzeit", jetzt)
     dauer_min = round((jetzt - start).total_seconds() / 60, 1)
 
+    # Token-Summen holen
+    init_token_counters()
+    prompt_sum, completion_sum, total_sum = get_token_sums()
+
     # Chatverlauf ohne system-prompt
     verlauf = "\n".join([
         f"👨 Du: {m['content']}" if m['role'] == 'user' else f"👩 Patientin: {m['content']}"
