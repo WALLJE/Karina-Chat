@@ -1,5 +1,5 @@
 import streamlit as st
-from token_counter import init_token_counters, add_usage
+from module.token_counter import init_token_counters, add_usage
 
 def sprach_check(text_input, client):
     if not text_input.strip():
