@@ -1,6 +1,7 @@
 import streamlit as st
 from datetime import datetime
 import json
+from module.token_counter import init_token_counters, get_token_sums
 
 def speichere_gpt_feedback_in_supabase():
     jetzt = datetime.now()
@@ -42,7 +43,10 @@ def speichere_gpt_feedback_in_supabase():
         "therapie": st.session_state.get("therapie_vorschlag", ""),
         "gpt_feedback": st.session_state.get("final_feedback", ""),
         "chatverlauf": verlauf,
-        "befunde": alle_befunde
+        "befunde": alle_befunde,
+        "prompt_tokens_sum": prompt_sum,
+        "completion_tokens_sum": completion_sum,
+        "total_tokens_sum": total_sum
     }
 
     try:
