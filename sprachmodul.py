@@ -1,4 +1,5 @@
 import streamlit as st
+from token_utils import init_token_counters, add_usage
 
 def sprach_check(text_input, client):
     if not text_input.strip():
@@ -24,6 +25,7 @@ Text:
 """
 
     try:
+        init_token_counters()
         response = client.chat.completions.create(
             model="gpt-4",
             messages=[{"role": "user", "content": prompt}],
@@ -31,6 +33,9 @@ Text:
         )
         korrigiert = response.choices[0].message.content.strip()
         # korrigiert = korrigiert.replace("- ", "• ") # zerschiesst das Format.
+
+        ###
+        #### token zählen
         return korrigiert
 
     except Exception as e:
