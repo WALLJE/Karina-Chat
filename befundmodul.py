@@ -1,3 +1,5 @@
+from module.token_counter import init_token_counters, add_usage
+
 def generiere_befund(client, szenario, neue_diagnostik):
     prompt = f"""Die Patientin hat laut Szenario: {szenario}.
 Folgende zusätzliche Diagnostik wurde angefordert:
@@ -14,10 +16,15 @@ Falls **Laborwerte** angefordert wurden, gib sie bitte **nur in folgender Tabell
 📌 Nutze niemals Einheiten wie mg/dL, ng/mL, µg/L oder % – ersetze diese durch SI-konforme Angaben.  
 
 Gib die Befunde **strukturiert, sachlich und ohne Interpretation** wieder. Nenne **nicht das Diagnose-Szenario**. Ergänze keine nicht angeforderten Untersuchungen."""
-
+    init_token_counters()
     response = client.chat.completions.create(
         model="gpt-4",
         messages=[{"role": "user", "content": prompt}],
         temperature=0.4
+    )
+    add_usage(
+        prompt_tokens=response.usage.prompt_tokens,
+        completion_tokens=response.usage.completion_tokens,
+        total_tokens=response.usage.total_tokens
     )
     return response.choices[0].message.content.strip()
