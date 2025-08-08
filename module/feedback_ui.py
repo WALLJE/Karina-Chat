@@ -56,19 +56,19 @@ def student_feedback():
             "kommentar": kommentar
         }
 
-    try:
-        row_id = st.session_state.get("feedback_row_id")
-        if row_id is None:
-            # Fallback: versuche den zuletzt angelegten Datensatz zu finden (optional)
-            # Achtung: nur verwenden, wenn das für dich logisch ist:
-            # last = supabase.table("feedback_gpt").select("ID").order("ID", desc=True).limit(1).single().execute()
-            # row_id = last.data["ID"] if last and last.data else None
-            pass
-
-        if row_id is not None:
-            supabase.table("feedback_gpt").update(eintrag).eq("ID", row_id).execute()
-            st.success("✅ Vielen Dank! Ihr Feedback wurde gespeichert.")
-        else:
-            st.warning("ℹ️ Konnte den ursprünglichen Datensatz nicht zuordnen (ID fehlt). Bitte Fall neu starten oder Admin informieren.")
-    except Exception as e:
-        st.error(f"🚫 Fehler beim Speichern in Supabase: {repr(e)}")
+        try:
+            row_id = st.session_state.get("feedback_row_id")
+            if row_id is None:
+                # Fallback: versuche den zuletzt angelegten Datensatz zu finden (optional)
+                # Achtung: nur verwenden, wenn das für dich logisch ist:
+                # last = supabase.table("feedback_gpt").select("ID").order("ID", desc=True).limit(1).single().execute()
+                # row_id = last.data["ID"] if last and last.data else None
+                pass
+    
+            if row_id is not None:
+                supabase.table("feedback_gpt").update(eintrag).eq("ID", row_id).execute()
+                st.success("✅ Vielen Dank! Ihr Feedback wurde gespeichert.")
+            else:
+                st.warning("ℹ️ Konnte den ursprünglichen Datensatz nicht zuordnen (ID fehlt). Bitte Fall neu starten oder Admin informieren.")
+        except Exception as e:
+            st.error(f"🚫 Fehler beim Speichern in Supabase: {repr(e)}")
