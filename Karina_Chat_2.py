@@ -257,10 +257,16 @@ if submit_button and user_input:
     st.session_state.messages.append({"role": "user", "content": user_input})
     with st.spinner(f"{st.session_state.patient_name} antwortet..."):
         try:
+            init_token_counters()    
             response = client.chat.completions.create(
                 model="gpt-4",
                 messages=st.session_state.messages,
                 temperature=0.6
+            )
+            add_usage(
+                prompt_tokens=response.usage.prompt_tokens,
+                completion_tokens=response.usage.completion_tokens,
+                total_tokens=response.usage.total_tokens
             )
             reply = response.choices[0].message.content
             st.session_state.messages.append({"role": "assistant", "content": reply})
