@@ -1,3 +1,5 @@
+from module.token_counter import init_token_counters, add_usage
+
 def feedback_erzeugen(
     client,
     final_diagnose,
@@ -54,10 +56,15 @@ Nenne vorab das zugrunde liegende Szennario. Gib an, ob die Diagnose richtig ges
 - ökonomische Sinnhaftigkeit (Kosten-Nutzen-Verhältnis)
 - Beachte und begründe auch, warum zuwenig Diagnostik unwirtschaftlich und nicht nachhaltig sein kann.
 """
-
+    init_token_counters()
     response = client.chat.completions.create(
         model="gpt-4",
         messages=[{"role": "user", "content": prompt}],
         temperature=0.4
+    )
+    add_usage(
+        prompt_tokens=response.usage.prompt_tokens,
+        completion_tokens=response.usage.completion_tokens,
+        total_tokens=response.usage.total_tokens
     )
     return response.choices[0].message.content
