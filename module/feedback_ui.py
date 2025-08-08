@@ -44,10 +44,7 @@ def student_feedback():
     bugs = st.text_area("💬 Welche Ungenauigkeiten oder Fehler sind Ihnen aufgefallen (optional):", "")
     kommentar = st.text_area("💬 Freitext (optional):", "")
 
-    if st.button("📩 Feedback absenden"):
-
-    
-        
+    if st.button("📩 Feedback absenden"): 
         eintrag = {
             "note_realismus": f1,
             "note_anamnese": f2,
