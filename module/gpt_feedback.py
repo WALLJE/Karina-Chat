@@ -1,7 +1,7 @@
 import streamlit as st
 from supabase import create_client
 from datetime import datetime
-import json
+# import json
 from module.token_counter import init_token_counters, get_token_sums
 
 def speichere_gpt_feedback_in_supabase():
@@ -39,7 +39,7 @@ def speichere_gpt_feedback_in_supabase():
         "bearbeitungsdauer_min": dauer_min,
         "szenario": st.session_state.get("diagnose_szenario", ""),
         "name": st.session_state.get("patient_name", ""),
-        "alter": st.session_state.get("patient_age", ""),
+        "alter": int(st.session_state.get("patient_age", 0)),
         "beruf": st.session_state.get("patient_job", ""),
         "verhalten": st.session_state.get("patient_verhalten_memo", "unbekannt"),
         "verdachtsdiagnosen": st.session_state.get("user_ddx2", ""),
@@ -49,9 +49,9 @@ def speichere_gpt_feedback_in_supabase():
         "gpt_feedback": st.session_state.get("final_feedback", ""),
         "chatverlauf": verlauf,
         "befunde": alle_befunde,
-        "prompt_tokens_sum": prompt_sum,
-        "completion_tokens_sum": completion_sum,
-        "total_tokens_sum": total_sum
+        "prompt_tokens_sum": int(prompt_sum),
+        "completion_tokens_sum": int(completion_sum),
+        "total_tokens_sum": int(total_sum)
     }
 
     try:
