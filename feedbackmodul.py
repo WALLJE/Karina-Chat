@@ -62,6 +62,8 @@ Nenne vorab das zugrunde liegende Szennario. Gib an, ob die Diagnose richtig ges
         messages=[{"role": "user", "content": prompt}],
         temperature=0.4
     )
+    # prompt token: Einagbe an GPT
+    # completion toke: Ausgabe von GPT
     add_usage(
         prompt_tokens=response.usage.prompt_tokens,
         completion_tokens=response.usage.completion_tokens,
