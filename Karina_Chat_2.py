@@ -71,6 +71,7 @@ def fallauswahl_prompt(df, szenario=None):
         st.session_state.diagnose_features = fall["Beschreibung"]
         st.session_state.koerper_befund_tip = fall.get("Körperliche Untersuchung", "")
         st.session_state.alter_korrekt = fall.get("Alterskorrektur", 0)
+        st.session_state.patient_gender = fall.get("Geschlecht", "")
         # Spalte Besonderheit noch offen
         # Mit der folgenden Zeile kann der Fall am Anfang zu Kontrollzwecken schon angezeigt werden
         # st.success(f"✅ Zufälliger Fall geladen: {fall['Szenario']}")
@@ -163,23 +164,59 @@ if response.status_code == 200:
 else:
     st.error(f"❌ Fehler beim Laden der Datei: Statuscode {response.status_code}")
 
-# Zufälliger Patientenname und Alter
-if "patient_name" not in st.session_state:
-    st.session_state.patient_name = random.choice([
-        "Karina", "Leonie", "Sophie", "Laura", "Anna", "Mara", "Sabine", "Hertha", "Bettina", "Dora", "Emilia", "Johanna", "Fabienne", "Hannah"
-    ])
-    
+# Patientendaten aus Namensliste bestimmen
+try:
+    namensliste_df = pd.read_csv("Namensliste.csv", sep=";")
+except FileNotFoundError:
+    st.error("❌ Die Datei 'Namensliste.csv' wurde nicht gefunden.")
+    namensliste_df = pd.DataFrame()
+except Exception as e:
+    st.error(f"❌ Fehler beim Laden der Namensliste: {e}")
+    namensliste_df = pd.DataFrame()
+
+if "patient_name" not in st.session_state and not namensliste_df.empty:
+    gender = str(st.session_state.get("patient_gender", "")).strip().lower()
+    if gender and "geschlecht" in namensliste_df.columns:
+        geschlecht_series = namensliste_df["geschlecht"].fillna("").astype(str).str.lower()
+        passende_vornamen = namensliste_df[geschlecht_series == gender]
+    else:
+        passende_vornamen = namensliste_df
+
+    if passende_vornamen.empty:
+        passende_vornamen = namensliste_df
+
+    if "vorname" in passende_vornamen.columns:
+        verfuegbare_vornamen = passende_vornamen["vorname"].dropna()
+    else:
+        verfuegbare_vornamen = pd.Series(dtype=str)
+
+    if verfuegbare_vornamen.empty and "vorname" in namensliste_df.columns:
+        verfuegbare_vornamen = namensliste_df["vorname"].dropna()
+
+    if "nachname" in namensliste_df.columns:
+        verfuegbare_nachnamen = namensliste_df["nachname"].dropna()
+    else:
+        verfuegbare_nachnamen = pd.Series(dtype=str)
+
+    if not verfuegbare_vornamen.empty and not verfuegbare_nachnamen.empty:
+        vorname = verfuegbare_vornamen.sample(1).iloc[0]
+        nachname = verfuegbare_nachnamen.sample(1).iloc[0]
+        st.session_state.patient_name = f"{vorname} {nachname}"
+
+# Zufälliges Alter basierend auf Alterskorrektur
 if "patient_age" not in st.session_state:
     st.session_state.patient_age = random.randint(20, 34) + st.session_state.alter_korrekt
-    
-if "patient_job" not in st.session_state:    
-    st.session_state.patient_job = random.choice([
-            "Studentin der Wirtschaftswissenschaften",
-            "Erzieherin",
-            "Elektronikerin",
-            "Kunststudentin",
-            "Polizistin"
-        ])
+
+if "patient_job" not in st.session_state and not namensliste_df.empty and "beruf" in namensliste_df.columns:
+    verfuegbare_berufe = namensliste_df["beruf"].dropna()
+    if not verfuegbare_berufe.empty:
+        st.session_state.patient_job = verfuegbare_berufe.sample(1).iloc[0]
+
+if "patient_name" not in st.session_state:
+    st.session_state.patient_name = "Unbekannte Person"
+
+if "patient_job" not in st.session_state:
+    st.session_state.patient_job = "unbekannt"
 
 verhaltensoptionen = {
     "knapp": "Beantworte Fragen grundsätzlich sehr knapp. Gib nur so viele Informationen preis, wie direkt erfragt wurden.",
