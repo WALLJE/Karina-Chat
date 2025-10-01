@@ -9,7 +9,7 @@ def zeige_instruktionen_vor_start():
     if not st.session_state.instruktion_bestätigt:
         st.markdown(f"""
 #### Instruktionen für Studierende:
-Sie übernehmen die Rolle einer Ärztin oder eines Arztes im Gespräch mit {patient_forms.phrase("dat", adjective="virtuellen")} {st.session_state.patient_name}, die sich in Ihrer hausärztlichen Sprechstunde vorstellt.
+Sie übernehmen die Rolle einer Ärztin oder eines Arztes im Gespräch mit {patient_forms.phrase("dat", adjective="virtuellen")} {st.session_state.patient_name}, {patient_forms.relative_pronoun()} sich in Ihrer hausärztlichen Sprechstunde vorstellt.
 Ihr Ziel ist es, durch gezielte Anamnese und klinisches Denken eine Verdachtsdiagnose zu stellen sowie ein sinnvolles diagnostisches und therapeutisches Vorgehen zu entwickeln.
 
 #### 🔍 Ablauf:
