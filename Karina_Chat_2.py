@@ -333,7 +333,7 @@ if "messages" not in st.session_state:
 # Chat anzeigen
 patient_icon = "👨" if patient_gender == "m" else "👩" if patient_gender == "w" else "👤"
 for msg in st.session_state.messages[1:]:
-    sender = f"{patient_icon} {st.session_state.patient_name}" if msg["role"] == "assistant" else "🧑 Du"
+    sender = f"{patient_icon} {st.session_state.patient_name}" if msg["role"] == "assistant" else "👤 Du"
     st.markdown(f"**{sender}:** {msg['content']}")
 
 # Eingabeformular Anamnese Chat
