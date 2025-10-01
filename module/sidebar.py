@@ -102,7 +102,7 @@ def show_sidebar():
         ):
             st.page_link("pages/6_Feedback_und_Evaluation.py", label="📝 Feedback & Download")  
 
-        st.page_link("pages/20_Impressum.py", label="Impressum", icon="📰")
+        st.page_link("pages/20_Impressum.py", label="Impressum und Hinweise", icon="📰")
 
         st.markdown("---")
         st.caption("🔒 Weitere Seiten erscheinen automatisch, sobald diagnostische Schritte abgeschlossen wurden.")
