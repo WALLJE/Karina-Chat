@@ -27,6 +27,7 @@ class PatientForms:
     plural: str
     compound_stem: str
     base: str
+    relative_pronouns: Dict[str, str]
 
     def phrase(
         self,
@@ -78,6 +79,15 @@ class PatientForms:
 
         return self.base
 
+    def relative_pronoun(self, case: str = "nominative") -> str:
+        """Gibt das passende Relativpronomen für den gewünschten Kasus zurück."""
+
+        case_key = _CASE_ALIASES.get(case.lower())
+        if case_key is None:
+            raise ValueError(f"Unsupported grammatical case: {case}")
+
+        return self.relative_pronouns[case_key]
+
 
 def get_patient_forms() -> PatientForms:
     """Ermittelt passende sprachliche Formen anhand des gespeicherten Geschlechts."""
@@ -100,6 +110,12 @@ def get_patient_forms() -> PatientForms:
         plural = "Patienten"
         compound_stem = "Patienten"
         base = "Patient"
+        relative_pronouns = {
+            "nom": "der",
+            "acc": "den",
+            "dat": "dem",
+            "gen": "dessen",
+        }
     elif gender == "w":
         definite = {
             "nom": "die Patientin",
@@ -116,6 +132,12 @@ def get_patient_forms() -> PatientForms:
         plural = "Patientinnen"
         compound_stem = "Patientinnen"
         base = "Patientin"
+        relative_pronouns = {
+            "nom": "die",
+            "acc": "die",
+            "dat": "der",
+            "gen": "deren",
+        }
     else:
         definite = {
             "nom": "die Patientin oder der Patient",
@@ -132,6 +154,12 @@ def get_patient_forms() -> PatientForms:
         plural = "Patientinnen oder Patienten"
         compound_stem = "Patient:innen"
         base = "Patient:in"
+        relative_pronouns = {
+            "nom": "die",
+            "acc": "die",
+            "dat": "denen",
+            "gen": "deren",
+        }
 
     return PatientForms(
         definite=definite,
@@ -139,4 +167,5 @@ def get_patient_forms() -> PatientForms:
         plural=plural,
         compound_stem=compound_stem,
         base=base,
+        relative_pronouns=relative_pronouns,
     )
