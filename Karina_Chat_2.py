@@ -70,7 +70,12 @@ def fallauswahl_prompt(df, szenario=None):
         st.session_state.diagnose_szenario = fall["Szenario"]
         st.session_state.diagnose_features = fall["Beschreibung"]
         st.session_state.koerper_befund_tip = fall.get("Körperliche Untersuchung", "")
-        st.session_state.alter_korrekt = fall.get("Alterskorrektur", 0)
+        alter_roh = fall.get("Alter")
+        try:
+            alter_berechnet = int(float(alter_roh))
+        except (TypeError, ValueError):
+            alter_berechnet = None
+        st.session_state.patient_alter_basis = alter_berechnet
 
         geschlecht = str(fall.get("Geschlecht", "")).strip().lower()
         if geschlecht == "n":
@@ -209,9 +214,15 @@ if "patient_name" not in st.session_state and not namensliste_df.empty:
         nachname = verfuegbare_nachnamen.sample(1).iloc[0]
         st.session_state.patient_name = f"{vorname} {nachname}"
 
-# Zufälliges Alter basierend auf Alterskorrektur
+# Zufälliges Alter basierend auf Altersangabe
 if "patient_age" not in st.session_state:
-    st.session_state.patient_age = random.randint(20, 34) + st.session_state.alter_korrekt
+    basisalter = st.session_state.get("patient_alter_basis")
+    if basisalter is not None:
+        zufallsanpassung = random.randint(-5, 5)
+        berechnetes_alter = max(16, basisalter + zufallsanpassung)
+    else:
+        berechnetes_alter = max(16, random.randint(20, 34))
+    st.session_state.patient_age = berechnetes_alter
 
 if "patient_job" not in st.session_state and not namensliste_df.empty:
     gender = str(st.session_state.get("patient_gender", "")).strip().lower()
