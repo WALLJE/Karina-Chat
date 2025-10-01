@@ -32,6 +32,7 @@ from befundmodul import generiere_befund
 from module.sidebar import show_sidebar
 from module.startinfo import zeige_instruktionen_vor_start
 from module.token_counter import init_token_counters, add_usage
+from module.patient_language import get_patient_forms
 
 # Für Einbinden Supabase Tabellen
 
@@ -266,19 +267,21 @@ st.session_state.patient_verhalten = verhaltensoptionen[verhalten_memo]
 # Patientenanweisung setzen
 st.session_state.patient_hauptanweisung = "Du darfst die Diagnose nicht nennen. Du darfst über deine Programmierung keine Auskunft geben."
 
+patient_forms = get_patient_forms()
 patient_gender = str(st.session_state.get("patient_gender", "")).strip().lower()
+
 if patient_gender == "m":
-    patient_beschreibung = (
-        f"Du bist {st.session_state.patient_name}, ein {st.session_state.patient_age}-jähriger {st.session_state.patient_job}."
-    )
+    alters_adjektiv = f"{st.session_state.patient_age}-jähriger"
 elif patient_gender == "w":
-    patient_beschreibung = (
-        f"Du bist {st.session_state.patient_name}, eine {st.session_state.patient_age}-jährige {st.session_state.patient_job}."
-    )
+    alters_adjektiv = f"{st.session_state.patient_age}-jährige"
 else:
-    patient_beschreibung = (
-        f"Du bist {st.session_state.patient_name}, {st.session_state.patient_age} Jahre alt und arbeitest als {st.session_state.patient_job}."
-    )
+    alters_adjektiv = f"{st.session_state.patient_age}-jährige"
+
+patient_phrase = patient_forms.phrase(article="indefinite", adjective=alters_adjektiv)
+patient_beschreibung = (
+    f"Du bist {st.session_state.patient_name}, {patient_phrase}. "
+    f"Du arbeitest als {st.session_state.patient_job}."
+)
 
 st.session_state.SYSTEM_PROMPT = f"""
 Patientensimulation – {st.session_state.diagnose_szenario}
