@@ -29,7 +29,10 @@ if "startzeit" not in st.session_state:
 
 # Nachrichtenverlauf initialisieren (außer system-Prompt)
 if "messages" not in st.session_state:
-    eintritt = f"{st.session_state.patient_name} ({st.session_state.patient_age} Jahre), {st.session_state.patient_job}, betritt den Raum."
+    eintritt = (
+        f"ist {st.session_state.patient_age} Jahre alt, arbeitet als {st.session_state.patient_job} "
+        "und betritt den Raum."
+    )
     start_text = "Guten Tag, ich bin froh, dass ich mich heute bei Ihnen vorstellen kann."
     st.session_state.messages = [
         {"role": "system", "content": st.session_state.SYSTEM_PROMPT},
@@ -39,7 +42,7 @@ if "messages" not in st.session_state:
 
 # Nachrichtenverlauf anzeigen (ohne System-Prompt)
 for msg in st.session_state.messages[1:]:
-    sender = f"👩 {st.session_state.patient_name}" if msg["role"] == "assistant" else "🧑 Du"
+    sender = st.session_state.patient_name if msg["role"] == "assistant" else "Du"
     st.markdown(f"**{sender}:** {msg['content']}")
 
 # Eingabeformular

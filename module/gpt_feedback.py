@@ -14,8 +14,9 @@ def speichere_gpt_feedback_in_supabase():
     prompt_sum, completion_sum, total_sum = get_token_sums()
 
     # Chatverlauf ohne system-prompt
+    patient_name = st.session_state.get("patient_name", "Patient")
     verlauf = "\n".join([
-        f"👨 Du: {m['content']}" if m['role'] == 'user' else f"👩 Patientin: {m['content']}"
+        f"Du: {m['content']}" if m['role'] == 'user' else f"{patient_name}: {m['content']}"
         for m in st.session_state.get("messages", [])[1:]
     ])
 
