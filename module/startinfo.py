@@ -11,7 +11,7 @@ Ihr Ziel ist es, durch gezielte Anamnese und klinisches Denken eine Verdachtsdia
 
 #### 🔍 Ablauf:
 
-1. **Stellen Sie jederzeit Fragen an die Patientin** – geben Sie diese einfach im Chat ein.
+1. **Stellen Sie jederzeit Fragen an die Patientin** – geben Sie diese im Chat ein.
 2. Wenn Sie genug Informationen gesammelt haben, führen Sie eine **körperliche Untersuchung** durch.
 3. Formulieren Sie Ihre **Differentialdiagnosen** und wählen Sie geeignete **diagnostische Maßnahmen**.
 4. Nach Erhalt der Befunde treffen Sie Ihre **endgültige Diagnose** und machen einen **Therapievorschlag**.
@@ -23,10 +23,6 @@ z. B. bei neuen Verdachtsmomenten oder zur gezielten Klärung offener Fragen.
 Im Wartezimmer sitzen weitere Patientinnen mit anderen Krankheitsbildern, die Sie durch einen erneuten Aufruf der App kennenlernen können.
 
 ---
-
-⚠️ Bitte beachten Sie, dass Sie mit einem **KI-basierten, simulierten Patientinnenmodell** kommunizieren.
-- Zur Qualitätssicherung werden Ihre Eingaben und die Reaktionen des ChatBots auf einem Server der Universität Halle gespeichert. Persönliche Daten (incl. E-Mail-Adresse oder IP-Adresse) werden nicht gespeichert, sofern Sie diese nicht selber angeben.
-- Geben Sie daher **keine echten persönlichen Informationen** ein.
 - **Überprüfen Sie alle Angaben und Hinweise der Kommunikation auf Richtigkeit.** 
 - Die Anwendung sollte aufgrund ihrer Limitationen nur unter ärztlicher Supervision genutzt werden; Sie können bei Fragen und Unklarheiten den Chatverlauf in einer Text-Datei speichern.
 
