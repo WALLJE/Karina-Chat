@@ -11,31 +11,59 @@ def show_sidebar():
     with st.sidebar:
         # st.markdown("### Patientin")
 
-        # Standardverzeichnis
-        pic_dir = "pics"
-        
-        # Wenn Alter verfügbar und > 40: Senior-Verzeichnis verwenden
-        if "patient_age" in st.session_state:
+        def bestimme_bilder_ordner():
+            geschlecht = str(st.session_state.get("patient_gender", "")).strip().lower()
             try:
-                if int(st.session_state["patient_age"]) > 40:
-                    pic_dir = os.path.join("pics", "senior")
-            except:
-                pass  # falls Alter nicht korrekt als Zahl eingegeben wurde
-        
-        valid_images = []
-        if os.path.isdir(pic_dir):
-            for f in os.listdir(pic_dir):
-                if f.endswith(".png"):
-                    path = os.path.join(pic_dir, f)
-                    try:
-                        with Image.open(path) as img:
-                            img.verify()
-                        valid_images.append(path)
-                    except:
-                        pass
-        
-        if "patient_logo" not in st.session_state and valid_images:
-            st.session_state.patient_logo = random.choice(valid_images)
+                alter = int(st.session_state.get("patient_age", ""))
+            except (TypeError, ValueError):
+                alter = None
+
+            if alter is None or geschlecht not in {"m", "w"}:
+                return "pics"
+
+            if geschlecht == "w":
+                if alter <= 30:
+                    unterordner = "junior_female"
+                elif alter <= 47:
+                    unterordner = "mid_female"
+                else:
+                    unterordner = "senior_female"
+            else:  # männlich
+                if alter <= 30:
+                    unterordner = "junior_male"
+                elif alter <= 47:
+                    unterordner = "mid_male"
+                else:
+                    unterordner = "senior_male"
+
+            return os.path.join("pics", unterordner)
+
+        def lade_gueltige_bilder(ordnerpfad):
+            bilder = []
+            if os.path.isdir(ordnerpfad):
+                for eintrag in os.listdir(ordnerpfad):
+                    if eintrag.lower().endswith(".png"):
+                        pfad = os.path.join(ordnerpfad, eintrag)
+                        try:
+                            with Image.open(pfad) as img:
+                                img.verify()
+                            bilder.append(pfad)
+                        except Exception:
+                            continue
+            return bilder
+
+        pic_dir = bestimme_bilder_ordner()
+        valid_images = lade_gueltige_bilder(pic_dir)
+
+        if not valid_images and pic_dir != "pics":
+            valid_images = lade_gueltige_bilder("pics")
+
+        if valid_images:
+            if (
+                "patient_logo" not in st.session_state
+                or st.session_state.patient_logo not in valid_images
+            ):
+                st.session_state.patient_logo = random.choice(valid_images)
 
 
         try:
