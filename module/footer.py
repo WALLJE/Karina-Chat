@@ -19,7 +19,7 @@ def copyright_footer():
         }
         </style>
         <div class="footer">
-            &copy; 2025 <a href="mailto:jens.walldorf@uk-halle.de">Jens Walldorf</a> – Diese Simulation dient ausschließlich zu Lehrzwecken.
+            &copy; 2025 – Diese Simulation dient ausschließlich zu Lehrzwecken.
         </div>
         """,
         unsafe_allow_html=True
