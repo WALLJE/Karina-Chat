@@ -45,9 +45,6 @@ supabase: Client = create_client(supabase_url, supabase_key)
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 st.session_state["openai_client"] = client
 
-show_sidebar()
-
-
 # Zugriff via Streamlit Secrets
 # nextcloud_url = st.secrets["nextcloud"]["url"]
 # nextcloud_user = st.secrets["nextcloud"]["user"]
@@ -291,6 +288,8 @@ Patientensimulation – {st.session_state.diagnose_szenario}
 
 {st.session_state.diagnose_features}
 """
+
+show_sidebar()
 
 # Anweisungen anzeigen
 zeige_instruktionen_vor_start()
