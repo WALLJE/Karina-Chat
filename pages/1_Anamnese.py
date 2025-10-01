@@ -29,11 +29,9 @@ if "startzeit" not in st.session_state:
 
 # Nachrichtenverlauf initialisieren (außer system-Prompt)
 if "messages" not in st.session_state:
-    eintritt = "stellt sich in Ihrer Sprechstunde vor."
     start_text = "Guten Tag, ich bin froh, dass ich mich heute bei Ihnen vorstellen kann."
     st.session_state.messages = [
         {"role": "system", "content": st.session_state.SYSTEM_PROMPT},
-        {"role": "assistant", "content": eintritt},
         {"role": "assistant", "content": start_text}
     ]
 
