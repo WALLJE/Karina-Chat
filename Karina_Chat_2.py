@@ -315,7 +315,10 @@ st.session_state.setdefault("diagnostik_aktiv", False)
 # Chat-Verlauf starten
 # with col1: # nur links
 if "messages" not in st.session_state:
-    eintritt = f"{st.session_state.patient_name} ({st.session_state.patient_age} Jahre), {st.session_state.patient_job}, betritt den Raum."
+    eintritt = (
+        f"ist {st.session_state.patient_age} Jahre alt, arbeitet als {st.session_state.patient_job} "
+        "und betritt den Raum."
+    )
     if "ängstlich" in st.session_state.patient_verhalten.lower():
         start_text = "Hallo... ich bin etwas nervös. Ich hoffe, Sie können mir helfen."
     elif "redest gern" in st.session_state.patient_verhalten.lower():
@@ -328,11 +331,9 @@ if "messages" not in st.session_state:
         {"role": "assistant", "content": start_text}
     ]
 
-
 # Chat anzeigen
-patient_icon = "👨" if patient_gender == "m" else "👩" if patient_gender == "w" else "👤"
 for msg in st.session_state.messages[1:]:
-    sender = f"{patient_icon} {st.session_state.patient_name}" if msg["role"] == "assistant" else "👤 Du"
+    sender = st.session_state.patient_name if msg["role"] == "assistant" else "Du"
     st.markdown(f"**{sender}:** {msg['content']}")
 
 # Eingabeformular Anamnese Chat
