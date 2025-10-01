@@ -1,7 +1,10 @@
 from module.token_counter import init_token_counters, add_usage
+from module.patient_language import get_patient_forms
 
 def generiere_befund(client, szenario, neue_diagnostik):
-    prompt = f"""Die Patientin hat laut Szenario: {szenario}.
+    patient_forms = get_patient_forms()
+
+    prompt = f"""{patient_forms.phrase("nom", capitalize=True)} hat laut Szenario: {szenario}.
 Folgende zusätzliche Diagnostik wurde angefordert:
 {neue_diagnostik}
 

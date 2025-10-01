@@ -1,12 +1,14 @@
 import streamlit as st
 from module.sidebar import show_sidebar
 from module.footer import copyright_footer
+from module.patient_language import get_patient_forms
 
 copyright_footer()
 show_sidebar()
 
 def show_impressum():
-    st.markdown("""
+    patient_forms = get_patient_forms()
+    st.markdown(f"""
     ## Impressum
     
     **Projektleitung**  
@@ -19,7 +21,7 @@ def show_impressum():
     E-Mail: jens.walldorf@uk-halle.de  
 
     ---
-    ⚠️ Bitte beachten Sie, dass Sie mit einem **experimentellen, KI-basierten, simulierten Patientinnenmodell** kommunizieren, welches **ausschließlich zu Lehrzwecken** konzipiert ist. 
+    ⚠️ Bitte beachten Sie, dass Sie mit einem **experimentellen, KI-basierten, simulierten {patient_forms.compound("modell")}** kommunizieren, welches **ausschließlich zu Lehrzwecken** konzipiert ist.
     
     Wichtiges Lernziel bei der Verwendung der App ist es unter anderem, die Limitationen (**Fehlinterpretationen, falsche Informationen**) in den von der KI generierten Antworten zu identifizieren.
     

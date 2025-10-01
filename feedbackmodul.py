@@ -1,4 +1,5 @@
 from module.token_counter import init_token_counters, add_usage
+from module.patient_language import get_patient_forms
 
 def feedback_erzeugen(
     client,
@@ -12,10 +13,12 @@ def feedback_erzeugen(
     anzahl_termine,
     diagnose_szenario
 ):
-    prompt = f"""
-Ein Medizinstudierender hat eine vollständige virtuelle Fallbesprechung mit einer Patientin durchgeführt. Du bist ein erfahrener medizinischer Prüfer.
+    patient_forms = get_patient_forms()
 
-Beurteile ausschließlich die Eingaben und Entscheidungen des Studierenden – NICHT die Antworten der Patientin oder automatisch generierte Inhalte.
+    prompt = f"""
+Ein Medizinstudierender hat eine vollständige virtuelle Fallbesprechung mit {patient_forms.phrase("dat", article="indefinite")} durchgeführt. Du bist ein erfahrener medizinischer Prüfer.
+
+Beurteile ausschließlich die Eingaben und Entscheidungen des Studierenden – NICHT die Antworten {patient_forms.phrase("gen")} oder automatisch generierte Inhalte.
 
 Die zugrunde liegende Erkrankung im Szenario lautet: **{diagnose_szenario}**.
 

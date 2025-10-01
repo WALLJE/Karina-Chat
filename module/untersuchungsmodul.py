@@ -1,6 +1,11 @@
+from module.patient_language import get_patient_forms
+
+
 def generiere_koerperbefund(client, diagnose_szenario, diagnose_features, koerper_befund_tip):
+    patient_forms = get_patient_forms()
+
     prompt = f"""
-Die Patientin hat eine zufällig simulierte Erkrankung. Diese lautet: {diagnose_szenario}.
+{patient_forms.phrase("nom", capitalize=True)} hat eine zufällig simulierte Erkrankung. Diese lautet: {diagnose_szenario}.
 Weitere relevante anamnestische Hinweise: {diagnose_features}
 Zusatzinformationen: {koerper_befund_tip}
 Erstelle einen körperlichen Untersuchungsbefund, der zu dieser Erkrankung passt, ohne sie explizit zu nennen oder zu diagnostizieren. Berücksichtige Befunde, die sich aus den Zusatzinformationen ergeben könnten. 
