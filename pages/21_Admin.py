@@ -1,5 +1,6 @@
 import streamlit as st
 
+from module.admin_data import FeedbackExportError, build_feedback_export
 from module.sidebar import show_sidebar
 from module.footer import copyright_footer
 
@@ -31,6 +32,30 @@ if st.button("🔒 Adminmodus beenden", type="primary"):
 
 st.markdown("---")
 st.header("📊 Auswertungen")
+st.subheader("💾 Feedback-Export")
+
+feedback_excel = None
+feedback_filename = "feedback_gpt.xlsx"
+
+with st.spinner("Supabase-Daten werden geladen..."):
+    try:
+        feedback_excel, feedback_filename = build_feedback_export()
+    except FeedbackExportError as exc:
+        feedback_excel = None
+        st.error(f"🚫 Export nicht möglich: {exc}")
+    except Exception as exc:  # pragma: no cover - defensive
+        feedback_excel = None
+        st.error(f"⚠️ Unerwarteter Fehler beim Export: {exc}")
+
+if feedback_excel:
+    st.download_button(
+        "⬇️ Feedback-Daten als Excel herunterladen",
+        data=feedback_excel,
+        file_name=feedback_filename,
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        type="primary",
+    )
+
 st.info("Platzhalter für statistische Übersichten und Reports.")
 
 st.header("🛠️ Einstellungen")
