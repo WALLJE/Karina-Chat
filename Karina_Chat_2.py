@@ -32,6 +32,8 @@ from module.fallverwaltung import (
     lade_fallbeispiele,
     prepare_fall_session_state,
 )
+from module.fall_config import clear_fixed_scenario, get_fall_fix_state
+from module.footer import copyright_footer
 
 # Für Einbinden Supabase Tabellen
 
@@ -91,32 +93,6 @@ def speichere_gpt_feedback_in_supabase():
     except Exception as e:
         st.error(f"🚫 Fehler beim Speichern in Supabase: {repr(e)}")
 
-def copyright_footer():
-    st.markdown(
-        """
-        <style>
-        .footer {
-            position: fixed;
-            left: 0;
-            bottom: 0;
-            width: 100%;
-            background-color: #f1f1f1;
-            color: #666;
-            text-align: center;
-            padding: 8px;
-            font-size: 0.85em;
-            border-top: 1px solid #ddd;
-            z-index: 100;
-        }
-        </style>
-        <div class="footer">
-            &copy; 2025 <a href="mailto:jens.walldorf@uk-halle.de">Jens Walldorf</a> – Diese Simulation dient ausschließlich zu Lehrzwecken.
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
-
-
 #---------------- Routinen Ende -------------------
 initialisiere_session_state()
 
@@ -129,11 +105,29 @@ initialisiere_session_state()
 #####
 
 szenario_df = lade_fallbeispiele(url=DEFAULT_FALLDATEI_URL)
+fixed, fixed_szenario = get_fall_fix_state()
 
 if not szenario_df.empty:
     admin_szenario = st.session_state.pop("admin_selected_szenario", None)
     if admin_szenario:
         fallauswahl_prompt(szenario_df, admin_szenario)
+    elif fixed and fixed_szenario:
+        if "Szenario" in szenario_df.columns:
+            verfuegbare_szenarien = {
+                str(s).strip() for s in szenario_df["Szenario"].dropna() if str(s).strip()
+            }
+        else:
+            verfuegbare_szenarien = set()
+
+        if fixed_szenario in verfuegbare_szenarien:
+            fallauswahl_prompt(szenario_df, fixed_szenario)
+        else:
+            st.warning(
+                f"Das fixierte Szenario '{fixed_szenario}' ist nicht mehr verfügbar. "
+                "Die Fixierung wurde aufgehoben."
+            )
+            clear_fixed_scenario()
+            fallauswahl_prompt(szenario_df)
     elif "diagnose_szenario" not in st.session_state:
         fallauswahl_prompt(szenario_df)
 
