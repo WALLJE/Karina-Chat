@@ -16,17 +16,26 @@ copyright_footer()
 show_sidebar()
 display_offline_banner()
 
+
+def _restart_application_after_offline() -> None:
+    """Reset den Session State und startet die Anwendung neu."""
+
+    reset_fall_session_state()
+    preserve_keys = {"offline_mode", "is_admin"}
+    for key in list(st.session_state.keys()):
+        if key in preserve_keys:
+            continue
+        st.session_state.pop(key, None)
+    st.experimental_rerun()
+
 if not st.session_state.get("is_admin"):
-    st.error("🚫 Kein Zugriff: Dieser Bereich steht nur Administrator*innen zur Verfügung.")
+    st.error("Kein Zugriff: Dieser Bereich steht nur Administrator*innen zur Verfügung.")
     st.info("Bitte gib in der Anamnese den gültigen Admin-Code ein, um Zugriff zu erhalten.")
-    st.page_link("pages/1_Anamnese.py", label="⬅ Zurück zur Anamnese")
+    st.page_link("pages/1_Anamnese.py", label="Zurück zur Anamnese")
     st.stop()
 
 st.title("Adminbereich")
-st.markdown(
-    "Hier entstehen künftig die administrativen Werkzeuge zur Verwaltung und Auswertung des Trainings.")
 
-st.markdown("---")
 st.subheader("Verbindungsmodus")
 current_offline = is_offline()
 offline_toggle = st.toggle(
@@ -42,15 +51,15 @@ offline_toggle = st.toggle(
 if offline_toggle != current_offline:
     st.session_state["offline_mode"] = offline_toggle
     if offline_toggle:
-        st.info("🔌 Offline-Modus aktiviert. Alle Seiten nutzen jetzt statische Inhalte.")
+        st.info("Offline-Modus aktiviert. Alle Seiten nutzen jetzt statische Inhalte.")
     else:
-        st.success("🌐 Online-Modus reaktiviert. GPT-Antworten werden wieder live generiert.")
+        st.info("Online-Modus reaktiviert. Die Anwendung wird neu gestartet.")
+        _restart_application_after_offline()
 
-st.markdown("---")
 st.subheader("Adminmodus")
 st.write("Der Adminmodus ist aktiv. Bei Bedarf kannst du ihn hier wieder deaktivieren.")
 
-if st.button("🔒 Adminmodus beenden", type="primary"):
+if st.button("Adminmodus beenden", type="primary"):
     st.session_state["is_admin"] = False
     try:
         st.switch_page("pages/1_Anamnese.py")
@@ -58,8 +67,7 @@ if st.button("🔒 Adminmodus beenden", type="primary"):
         st.experimental_set_query_params(page="1_Anamnese")
         st.rerun()
 
-st.markdown("---")
-st.header("🩺 Fallverwaltung")
+st.subheader("Fallverwaltung")
 
 fall_df = lade_fallbeispiele(pfad="fallbeispiele.xlsx")
 
@@ -117,9 +125,7 @@ else:
             except Exception:
                 st.experimental_rerun()
 
-st.markdown("---")
-st.header("📊 Auswertungen")
-st.subheader("💾 Feedback-Export")
+st.subheader("Feedback-Export")
 
 DEFAULT_EXPORT_FILENAME = "feedback_gpt.xlsx"
 
@@ -139,16 +145,16 @@ def _prepare_feedback_export() -> None:
             export_bytes, export_filename = build_feedback_export()
         except FeedbackExportError as exc:
             _reset_feedback_export_state()
-            st.session_state["feedback_export_error"] = f"🚫 Export nicht möglich: {exc}"
+            st.session_state["feedback_export_error"] = f"Export nicht möglich: {exc}"
         except Exception as exc:  # pragma: no cover - defensive
             _reset_feedback_export_state()
-            st.session_state["feedback_export_error"] = f"⚠️ Unerwarteter Fehler beim Export: {exc}"
+            st.session_state["feedback_export_error"] = f"Unerwarteter Fehler beim Export: {exc}"
         else:
             if not isinstance(export_bytes, (bytes, bytearray)):
                 _reset_feedback_export_state()
                 st.session_state[
                     "feedback_export_error"
-                ] = "⚠️ Ungültige Exportdaten erhalten. Bitte erneut versuchen."
+                ] = "Ungültige Exportdaten erhalten. Bitte erneut versuchen."
             else:
                 st.session_state["feedback_export_bytes"] = bytes(export_bytes)
                 st.session_state["feedback_export_filename"] = (
@@ -169,7 +175,7 @@ if "feedback_export_revision" not in st.session_state:
 if "feedback_export_error" not in st.session_state:
     st.session_state["feedback_export_error"] = ""
 
-if st.button("🔄 Feedback-Export aktualisieren", type="secondary"):
+if st.button("Feedback-Export aktualisieren", type="secondary"):
     _reset_feedback_export_state()
     _prepare_feedback_export()
 
@@ -185,7 +191,7 @@ download_placeholder = st.empty()
 
 if download_ready:
     download_placeholder.download_button(
-        "⬇️ Feedback-Daten als Excel herunterladen",
+        "Feedback-Daten als Excel herunterladen",
         data=export_bytes,
         file_name=export_filename,
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -195,7 +201,7 @@ if download_ready:
     st.success("Der aktuelle Feedback-Export steht zum Download bereit.")
 else:
     download_placeholder.button(
-        "⬇️ Feedback-Daten als Excel herunterladen",
+        "Feedback-Daten als Excel herunterladen",
         disabled=True,
         key=f"{download_key}_placeholder",
     )
@@ -203,11 +209,3 @@ else:
 
 if st.session_state.get("feedback_export_error"):
     st.error(st.session_state["feedback_export_error"])
-
-st.info("Platzhalter für statistische Übersichten und Reports.")
-
-st.header("🛠️ Einstellungen")
-st.info("Platzhalter für Konfigurationsoptionen und Benutzerverwaltung.")
-
-st.header("🗂️ Ressourcen")
-st.info("Platzhalter für Uploads, Downloads und Materialverwaltung.")
