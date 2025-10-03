@@ -36,7 +36,6 @@ st.subheader("💾 Feedback-Export")
 
 DEFAULT_EXPORT_FILENAME = "feedback_gpt.xlsx"
 
-
 def _reset_feedback_export_state() -> None:
     """Ensure the feedback export values stay valid and consistent."""
 
