@@ -9,6 +9,7 @@ from module.fallverwaltung import (
     lade_fallbeispiele,
     prepare_fall_session_state,
     reset_fall_session_state,
+    speichere_fallbeispiel,
 )
 from module.fall_config import (
     clear_fixed_scenario,
@@ -160,6 +161,102 @@ else:
                 st.switch_page("pages/1_Anamnese.py")
             except Exception:
                 st.rerun()
+
+    st.divider()
+    st.subheader("Neues Fallbeispiel")
+
+    formular_state_key = "admin_fallformular_offen"
+    if formular_state_key not in st.session_state:
+        st.session_state[formular_state_key] = False
+
+    if st.button("Neues Fallbeispiel hinzufügen", type="secondary"):
+        st.session_state[formular_state_key] = True
+
+    if st.session_state.get(formular_state_key):
+        if st.button("Abbrechen", type="secondary"):
+            st.session_state[formular_state_key] = False
+            for key in list(st.session_state.keys()):
+                if key.startswith("admin_neuer_fall_"):
+                    st.session_state[key] = ""
+            st.rerun()
+
+        erforderliche_spalten = [
+            "Szenario",
+            "Beschreibung",
+            "Körperliche Untersuchung",
+            "Alter",
+            "Geschlecht",
+        ]
+
+        vorhandene_spalten = list(fall_df.columns) if not fall_df.empty else []
+        optionale_spalten = [
+            spalte for spalte in vorhandene_spalten if spalte not in erforderliche_spalten
+        ]
+
+        for spalte in erforderliche_spalten:
+            if spalte not in vorhandene_spalten:
+                vorhandene_spalten.append(spalte)
+
+        for spalte in erforderliche_spalten + optionale_spalten:
+            state_key = f"admin_neuer_fall_{spalte}"
+            if state_key not in st.session_state:
+                st.session_state[state_key] = ""
+
+        with st.form("admin_neues_fallbeispiel"):
+            formularwerte: dict[str, str] = {}
+
+            for spalte in erforderliche_spalten:
+                widget_key = f"admin_neuer_fall_{spalte}"
+                if spalte in {"Beschreibung", "Körperliche Untersuchung"}:
+                    formularwerte[spalte] = st.text_area(spalte, key=widget_key)
+                else:
+                    formularwerte[spalte] = st.text_input(spalte, key=widget_key)
+
+            for spalte in optionale_spalten:
+                widget_key = f"admin_neuer_fall_{spalte}"
+                formularwerte[spalte] = st.text_input(spalte, key=widget_key)
+
+            abgesendet = st.form_submit_button("Fallbeispiel speichern", type="primary")
+
+        if abgesendet:
+            fehlermeldungen: list[str] = []
+            neuer_fall: dict[str, object] = {}
+
+            for spalte in erforderliche_spalten:
+                wert = formularwerte.get(spalte, "")
+                if not str(wert).strip():
+                    fehlermeldungen.append(f"Bitte fülle das Feld '{spalte}' aus.")
+                else:
+                    neuer_fall[spalte] = str(wert).strip()
+
+            for spalte in optionale_spalten:
+                optional_wert = str(formularwerte.get(spalte, "")).strip()
+                neuer_fall[spalte] = optional_wert if optional_wert else None
+
+            alter_wert = str(neuer_fall.get("Alter", "")).strip()
+            if alter_wert:
+                try:
+                    neuer_fall["Alter"] = int(float(alter_wert))
+                except ValueError:
+                    fehlermeldungen.append("Das Feld 'Alter' muss eine Zahl sein.")
+
+            if fehlermeldungen:
+                st.error("\n".join(fehlermeldungen))
+            else:
+                aktualisiert, fehler = speichere_fallbeispiel(
+                    neuer_fall, pfad="fallbeispiele.xlsx"
+                )
+                if fehler:
+                    st.error(f"Speichern fehlgeschlagen: {fehler}")
+                elif aktualisiert is None:
+                    st.error("Speichern fehlgeschlagen: Unerwarteter Fehler.")
+                else:
+                    fall_df = aktualisiert
+                    st.success("Fallbeispiel wurde erfolgreich gespeichert.")
+                    st.session_state[formular_state_key] = False
+                    for key in list(st.session_state.keys()):
+                        if key.startswith("admin_neuer_fall_"):
+                            st.session_state[key] = ""
 
 st.subheader("Feedback-Export")
 

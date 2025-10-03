@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import random
 from io import BytesIO
-from typing import Iterable
+from typing import Any, Iterable, Mapping
 
 import pandas as pd
 import streamlit as st
@@ -98,6 +98,33 @@ def lade_fallbeispiele(*, url: str | None = None, pfad: str | None = None) -> pd
     except Exception as exc:  # pragma: no cover - Pandas-Fehler
         st.error(f"❌ Die Fallliste konnte nicht eingelesen werden: {exc}")
     return pd.DataFrame()
+
+
+def speichere_fallbeispiel(
+    row: Mapping[str, Any] | dict[str, Any],
+    pfad: str = DEFAULT_FALLDATEI,
+) -> tuple[pd.DataFrame | None, str | None]:
+    """Hängt einen neuen Fall an die Excel-Datei an und speichert sie."""
+
+    try:
+        df = pd.read_excel(pfad)
+    except FileNotFoundError:
+        return None, f"Die Datei '{pfad}' wurde nicht gefunden."
+    except Exception as exc:  # pragma: no cover - Pandas- oder IO-Fehler
+        return None, f"Die Fallliste konnte nicht geladen werden: {exc}"
+
+    try:
+        neuer_eintrag = pd.DataFrame([dict(row)])
+        df = pd.concat([df, neuer_eintrag], ignore_index=True)
+    except Exception as exc:  # pragma: no cover - Pandas-Fehler
+        return None, f"Der neue Datensatz konnte nicht angehängt werden: {exc}"
+
+    try:
+        df.to_excel(pfad, index=False, engine="openpyxl")
+    except Exception as exc:  # pragma: no cover - IO- oder Engine-Fehler
+        return None, f"Die Fallliste konnte nicht gespeichert werden: {exc}"
+
+    return df, None
 
 
 def fallauswahl_prompt(df: pd.DataFrame, szenario: str | None = None) -> None:
