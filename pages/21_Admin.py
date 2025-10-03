@@ -6,6 +6,7 @@ from module.footer import copyright_footer
 from module.fallverwaltung import (
     fallauswahl_prompt,
     lade_fallbeispiele,
+    prepare_fall_session_state,
     reset_fall_session_state,
 )
 
@@ -63,6 +64,7 @@ else:
         if bestaetigt and ausgewaehltes_szenario:
             reset_fall_session_state()
             fallauswahl_prompt(fall_df, ausgewaehltes_szenario)
+            prepare_fall_session_state()
             st.session_state["admin_selected_szenario"] = ausgewaehltes_szenario
             try:
                 st.switch_page("pages/1_Anamnese.py")

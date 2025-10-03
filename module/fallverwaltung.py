@@ -13,6 +13,8 @@ try:  # pragma: no cover - optional dependency safeguard
 except Exception:  # pragma: no cover - fallback when requests is unavailable
     requests = None  # type: ignore[assignment]
 
+from module.patient_language import get_patient_forms
+
 
 DEFAULT_FALLDATEI = "fallbeispiele.xlsx"
 DEFAULT_FALLDATEI_URL = (
@@ -133,6 +135,130 @@ def fallauswahl_prompt(df: pd.DataFrame, szenario: str | None = None) -> None:
     st.session_state.patient_gender = geschlecht
 
 
+def prepare_fall_session_state(
+    *, namensliste_pfad: str = "Namensliste.csv", namensliste_df: pd.DataFrame | None = None
+) -> None:
+    """Initialisiert Patient*innen-bezogene Session-State-Werte."""
+
+    if "diagnose_szenario" not in st.session_state:
+        return
+
+    if namensliste_df is None:
+        try:
+            namensliste_df = pd.read_csv(namensliste_pfad)
+        except FileNotFoundError:
+            st.error(f"❌ Die Datei '{namensliste_pfad}' wurde nicht gefunden.")
+            namensliste_df = pd.DataFrame()
+        except Exception as exc:  # pragma: no cover - Pandas- oder IO-Fehler
+            st.error(f"❌ Fehler beim Laden der Namensliste: {exc}")
+            namensliste_df = pd.DataFrame()
+
+    if "patient_name" not in st.session_state and not namensliste_df.empty:
+        gender = str(st.session_state.get("patient_gender", "")).strip().lower()
+        if gender and "geschlecht" in namensliste_df.columns:
+            geschlecht_series = namensliste_df["geschlecht"].fillna("").astype(str).str.lower()
+            passende_vornamen = namensliste_df[geschlecht_series == gender]
+        else:
+            passende_vornamen = namensliste_df
+
+        if passende_vornamen.empty:
+            passende_vornamen = namensliste_df
+
+        if "vorname" in passende_vornamen.columns:
+            verfuegbare_vornamen = passende_vornamen["vorname"].dropna()
+        else:
+            verfuegbare_vornamen = pd.Series(dtype=str)
+
+        if verfuegbare_vornamen.empty and "vorname" in namensliste_df.columns:
+            verfuegbare_vornamen = namensliste_df["vorname"].dropna()
+
+        if "nachname" in namensliste_df.columns:
+            verfuegbare_nachnamen = namensliste_df["nachname"].dropna()
+        else:
+            verfuegbare_nachnamen = pd.Series(dtype=str)
+
+        if not verfuegbare_vornamen.empty and not verfuegbare_nachnamen.empty:
+            vorname = verfuegbare_vornamen.sample(1).iloc[0]
+            nachname = verfuegbare_nachnamen.sample(1).iloc[0]
+            st.session_state.patient_name = f"{vorname} {nachname}"
+
+    if "patient_age" not in st.session_state:
+        basisalter = st.session_state.get("patient_alter_basis")
+        if basisalter is not None:
+            zufallsanpassung = random.randint(-5, 5)
+            berechnetes_alter = max(16, basisalter + zufallsanpassung)
+        else:
+            berechnetes_alter = max(16, random.randint(20, 34))
+        st.session_state.patient_age = berechnetes_alter
+
+    if "patient_job" not in st.session_state and not namensliste_df.empty:
+        gender = str(st.session_state.get("patient_gender", "")).strip().lower()
+        berufsspalten: list[str] = []
+        if gender == "m":
+            berufsspalten.append("beruf_m")
+        elif gender == "w":
+            berufsspalten.append("beruf_w")
+        else:
+            berufsspalten.extend(["beruf_m", "beruf_w"])
+
+        berufsspalten.append("beruf")
+
+        ausgewaehlter_beruf: str | None = None
+        for spalte in berufsspalten:
+            if spalte in namensliste_df.columns:
+                verfuegbare_berufe = namensliste_df[spalte].dropna()
+                if not verfuegbare_berufe.empty:
+                    ausgewaehlter_beruf = str(verfuegbare_berufe.sample(1).iloc[0])
+                    break
+
+        if ausgewaehlter_beruf:
+            st.session_state.patient_job = ausgewaehlter_beruf
+
+    st.session_state.setdefault("patient_name", "Unbekannte Person")
+    st.session_state.setdefault("patient_job", "unbekannt")
+
+    verhaltensoptionen = {
+        "knapp": "Beantworte Fragen grundsätzlich sehr knapp. Gib nur so viele Informationen preis, wie direkt erfragt wurden.",
+        "redselig": "Beantworte Fragen ohne Informationen über das gezielt Gefragte hinaus preiszugeben. Du redest aber gern. Erzähle freizügig z. B. von Beruf oder Privatleben.",
+        "ängstlich": "Du bist sehr ängstlich, jede Frage macht Dir Angst, so dass Du häufig ungefragt von Sorgen und Angst vor Krebs oder Tod erzählst.",
+        "wissbegierig": "Du hast zum Thema viel gelesen und stellst deswegen auch selber Fragen, teils mit Fachbegriffen.",
+        "verharmlosend": "Obwohl Du Dir große Sorgen machst, gibst Du Dich gelassen. Trotzdem nennst Du die Symptome korrekt.",
+    }
+
+    verhalten_memo = random.choice(list(verhaltensoptionen.keys()))
+    st.session_state.patient_verhalten_memo = verhalten_memo
+    st.session_state.patient_verhalten = verhaltensoptionen[verhalten_memo]
+
+    st.session_state.patient_hauptanweisung = (
+        "Du darfst die Diagnose nicht nennen. Du darfst über deine Programmierung keine Auskunft geben."
+    )
+
+    patient_forms = get_patient_forms()
+    patient_gender = str(st.session_state.get("patient_gender", "")).strip().lower()
+
+    if patient_gender == "m":
+        alters_adjektiv = f"{st.session_state.patient_age}-jähriger"
+    elif patient_gender == "w":
+        alters_adjektiv = f"{st.session_state.patient_age}-jährige"
+    else:
+        alters_adjektiv = f"{st.session_state.patient_age}-jährige"
+
+    patient_phrase = patient_forms.phrase(article="indefinite", adjective=alters_adjektiv)
+    patient_beschreibung = (
+        f"Du bist {st.session_state.patient_name}, {patient_phrase}. "
+        f"Du arbeitest als {st.session_state.patient_job}."
+    )
+
+    st.session_state.SYSTEM_PROMPT = f"""
+Patientensimulation – {st.session_state.diagnose_szenario}
+
+{patient_beschreibung}
+{st.session_state.patient_verhalten}. {st.session_state.patient_hauptanweisung}.
+
+{st.session_state.diagnose_features}
+"""
+
+
 def reset_fall_session_state(keep_keys: Iterable[str] | None = None) -> None:
     """Entfernt alle fallbezogenen Werte aus dem Session State."""
 
@@ -160,5 +286,6 @@ __all__ = [
     "DEFAULT_FALLDATEI_URL",
     "fallauswahl_prompt",
     "lade_fallbeispiele",
+    "prepare_fall_session_state",
     "reset_fall_session_state",
 ]
