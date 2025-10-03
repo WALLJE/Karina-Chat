@@ -1,7 +1,11 @@
 from module.token_counter import init_token_counters, add_usage
 from module.patient_language import get_patient_forms
+from module.offline import get_offline_befund, is_offline
 
 def generiere_befund(client, szenario, neue_diagnostik):
+    if is_offline():
+        return get_offline_befund(neue_diagnostik)
+
     patient_forms = get_patient_forms()
 
     prompt = f"""{patient_forms.phrase("nom", capitalize=True)} hat laut Szenario: {szenario}.

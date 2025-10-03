@@ -2,8 +2,10 @@ import streamlit as st
 from module.sidebar import show_sidebar
 from sprachmodul import sprach_check
 from module.footer import copyright_footer
+from module.offline import display_offline_banner, is_offline
 
 show_sidebar()
+display_offline_banner()
 
 st.subheader("Diagnose und Therapie")
 
@@ -26,6 +28,8 @@ else:
         client = st.session_state.get("openai_client")
         st.session_state.final_diagnose = sprach_check(input_diag, client)
         st.session_state.therapie_vorschlag = sprach_check(input_therapie, client)
+        if is_offline():
+            st.info("🔌 Offline-Modus: Eingaben wurden ohne GPT-Korrektur übernommen.")
         st.rerun()
 
 # # Nur für Admin sichtbar:

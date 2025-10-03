@@ -25,6 +25,7 @@ from befundmodul import generiere_befund
 from module.sidebar import show_sidebar
 from module.startinfo import zeige_instruktionen_vor_start
 from module.token_counter import init_token_counters, add_usage
+from module.offline import display_offline_banner, is_offline
 from module.fallverwaltung import (
     DEFAULT_FALLDATEI_URL,
     fallauswahl_prompt,
@@ -56,8 +57,13 @@ def initialisiere_session_state():
     st.session_state.setdefault("final_feedback", "") #test
     st.session_state.setdefault("feedback_prompt_final", "") #test
     st.session_state.setdefault("final_diagnose", "") #test
+    st.session_state.setdefault("offline_mode", False)
 
 def speichere_gpt_feedback_in_supabase():
+    if is_offline():
+        st.info("🔌 Offline-Modus: Feedback wird nicht in Supabase gespeichert.")
+        return
+
     jetzt = datetime.now()
     start = st.session_state.get("startzeit", jetzt)
     dauer_min = round((jetzt - start).total_seconds() / 60, 1)
@@ -135,6 +141,8 @@ if st.session_state.get("diagnose_szenario"):
     prepare_fall_session_state()
 
 show_sidebar()
+
+display_offline_banner()
 
 # Anweisungen anzeigen
 zeige_instruktionen_vor_start()

@@ -3,8 +3,14 @@ from supabase import create_client
 from datetime import datetime
 # import json
 from module.token_counter import init_token_counters, get_token_sums
+from module.offline import is_offline
 
 def speichere_gpt_feedback_in_supabase():
+    if is_offline():
+        st.info("🔌 Offline-Modus: Feedback wird nicht in Supabase gespeichert.")
+        st.session_state.pop("feedback_row_id", None)
+        return
+
     jetzt = datetime.now()
     start = st.session_state.get("startzeit", jetzt)
     dauer_min = round((jetzt - start).total_seconds() / 60, 1)

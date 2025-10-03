@@ -1,9 +1,13 @@
 import streamlit as st
 from module.token_counter import init_token_counters, add_usage
+from module.offline import get_offline_sprachcheck, is_offline
 
 def sprach_check(text_input, client):
     if not text_input.strip():
         return ""
+
+    if is_offline():
+        return get_offline_sprachcheck(text_input)
 
     prompt = f"""
 Bitte überprüfe die folgenden stichpunktartigen medizinischen Fachbegriffe hinsichtlich Orthographie und Zeichensetzung, schreibe Abkürzungen aus.

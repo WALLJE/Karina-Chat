@@ -5,9 +5,11 @@ from module.sidebar import show_sidebar
 from module.footer import copyright_footer
 from module.gpt_feedback import speichere_gpt_feedback_in_supabase
 from diagnostikmodul import aktualisiere_diagnostik_zusammenfassung
+from module.offline import display_offline_banner, is_offline
 
 show_sidebar()
 copyright_footer()
+display_offline_banner()
 
 # Voraussetzungen prüfen
 if "SYSTEM_PROMPT" not in st.session_state or "patient_name" not in st.session_state:
@@ -40,9 +42,9 @@ if not feedback_text:
     ])
     anzahl_termine = st.session_state.get("diagnostik_runden_gesamt", 1)
 
-    with st.spinner("⏳ Abschluss-Feedback wird erstellt..."):
+    if is_offline():
         feedback = feedback_erzeugen(
-            st.session_state["openai_client"],
+            st.session_state.get("openai_client"),
             final_diagnose,
             therapie_vorschlag,
             user_ddx2,
@@ -53,15 +55,33 @@ if not feedback_text:
             anzahl_termine,
             diagnose_szenario
         )
+    else:
+        with st.spinner("⏳ Abschluss-Feedback wird erstellt..."):
+            feedback = feedback_erzeugen(
+                st.session_state["openai_client"],
+                final_diagnose,
+                therapie_vorschlag,
+                user_ddx2,
+                diagnostik_eingaben,
+                gpt_befunde,
+                koerper_befund,
+                user_verlauf,
+                anzahl_termine,
+                diagnose_szenario
+            )
 
     st.session_state.final_feedback = feedback
     st.session_state["student_evaluation_done"] = False
     st.session_state.pop("feedback_row_id", None)
     feedback_text = feedback
     st.success("✅ Evaluation erstellt")
+    if is_offline():
+        st.info("🔌 Offline-Modus: Es wurde ein statisches Feedback verwendet.")
 
 if feedback_text:
-    if "feedback_row_id" not in st.session_state:
+    if is_offline():
+        st.info("🔌 Offline-Modus: Feedback wird nicht in Supabase gespeichert.")
+    elif "feedback_row_id" not in st.session_state:
         speichere_gpt_feedback_in_supabase()
 
     st.markdown(feedback_text)

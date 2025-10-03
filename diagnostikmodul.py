@@ -5,6 +5,7 @@ import streamlit as st
 from openai import OpenAI
 from sprachmodul import sprach_check
 from befundmodul import generiere_befund
+from module.offline import is_offline
 
 def aktualisiere_diagnostik_zusammenfassung(start_runde=2):
     """Erstellt die kumulative Zusammenfassung aller Diagnostik- und Befund-Runden und speichert sie im SessionState."""
@@ -70,12 +71,16 @@ def diagnostik_und_befunde_routine(client: OpenAI, start_runde=2, weitere_diagno
 
                 szenario = st.session_state.get("diagnose_szenario", "")
 
-                with st.spinner("GPT erstellt Befunde..."):
-                    befund = generiere_befund(client, szenario, neue_diagnostik)                
-                    st.session_state[befund_key] = befund
-                    st.session_state["diagnostik_runden_gesamt"] = runde
-                    st.session_state["diagnostik_aktiv"] = False  # zurücksetzen
-                    st.rerun()
+                if is_offline():
+                    befund = generiere_befund(client, szenario, neue_diagnostik)
+                else:
+                    with st.spinner("GPT erstellt Befunde..."):
+                        befund = generiere_befund(client, szenario, neue_diagnostik)
+
+                st.session_state[befund_key] = befund
+                st.session_state["diagnostik_runden_gesamt"] = runde
+                st.session_state["diagnostik_aktiv"] = False  # zurücksetzen
+                st.rerun()
 
 # 🔁 Zusammenfassung aller Runden
     aktualisiere_diagnostik_zusammenfassung(start_runde)

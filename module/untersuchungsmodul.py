@@ -1,7 +1,11 @@
 from module.patient_language import get_patient_forms
+from module.offline import get_offline_koerperbefund, is_offline
 
 
 def generiere_koerperbefund(client, diagnose_szenario, diagnose_features, koerper_befund_tip):
+    if is_offline():
+        return get_offline_koerperbefund()
+
     patient_forms = get_patient_forms()
 
     prompt = f"""
