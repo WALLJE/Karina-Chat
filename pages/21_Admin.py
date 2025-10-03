@@ -53,6 +53,30 @@ else:
     if not szenario_options:
         st.info("In der Datei wurden keine Szenarien gefunden.")
     else:
+        aktuelles_szenario = st.session_state.get("diagnose_szenario") or st.session_state.get(
+            "admin_selected_szenario"
+        )
+        aktuelles_verhalten_kurz = st.session_state.get("patient_verhalten_memo")
+        aktuelles_verhalten_lang = st.session_state.get("patient_verhalten")
+
+        szenario_text = (
+            f"**Aktuelles Szenario:** {aktuelles_szenario}"
+            if aktuelles_szenario
+            else "Aktuell ist kein Szenario geladen."
+        )
+
+        if aktuelles_verhalten_kurz and aktuelles_verhalten_lang:
+            verhalten_text = (
+                "**Patient*innenverhalten:** "
+                f"{aktuelles_verhalten_kurz.capitalize()} – {aktuelles_verhalten_lang}"
+            )
+        elif aktuelles_verhalten_lang:
+            verhalten_text = f"**Patient*innenverhalten:** {aktuelles_verhalten_lang}"
+        else:
+            verhalten_text = "Für das aktuelle Szenario ist kein Verhalten gesetzt."
+
+        st.info(f"{szenario_text}\n\n{verhalten_text}")
+
         with st.form("admin_fallauswahl"):
             ausgewaehltes_szenario = st.selectbox(
                 "Szenario auswählen",
