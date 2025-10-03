@@ -17,11 +17,6 @@ import random
 
 import pandas as pd
 from datetime import datetime
-import requests
-from requests.auth import HTTPBasicAuth
-
-# Für einlesen Excel Datei
-from io import BytesIO
 
 # externe Codes einbinden
 from diagnostikmodul import diagnostik_und_befunde_routine
@@ -32,6 +27,11 @@ from befundmodul import generiere_befund
 from module.sidebar import show_sidebar
 from module.startinfo import zeige_instruktionen_vor_start
 from module.token_counter import init_token_counters, add_usage
+from module.fallverwaltung import (
+    DEFAULT_FALLDATEI_URL,
+    fallauswahl_prompt,
+    lade_fallbeispiele,
+)
 from module.patient_language import get_patient_forms
 
 # Für Einbinden Supabase Tabellen
@@ -54,42 +54,6 @@ st.session_state["openai_client"] = client
 
 # st.set_page_config(layout="wide") # breiter Bildschrim sieht nicht gut aus.
 
-# Funktion: Fall aus DataFrame laden
-def fallauswahl_prompt(df, szenario=None):
-    if df.empty:
-        st.error("📄 Die Falltabelle ist leer oder konnte nicht geladen werden.")
-        return
-    try:
-        if szenario:
-            fall = df[df["Szenario"] == szenario].iloc[0]
-        else:
-            fall = df.sample(1).iloc[0]
-
-        st.session_state.diagnose_szenario = fall["Szenario"]
-        st.session_state.diagnose_features = fall["Beschreibung"]
-        st.session_state.koerper_befund_tip = fall.get("Körperliche Untersuchung", "")
-        alter_roh = fall.get("Alter")
-        try:
-            alter_berechnet = int(float(alter_roh))
-        except (TypeError, ValueError):
-            alter_berechnet = None
-        st.session_state.patient_alter_basis = alter_berechnet
-
-        geschlecht = str(fall.get("Geschlecht", "")).strip().lower()
-        if geschlecht == "n":
-            geschlecht = random.choice(["m", "w"])
-        elif geschlecht not in {"m", "w"}:
-            geschlecht = ""
-        st.session_state.patient_gender = geschlecht
-        # Spalte Besonderheit noch offen
-        # Mit der folgenden Zeile kann der Fall am Anfang zu Kontrollzwecken schon angezeigt werden
-        # st.success(f"✅ Zufälliger Fall geladen: {fall['Szenario']}")
-
-        # SYSTEM_PROMPT korrekt hier gelöscht
-
-    except Exception as e:
-        st.error(f"❌ Fehler beim Laden des Falls: {e}")
-        
 def initialisiere_session_state():
     st.session_state.setdefault("final_feedback", "") #test
     st.session_state.setdefault("feedback_prompt_final", "") #test
@@ -160,18 +124,14 @@ initialisiere_session_state()
 # st.write ("Status:", diagnostik_eingaben, gpt_befunde, anzahl_runden)
 #####
 
-# Schritt 1: Excel-Datei von GitHub laden
-url = "https://github.com/WALLJE/Karina-Chat/raw/main/fallbeispiele.xlsx"
-response = requests.get(url)
+szenario_df = lade_fallbeispiele(url=DEFAULT_FALLDATEI_URL)
 
-if response.status_code == 200:
-    szenario_df = pd.read_excel(BytesIO(response.content))
-
-    # Nur laden, wenn noch kein Fall gesetzt ist
-    if "diagnose_szenario" not in st.session_state:
+if not szenario_df.empty:
+    admin_szenario = st.session_state.pop("admin_selected_szenario", None)
+    if admin_szenario:
+        fallauswahl_prompt(szenario_df, admin_szenario)
+    elif "diagnose_szenario" not in st.session_state:
         fallauswahl_prompt(szenario_df)
-else:
-    st.error(f"❌ Fehler beim Laden der Datei: Statuscode {response.status_code}")
 
 # Patientendaten aus Namensliste bestimmen
 try:
