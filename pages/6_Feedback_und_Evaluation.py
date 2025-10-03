@@ -1,8 +1,5 @@
 import streamlit as st
-from datetime import datetime
-from sprachmodul import sprach_check
 from feedbackmodul import feedback_erzeugen
-from supabase import create_client, Client
 from module.feedback_ui import student_feedback
 from module.sidebar import show_sidebar
 from module.footer import copyright_footer
@@ -11,8 +8,6 @@ from diagnostikmodul import aktualisiere_diagnostik_zusammenfassung
 
 show_sidebar()
 copyright_footer()
-
-client = st.session_state["openai_client"]
 
 # Voraussetzungen prüfen
 if "SYSTEM_PROMPT" not in st.session_state or "patient_name" not in st.session_state:
@@ -26,32 +21,28 @@ if "SYSTEM_PROMPT" not in st.session_state or "patient_name" not in st.session_s
 
 aktualisiere_diagnostik_zusammenfassung()
 
-# feedback
+if "student_evaluation_done" not in st.session_state:
+    st.session_state["student_evaluation_done"] = False
 
-if st.session_state.get("final_feedback", "").strip():
-    st.markdown(st.session_state.final_feedback)
-    
-    # NEU: Nur wenn noch nicht gespeichert
-    if "feedback_row_id" not in st.session_state:
-        from module.gpt_feedback import speichere_gpt_feedback_in_supabase
-        speichere_gpt_feedback_in_supabase()
-else:
-    if st.button("📋 Abschluss-Feedback anzeigen"):
-        diagnostik_eingaben = st.session_state.get("diagnostik_eingaben_kumuliert", "")
-        gpt_befunde = st.session_state.get("gpt_befunde_kumuliert", "")
-        koerper_befund = st.session_state.get("koerper_befund", "")
-        final_diagnose = st.session_state.get("final_diagnose", "")
-        therapie_vorschlag = st.session_state.get("therapie_vorschlag", "")
-        diagnose_szenario = st.session_state.get("diagnose_szenario", "")
-        user_ddx2 = st.session_state.get("user_ddx2", "")
-        user_verlauf = "\n".join([
-            msg["content"] for msg in st.session_state.messages
-            if msg["role"] == "user"
-        ])
-        anzahl_termine = st.session_state.get("diagnostik_runden_gesamt", 1)
+feedback_text = st.session_state.get("final_feedback", "").strip()
 
+if not feedback_text:
+    diagnostik_eingaben = st.session_state.get("diagnostik_eingaben_kumuliert", "")
+    gpt_befunde = st.session_state.get("gpt_befunde_kumuliert", "")
+    koerper_befund = st.session_state.get("koerper_befund", "")
+    final_diagnose = st.session_state.get("final_diagnose", "")
+    therapie_vorschlag = st.session_state.get("therapie_vorschlag", "")
+    diagnose_szenario = st.session_state.get("diagnose_szenario", "")
+    user_ddx2 = st.session_state.get("user_ddx2", "")
+    user_verlauf = "\n".join([
+        msg["content"] for msg in st.session_state.messages
+        if msg["role"] == "user"
+    ])
+    anzahl_termine = st.session_state.get("diagnostik_runden_gesamt", 1)
+
+    with st.spinner("⏳ Abschluss-Feedback wird erstellt..."):
         feedback = feedback_erzeugen(
-            st.session_state["openai_client"],  # falls als client gespeichert
+            st.session_state["openai_client"],
             final_diagnose,
             therapie_vorschlag,
             user_ddx2,
@@ -62,66 +53,65 @@ else:
             anzahl_termine,
             diagnose_szenario
         )
-        st.session_state.final_feedback = feedback
+
+    st.session_state.final_feedback = feedback
+    st.session_state["student_evaluation_done"] = False
+    st.session_state.pop("feedback_row_id", None)
+    feedback_text = feedback
+    st.success("✅ Evaluation erstellt")
+
+if feedback_text:
+    if "feedback_row_id" not in st.session_state:
         speichere_gpt_feedback_in_supabase()
-        st.success("✅ Evaluation erstellt")
-        st.rerun()
 
+    st.markdown(feedback_text)
+else:
+    st.error("🚫 Das Abschluss-Feedback konnte nicht erstellt werden.")
+    st.stop()
 
+if st.session_state.final_feedback:
+    student_feedback()
 
-# Downloadbereich
-# Zusammenfassung und Download vorbereiten
 st.markdown("---")
 st.subheader("📄 Download")
 
-if "final_feedback" in st.session_state:
+if st.session_state.get("final_feedback") and st.session_state.get("student_evaluation_done"):
     protokoll = ""
 
-    # Szenario
     protokoll += f"Simuliertes Krankheitsbild: {st.session_state.diagnose_szenario}\n\n"
 
-    # Gesprächsverlauf
     protokoll += "---\n💬 Gesprächsverlauf (nur Fragen des Studierenden):\n"
     for msg in st.session_state.messages[1:]:
         rolle = st.session_state.patient_name if msg["role"] == "assistant" else "Du"
         protokoll += f"{rolle}: {msg['content']}\n"
 
-    # Körperlicher Untersuchungsbefund
     if "koerper_befund" in st.session_state:
         protokoll += "\n---\n Körperlicher Untersuchungsbefund:\n"
         protokoll += st.session_state.koerper_befund + "\n"
 
-    # Differentialdiagnosen
     if "user_ddx2" in st.session_state:
         protokoll += "\n---\n Erhobene Differentialdiagnosen:\n"
         protokoll += st.session_state.user_ddx2 + "\n"
 
-    # Diagnostische Maßnahmen
     if "diagnostik_eingaben_kumuliert" in st.session_state:
         protokoll += "\n---\n Geplante diagnostische Maßnahmen (alle Termine):\n"
         protokoll += st.session_state.diagnostik_eingaben_kumuliert + "\n"
-    
-    # KUmulierte Befunde
+
     if "gpt_befunde_kumuliert" in st.session_state:
         protokoll += "\n---\n📄 Ergebnisse der diagnostischen Maßnahmen:\n"
         protokoll += st.session_state.gpt_befunde_kumuliert + "\n"
 
-
-    # Finale Diagnose
     if "final_diagnose" in st.session_state:
         protokoll += "\n---\n Finale Diagnose:\n"
         protokoll += st.session_state.final_diagnose + "\n"
 
-    # Therapiekonzept
     if "therapie_vorschlag" in st.session_state:
         protokoll += "\n---\n Therapiekonzept:\n"
         protokoll += st.session_state.therapie_vorschlag + "\n"
 
-    # Abschlussfeedback
     protokoll += "\n---\n Strukturierte Rückmeldung:\n"
     protokoll += st.session_state.final_feedback + "\n"
 
-    # Download-Button
     st.download_button(
         label="⬇️ Gespräch & Feedback herunterladen",
         data=protokoll,
@@ -129,9 +119,4 @@ if "final_feedback" in st.session_state:
         mime="text/plain"
     )
 else:
-    st.info("💬 Das Protokoll kann nach der Evaluation heruntergeladen werden.")
-
-# Abschnitt: Evaluation durch Studierende mit Schulnoten und Sammeldatei
-
-if st.session_state.final_feedback:
-    student_feedback()
+    st.info("💬 Der Download wird nach Abschluss der Evaluation freigeschaltet.")
