@@ -34,27 +34,40 @@ st.markdown("---")
 st.header("📊 Auswertungen")
 st.subheader("💾 Feedback-Export")
 
-feedback_excel = None
-feedback_filename = "feedback_gpt.xlsx"
+st.session_state.setdefault("feedback_export_requested", False)
+st.session_state.setdefault("feedback_export_bytes", None)
+st.session_state.setdefault("feedback_export_filename", "feedback_gpt.xlsx")
 
-with st.spinner("Supabase-Daten werden geladen..."):
-    try:
-        feedback_excel, feedback_filename = build_feedback_export()
-    except FeedbackExportError as exc:
-        feedback_excel = None
-        st.error(f"🚫 Export nicht möglich: {exc}")
-    except Exception as exc:  # pragma: no cover - defensive
-        feedback_excel = None
-        st.error(f"⚠️ Unerwarteter Fehler beim Export: {exc}")
+if st.session_state["feedback_export_requested"]:
+    st.session_state["feedback_export_bytes"] = None
+    st.session_state["feedback_export_filename"] = "feedback_gpt.xlsx"
+    with st.spinner("Supabase-Daten werden geladen..."):
+        try:
+            export_bytes, export_filename = build_feedback_export()
+            st.session_state["feedback_export_bytes"] = export_bytes
+            st.session_state["feedback_export_filename"] = export_filename
+        except FeedbackExportError as exc:
+            st.session_state["feedback_export_bytes"] = None
+            st.session_state["feedback_export_filename"] = "feedback_gpt.xlsx"
+            st.session_state["feedback_export_requested"] = False
+            st.error(f"🚫 Export nicht möglich: {exc}")
+        except Exception as exc:  # pragma: no cover - defensive
+            st.session_state["feedback_export_bytes"] = None
+            st.session_state["feedback_export_filename"] = "feedback_gpt.xlsx"
+            st.session_state["feedback_export_requested"] = False
+            st.error(f"⚠️ Unerwarteter Fehler beim Export: {exc}")
 
-if feedback_excel:
-    st.download_button(
-        "⬇️ Feedback-Daten als Excel herunterladen",
-        data=feedback_excel,
-        file_name=feedback_filename,
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        type="primary",
-    )
+download_clicked = st.download_button(
+    "⬇️ Feedback-Daten als Excel herunterladen",
+    data=st.session_state["feedback_export_bytes"],
+    file_name=st.session_state["feedback_export_filename"],
+    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    type="primary",
+    key="feedback_export_requested",
+)
+
+if download_clicked:
+    st.session_state["feedback_export_requested"] = False
 
 st.info("Platzhalter für statistische Übersichten und Reports.")
 
