@@ -36,54 +36,86 @@ st.subheader("💾 Feedback-Export")
 
 DEFAULT_EXPORT_FILENAME = "feedback_gpt.xlsx"
 
-
 def _reset_feedback_export_state() -> None:
-    """Ensure the feedback export values are always valid bytes and filename."""
+    """Ensure the feedback export values stay valid and consistent."""
 
     st.session_state["feedback_export_bytes"] = b""
     st.session_state["feedback_export_filename"] = DEFAULT_EXPORT_FILENAME
 
 
-existing_bytes = st.session_state.get("feedback_export_bytes")
-if isinstance(existing_bytes, bytearray):
-    st.session_state["feedback_export_bytes"] = bytes(existing_bytes)
-elif not isinstance(existing_bytes, bytes):
-    _reset_feedback_export_state()
+def _prepare_feedback_export() -> None:
+    """Build the feedback export and keep the UI state in sync."""
 
-if not isinstance(st.session_state.get("feedback_export_filename"), str):
-    st.session_state["feedback_export_filename"] = DEFAULT_EXPORT_FILENAME
-
-clicked = st.session_state.pop("feedback_export_button", False)
-
-if clicked:
+    st.session_state["feedback_export_error"] = ""
     with st.spinner("Supabase-Daten werden geladen..."):
         try:
             export_bytes, export_filename = build_feedback_export()
         except FeedbackExportError as exc:
             _reset_feedback_export_state()
-            st.error(f"🚫 Export nicht möglich: {exc}")
+            st.session_state["feedback_export_error"] = f"🚫 Export nicht möglich: {exc}"
         except Exception as exc:  # pragma: no cover - defensive
             _reset_feedback_export_state()
-            st.error(f"⚠️ Unerwarteter Fehler beim Export: {exc}")
+            st.session_state["feedback_export_error"] = f"⚠️ Unerwarteter Fehler beim Export: {exc}"
         else:
             if not isinstance(export_bytes, (bytes, bytearray)):
                 _reset_feedback_export_state()
-                st.error("⚠️ Ungültige Exportdaten erhalten. Bitte erneut versuchen.")
+                st.session_state[
+                    "feedback_export_error"
+                ] = "⚠️ Ungültige Exportdaten erhalten. Bitte erneut versuchen."
             else:
                 st.session_state["feedback_export_bytes"] = bytes(export_bytes)
-                st.session_state["feedback_export_filename"] = export_filename or DEFAULT_EXPORT_FILENAME
+                st.session_state["feedback_export_filename"] = (
+                    export_filename or DEFAULT_EXPORT_FILENAME
+                )
+                st.session_state["feedback_export_revision"] += 1
+
+
+if "feedback_export_bytes" not in st.session_state:
+    _reset_feedback_export_state()
+
+if not isinstance(st.session_state.get("feedback_export_bytes"), bytes):
+    _reset_feedback_export_state()
+
+if "feedback_export_revision" not in st.session_state:
+    st.session_state["feedback_export_revision"] = 0
+
+if "feedback_export_error" not in st.session_state:
+    st.session_state["feedback_export_error"] = ""
+
+if st.button("🔄 Feedback-Export aktualisieren", type="secondary"):
+    _reset_feedback_export_state()
+    _prepare_feedback_export()
 
 export_bytes = st.session_state.get("feedback_export_bytes", b"") or b""
-export_filename = st.session_state.get("feedback_export_filename", DEFAULT_EXPORT_FILENAME) or DEFAULT_EXPORT_FILENAME
-
-st.download_button(
-    "⬇️ Feedback-Daten als Excel herunterladen",
-    data=export_bytes,
-    file_name=export_filename,
-    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    type="primary",
-    key="feedback_export_button",
+export_filename = (
+    st.session_state.get("feedback_export_filename", DEFAULT_EXPORT_FILENAME)
+    or DEFAULT_EXPORT_FILENAME
 )
+download_ready = bool(export_bytes)
+download_key = f"feedback_export_button_{st.session_state['feedback_export_revision']}"
+
+download_placeholder = st.empty()
+
+if download_ready:
+    download_placeholder.download_button(
+        "⬇️ Feedback-Daten als Excel herunterladen",
+        data=export_bytes,
+        file_name=export_filename,
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        type="primary",
+        key=download_key,
+    )
+    st.success("Der aktuelle Feedback-Export steht zum Download bereit.")
+else:
+    download_placeholder.button(
+        "⬇️ Feedback-Daten als Excel herunterladen",
+        disabled=True,
+        key=f"{download_key}_placeholder",
+    )
+    st.info("Bitte aktualisiere den Export, bevor du die Excel-Datei herunterlädst.")
+
+if st.session_state.get("feedback_export_error"):
+    st.error(st.session_state["feedback_export_error"])
 
 st.info("Platzhalter für statistische Übersichten und Reports.")
 
