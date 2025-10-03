@@ -672,9 +672,4 @@ if "final_feedback" in st.session_state:
 else:
     st.info("💬 Das Protokoll kann nach der Evaluation heruntergeladen werden.")
 
-# Abschnitt: Evaluation durch Studierende mit Schulnoten und Sammeldatei
-
-if st.session_state.final_feedback:
-    student_feedback()
-
 copyright_footer()
