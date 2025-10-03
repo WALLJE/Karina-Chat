@@ -10,6 +10,11 @@ from module.fallverwaltung import (
     prepare_fall_session_state,
     reset_fall_session_state,
 )
+from module.fall_config import (
+    clear_fixed_scenario,
+    get_fall_fix_state,
+    set_fixed_scenario,
+)
 
 
 copyright_footer()
@@ -83,6 +88,7 @@ else:
     if not szenario_options:
         st.info("In der Datei wurden keine Szenarien gefunden.")
     else:
+        fixed, fixed_szenario = get_fall_fix_state()
         aktuelles_szenario = st.session_state.get("diagnose_szenario") or st.session_state.get(
             "admin_selected_szenario"
         )
@@ -95,6 +101,14 @@ else:
             else "Aktuell ist kein Szenario geladen."
         )
 
+        if fixed and fixed_szenario:
+            modus_text = (
+                "**Modus:** Fixierter Fall – alle Nutzer*innen bearbeiten aktuell "
+                f"'{fixed_szenario}'."
+            )
+        else:
+            modus_text = "**Modus:** Zufälliger Fall – neue Sitzungen erhalten ein zufälliges Szenario."
+
         if aktuelles_verhalten_kurz and aktuelles_verhalten_lang:
             verhalten_text = (
                 "**Patient*innenverhalten:** "
@@ -105,21 +119,43 @@ else:
         else:
             verhalten_text = "Für das aktuelle Szenario ist kein Verhalten gesetzt."
 
-        st.info(f"{szenario_text}\n\n{verhalten_text}")
+        st.info(f"{szenario_text}\n\n{modus_text}\n\n{verhalten_text}")
 
         with st.form("admin_fallauswahl"):
+            if fixed and fixed_szenario in szenario_options:
+                default_index = szenario_options.index(fixed_szenario)
+            elif aktuelles_szenario in szenario_options:
+                default_index = szenario_options.index(aktuelles_szenario)
+            else:
+                default_index = 0
+
             ausgewaehltes_szenario = st.selectbox(
                 "Szenario auswählen",
                 szenario_options,
+                index=default_index,
                 help="Wähle das Fallszenario aus, das für die nächste Sitzung verwendet werden soll.",
+            )
+            fall_fix_toggle = st.toggle(
+                "Fall fixieren",
+                value=fixed,
+                help=(
+                    "Aktiviere diese Option, damit alle künftigen Sitzungen dieses Szenario erhalten. "
+                    "Wird die Fixierung aufgehoben, wählen nachfolgende Sitzungen wieder zufällig."
+                ),
             )
             bestaetigt = st.form_submit_button("Szenario übernehmen", type="primary")
 
         if bestaetigt and ausgewaehltes_szenario:
             reset_fall_session_state()
-            fallauswahl_prompt(fall_df, ausgewaehltes_szenario)
+            if fall_fix_toggle:
+                fallauswahl_prompt(fall_df, ausgewaehltes_szenario)
+                set_fixed_scenario(ausgewaehltes_szenario)
+                st.session_state["admin_selected_szenario"] = ausgewaehltes_szenario
+            else:
+                clear_fixed_scenario()
+                st.session_state.pop("admin_selected_szenario", None)
+                fallauswahl_prompt(fall_df)
             prepare_fall_session_state()
-            st.session_state["admin_selected_szenario"] = ausgewaehltes_szenario
             try:
                 st.switch_page("pages/1_Anamnese.py")
             except Exception:
