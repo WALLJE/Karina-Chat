@@ -105,10 +105,7 @@ def show_sidebar():
         st.page_link("pages/20_Impressum.py", label="Impressum und Hinweise", icon="📰")
 
         if st.session_state.get("is_admin"):
-            st.markdown(
-                '<div style="margin-top:0.5rem;"><a href="?page=21_Admin" style="color:#d00000; font-weight:bold;">🔑 Adminbereich</a></div>',
-                unsafe_allow_html=True,
-            )
+            st.page_link("pages/21_Admin.py", label="🔑 Adminbereich")
 
         st.markdown("---")
         st.caption("🔒 Weitere Seiten erscheinen automatisch, sobald diagnostische Schritte abgeschlossen wurden.")
