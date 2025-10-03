@@ -34,40 +34,31 @@ st.markdown("---")
 st.header("📊 Auswertungen")
 st.subheader("💾 Feedback-Export")
 
-st.session_state.setdefault("feedback_export_requested", False)
-st.session_state.setdefault("feedback_export_bytes", None)
-st.session_state.setdefault("feedback_export_filename", "feedback_gpt.xlsx")
+export_bytes = None
+export_filename = "feedback_gpt.xlsx"
+clicked = st.session_state.pop("feedback_export_button", False)
 
-if st.session_state["feedback_export_requested"]:
-    st.session_state["feedback_export_bytes"] = None
-    st.session_state["feedback_export_filename"] = "feedback_gpt.xlsx"
+if clicked:
     with st.spinner("Supabase-Daten werden geladen..."):
         try:
             export_bytes, export_filename = build_feedback_export()
-            st.session_state["feedback_export_bytes"] = export_bytes
-            st.session_state["feedback_export_filename"] = export_filename
         except FeedbackExportError as exc:
-            st.session_state["feedback_export_bytes"] = None
-            st.session_state["feedback_export_filename"] = "feedback_gpt.xlsx"
-            st.session_state["feedback_export_requested"] = False
+            export_bytes = None
+            export_filename = "feedback_gpt.xlsx"
             st.error(f"🚫 Export nicht möglich: {exc}")
         except Exception as exc:  # pragma: no cover - defensive
-            st.session_state["feedback_export_bytes"] = None
-            st.session_state["feedback_export_filename"] = "feedback_gpt.xlsx"
-            st.session_state["feedback_export_requested"] = False
+            export_bytes = None
+            export_filename = "feedback_gpt.xlsx"
             st.error(f"⚠️ Unerwarteter Fehler beim Export: {exc}")
 
-download_clicked = st.download_button(
+st.download_button(
     "⬇️ Feedback-Daten als Excel herunterladen",
-    data=st.session_state["feedback_export_bytes"],
-    file_name=st.session_state["feedback_export_filename"],
+    data=export_bytes,
+    file_name=export_filename,
     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     type="primary",
-    key="feedback_export_requested",
+    key="feedback_export_button",
 )
-
-if download_clicked:
-    st.session_state["feedback_export_requested"] = False
 
 st.info("Platzhalter für statistische Übersichten und Reports.")
 
