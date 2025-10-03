@@ -2,6 +2,7 @@ import streamlit as st
 from datetime import datetime
 from supabase import create_client, Client
 from cryptography.fernet import Fernet, InvalidToken
+from module.offline import is_offline
 
 # Supabase initialisieren (Erwartung: in st.secrets definiert)
 supabase_url = st.secrets["supabase"]["url"]
@@ -36,6 +37,12 @@ def _encrypt_matrikel(matrikel: str) -> str | None:
 def student_feedback():
     st.markdown("---")
     st.subheader("🗣 Ihr Feedback zur Simulation")
+
+    offline_active = is_offline()
+    if offline_active:
+        st.info(
+            "🔌 Offline-Modus aktiv: Ihr Feedback wird derzeit nicht an Supabase übermittelt."
+        )
 
     if st.session_state.get("student_evaluation_done"):
         st.success("✅ Vielen Dank! Ihr Feedback wurde bereits gespeichert.")
@@ -80,7 +87,11 @@ def student_feedback():
     bugs = st.text_area("💬 Welche Ungenauigkeiten oder Fehler sind Ihnen aufgefallen (optional):", "")
     kommentar = st.text_area("💬 Freitext (optional):", "")
 
-    if st.button("📩 Feedback absenden"):
+    if st.button("📩 Feedback absenden", disabled=offline_active):
+        if offline_active:
+            st.info("🔌 Offline-Modus: Feedback konnte nicht gespeichert werden.")
+            return
+
         eintrag = {
             "note_realismus": f1,
             "note_anamnese": f2,

@@ -1,5 +1,6 @@
 from module.token_counter import init_token_counters, add_usage
 from module.patient_language import get_patient_forms
+from module.offline import get_offline_feedback, is_offline
 
 def feedback_erzeugen(
     client,
@@ -13,6 +14,9 @@ def feedback_erzeugen(
     anzahl_termine,
     diagnose_szenario
 ):
+    if is_offline():
+        return get_offline_feedback(diagnose_szenario)
+
     patient_forms = get_patient_forms()
 
     prompt = f"""

@@ -3,6 +3,7 @@ import streamlit as st
 from module.admin_data import FeedbackExportError, build_feedback_export
 from module.sidebar import show_sidebar
 from module.footer import copyright_footer
+from module.offline import display_offline_banner, is_offline
 from module.fallverwaltung import (
     fallauswahl_prompt,
     lade_fallbeispiele,
@@ -13,6 +14,7 @@ from module.fallverwaltung import (
 
 copyright_footer()
 show_sidebar()
+display_offline_banner()
 
 if not st.session_state.get("is_admin"):
     st.error("🚫 Kein Zugriff: Dieser Bereich steht nur Administrator*innen zur Verfügung.")
@@ -23,6 +25,26 @@ if not st.session_state.get("is_admin"):
 st.title("Adminbereich")
 st.markdown(
     "Hier entstehen künftig die administrativen Werkzeuge zur Verwaltung und Auswertung des Trainings.")
+
+st.markdown("---")
+st.subheader("Verbindungsmodus")
+current_offline = is_offline()
+offline_toggle = st.toggle(
+    "Offline-Modus aktivieren",
+    value=current_offline,
+    help=(
+        "Im Offline-Modus werden statische Platzhalter statt GPT-Antworten verwendet. "
+        "Die OpenAI-API wird dabei nicht angesprochen."
+    ),
+    key="admin_offline_toggle",
+)
+
+if offline_toggle != current_offline:
+    st.session_state["offline_mode"] = offline_toggle
+    if offline_toggle:
+        st.info("🔌 Offline-Modus aktiviert. Alle Seiten nutzen jetzt statische Inhalte.")
+    else:
+        st.success("🌐 Online-Modus reaktiviert. GPT-Antworten werden wieder live generiert.")
 
 st.markdown("---")
 st.subheader("Adminmodus")

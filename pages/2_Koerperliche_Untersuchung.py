@@ -5,9 +5,11 @@ from module.untersuchungsmodul import generiere_koerperbefund
 from openai import RateLimitError
 from module.sidebar import show_sidebar
 from module.footer import copyright_footer
+from module.offline import display_offline_banner, is_offline
 
 copyright_footer()
 show_sidebar()
+display_offline_banner()
 
 # Voraussetzungen prüfen
 if (
@@ -37,18 +39,28 @@ if "koerper_befund" in st.session_state:
 
 elif fragen_gestellt:
     if st.button("🩺 Untersuchung durchführen"):
-        with st.spinner(f"{st.session_state.patient_name} wird untersucht..."):
-            try:
+        try:
+            if is_offline():
                 koerper_befund = generiere_koerperbefund(
-                    st.session_state["openai_client"],
+                    st.session_state.get("openai_client"),
                     st.session_state.diagnose_szenario,
                     st.session_state.diagnose_features,
                     st.session_state.get("koerper_befund_tip", "")
                 )
-                st.session_state.koerper_befund = koerper_befund
-                st.rerun()
-            except RateLimitError:
-                st.error("🚫 Die Untersuchung konnte nicht erstellt werden. Die OpenAI-API ist derzeit überlastet.")
+            else:
+                with st.spinner(f"{st.session_state.patient_name} wird untersucht..."):
+                    koerper_befund = generiere_koerperbefund(
+                        st.session_state["openai_client"],
+                        st.session_state.diagnose_szenario,
+                        st.session_state.diagnose_features,
+                        st.session_state.get("koerper_befund_tip", "")
+                    )
+            st.session_state.koerper_befund = koerper_befund
+            if is_offline():
+                st.info("🔌 Offline-Befund geladen. Sobald der Online-Modus aktiv ist, kannst du einen KI-generierten Befund abrufen.")
+            st.rerun()
+        except RateLimitError:
+            st.error("🚫 Die Untersuchung konnte nicht erstellt werden. Die OpenAI-API ist derzeit überlastet.")
 else:
     st.subheader("🩺 Untersuchung")
     st.button("Untersuchung durchführen", disabled=True)

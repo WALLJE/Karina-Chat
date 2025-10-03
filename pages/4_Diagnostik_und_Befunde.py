@@ -3,8 +3,10 @@ from module.sidebar import show_sidebar
 from module.footer import copyright_footer
 from diagnostikmodul import diagnostik_und_befunde_routine
 from befundmodul import generiere_befund
+from module.offline import display_offline_banner, is_offline
 
 show_sidebar()
+display_offline_banner()
 
 # st.subheader("Diagnostik und Befunde")
 
@@ -50,10 +52,15 @@ if (
                 diagnose_szenario = st.session_state.diagnose_szenario
                 client = st.session_state.get("openai_client")
 
-                with st.spinner("Befunde werden generiert..."):
+                if is_offline():
                     befund = generiere_befund(client, diagnose_szenario, diagnostik_eingabe)
+                else:
+                    with st.spinner("Befunde werden generiert..."):
+                        befund = generiere_befund(client, diagnose_szenario, diagnostik_eingabe)
 
                 st.session_state.befunde = befund
+                if is_offline():
+                    st.info("🔌 Offline-Befund gespeichert. Sobald der Online-Modus aktiv ist, kannst du neue KI-Befunde abrufen.")
                 st.success("✅ Befunde generiert")
                 st.rerun()
 
@@ -114,12 +121,17 @@ if (
 
         szenario = st.session_state.get("diagnose_szenario", "")
         client = st.session_state.get("openai_client")
-        with st.spinner("GPT erstellt Befunde..."):
+        if is_offline():
             befund = generiere_befund(client, szenario, neue_diagnostik)
-            st.session_state[f"befunde_runde_{neuer_termin}"] = befund
-            st.session_state["diagnostik_runden_gesamt"] = neuer_termin
-            st.session_state["diagnostik_aktiv"] = False
-            st.rerun()
+        else:
+            with st.spinner("GPT erstellt Befunde..."):
+                befund = generiere_befund(client, szenario, neue_diagnostik)
+        st.session_state[f"befunde_runde_{neuer_termin}"] = befund
+        st.session_state["diagnostik_runden_gesamt"] = neuer_termin
+        st.session_state["diagnostik_aktiv"] = False
+        if is_offline():
+            st.info("🔌 Offline-Befund gespeichert. Schalte den Online-Modus wieder ein, um echte GPT-Ergebnisse zu erhalten.")
+        st.rerun()
 
 # Button für neue Diagnostik
 if (

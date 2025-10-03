@@ -4,9 +4,15 @@ import os
 from datetime import datetime
 from module.sidebar import show_sidebar
 from module.footer import copyright_footer
+from module.offline import (
+    display_offline_banner,
+    get_offline_patient_reply,
+    is_offline,
+)
 
 copyright_footer()
 show_sidebar()
+display_offline_banner()
 
 # Voraussetzungen prüfen
 if "SYSTEM_PROMPT" not in st.session_state or "patient_name" not in st.session_state:
@@ -58,17 +64,21 @@ if submit_button and user_input:
         st.stop()
 
     st.session_state.messages.append({"role": "user", "content": user_input})
-    with st.spinner(f"{st.session_state.patient_name} antwortet..."):
-        try:
-            response = client.chat.completions.create(
-                model="gpt-4",
-                messages=st.session_state.messages,
-                temperature=0.6
-            )
-            reply = response.choices[0].message.content
-            st.session_state.messages.append({"role": "assistant", "content": reply})
-        except RateLimitError:
-            st.error("🚫 Die Anfrage konnte nicht verarbeitet werden, da die OpenAI-API derzeit überlastet ist. Bitte versuchen Sie es in einigen Minuten erneut.")
+    if is_offline():
+        reply = get_offline_patient_reply(st.session_state.get("patient_name", ""))
+        st.session_state.messages.append({"role": "assistant", "content": reply})
+    else:
+        with st.spinner(f"{st.session_state.patient_name} antwortet..."):
+            try:
+                response = client.chat.completions.create(
+                    model="gpt-4",
+                    messages=st.session_state.messages,
+                    temperature=0.6
+                )
+                reply = response.choices[0].message.content
+                st.session_state.messages.append({"role": "assistant", "content": reply})
+            except RateLimitError:
+                st.error("🚫 Die Anfrage konnte nicht verarbeitet werden, da die OpenAI-API derzeit überlastet ist. Bitte versuchen Sie es in einigen Minuten erneut.")
     st.rerun()
 
 # Abschlussoption anzeigen
