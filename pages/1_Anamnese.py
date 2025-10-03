@@ -46,6 +46,17 @@ with st.form(key="eingabe_formular", clear_on_submit=True):
     submit_button = st.form_submit_button(label="Absenden")
 
 if submit_button and user_input:
+    admin_code = st.secrets.get("admin_code") if hasattr(st, "secrets") else None
+    if admin_code and user_input.strip() == str(admin_code):
+        st.session_state["is_admin"] = True
+        st.success("🔑 Adminzugang aktiviert. Du wirst weitergeleitet …")
+        try:
+            st.switch_page("pages/21_Admin.py")
+        except Exception:
+            st.experimental_set_query_params(page="21_Admin")
+            st.rerun()
+        st.stop()
+
     st.session_state.messages.append({"role": "user", "content": user_input})
     with st.spinner(f"{st.session_state.patient_name} antwortet..."):
         try:
