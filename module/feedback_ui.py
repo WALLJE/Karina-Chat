@@ -1,16 +1,46 @@
 import streamlit as st
 from datetime import datetime
 from supabase import create_client, Client
-import json
+from cryptography.fernet import Fernet, InvalidToken
 
 # Supabase initialisieren (Erwartung: in st.secrets definiert)
 supabase_url = st.secrets["supabase"]["url"]
 supabase_key = st.secrets["supabase"]["key"]
 supabase: Client = create_client(supabase_url, supabase_key)
 
+
+def _encrypt_matrikel(matrikel: str) -> str | None:
+    if not matrikel:
+        return None
+
+    try:
+        key = st.secrets["supabase"]["matrikel_key"]
+    except KeyError:
+        st.warning(
+            "ℹ️ Hinweis: Die Matrikelnummer konnte nicht verschlüsselt werden, da kein Schlüssel hinterlegt ist."
+        )
+        return None
+
+    try:
+        fernet = Fernet(key.encode("utf-8") if isinstance(key, str) else key)
+        token = fernet.encrypt(matrikel.encode("utf-8"))
+        return token.decode("utf-8")
+    except (InvalidToken, ValueError) as err:
+        st.error(f"🚫 Fehler bei der Verschlüsselung der Matrikelnummer: {err}")
+    except Exception as err:  # pragma: no cover - generische Absicherung
+        st.error(f"🚫 Unerwarteter Fehler bei der Verschlüsselung: {repr(err)}")
+
+    return None
+
+
 def student_feedback():
     st.markdown("---")
     st.subheader("🗣 Ihr Feedback zur Simulation")
+
+    if st.session_state.get("student_evaluation_done"):
+        st.success("✅ Vielen Dank! Ihr Feedback wurde bereits gespeichert.")
+        return
+
     jetzt = datetime.now()
     start = st.session_state.get("startzeit", jetzt)
     bearbeitungsdauer = (jetzt - start).total_seconds() / 60  # in Minuten
@@ -41,10 +71,16 @@ def student_feedback():
         ["", "Vorklinik", "5. Semester", "6. Semester", "7. Semester", "8. Semester", "9. Semester", "10. Semester oder höher", "Praktisches Jahr"]
     )
 
+    matrikelnummer = st.text_input(
+        "Matrikelnummer (optional)",
+        value="",
+        help="Die Matrikelnummer wird verschlüsselt gespeichert und ist nur erforderlich, wenn die Simulation als Lehrveranstaltungsaufgabe bearbeitet wurde."
+    )
+
     bugs = st.text_area("💬 Welche Ungenauigkeiten oder Fehler sind Ihnen aufgefallen (optional):", "")
     kommentar = st.text_area("💬 Freitext (optional):", "")
 
-    if st.button("📩 Feedback absenden"): 
+    if st.button("📩 Feedback absenden"):
         eintrag = {
             "note_realismus": f1,
             "note_anamnese": f2,
@@ -53,7 +89,8 @@ def student_feedback():
             "fall_schwere": f5,
             "semester": f7,
             "fall_bug": bugs,
-            "kommentar": kommentar
+            "kommentar": kommentar,
+            "Matrikel": _encrypt_matrikel(matrikelnummer.strip())
         }
 
         try:
@@ -64,10 +101,12 @@ def student_feedback():
                 # last = supabase.table("feedback_gpt").select("ID").order("ID", desc=True).limit(1).single().execute()
                 # row_id = last.data["ID"] if last and last.data else None
                 pass
-    
+
             if row_id is not None:
                 supabase.table("feedback_gpt").update(eintrag).eq("ID", row_id).execute()
                 st.success("✅ Vielen Dank! Ihr Feedback wurde gespeichert.")
+                st.session_state["student_evaluation_done"] = True
+                st.rerun()
             else:
                 st.warning("ℹ️ Konnte den ursprünglichen Datensatz nicht zuordnen (ID fehlt). Bitte Fall neu starten oder Admin informieren.")
         except Exception as e:
