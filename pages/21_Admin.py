@@ -34,8 +34,25 @@ st.markdown("---")
 st.header("📊 Auswertungen")
 st.subheader("💾 Feedback-Export")
 
-export_bytes = None
-export_filename = "feedback_gpt.xlsx"
+DEFAULT_EXPORT_FILENAME = "feedback_gpt.xlsx"
+
+
+def _reset_feedback_export_state() -> None:
+    """Ensure the feedback export values are always valid bytes and filename."""
+
+    st.session_state["feedback_export_bytes"] = b""
+    st.session_state["feedback_export_filename"] = DEFAULT_EXPORT_FILENAME
+
+
+existing_bytes = st.session_state.get("feedback_export_bytes")
+if isinstance(existing_bytes, bytearray):
+    st.session_state["feedback_export_bytes"] = bytes(existing_bytes)
+elif not isinstance(existing_bytes, bytes):
+    _reset_feedback_export_state()
+
+if not isinstance(st.session_state.get("feedback_export_filename"), str):
+    st.session_state["feedback_export_filename"] = DEFAULT_EXPORT_FILENAME
+
 clicked = st.session_state.pop("feedback_export_button", False)
 
 if clicked:
@@ -43,13 +60,21 @@ if clicked:
         try:
             export_bytes, export_filename = build_feedback_export()
         except FeedbackExportError as exc:
-            export_bytes = None
-            export_filename = "feedback_gpt.xlsx"
+            _reset_feedback_export_state()
             st.error(f"🚫 Export nicht möglich: {exc}")
         except Exception as exc:  # pragma: no cover - defensive
-            export_bytes = None
-            export_filename = "feedback_gpt.xlsx"
+            _reset_feedback_export_state()
             st.error(f"⚠️ Unerwarteter Fehler beim Export: {exc}")
+        else:
+            if not isinstance(export_bytes, (bytes, bytearray)):
+                _reset_feedback_export_state()
+                st.error("⚠️ Ungültige Exportdaten erhalten. Bitte erneut versuchen.")
+            else:
+                st.session_state["feedback_export_bytes"] = bytes(export_bytes)
+                st.session_state["feedback_export_filename"] = export_filename or DEFAULT_EXPORT_FILENAME
+
+export_bytes = st.session_state.get("feedback_export_bytes", b"") or b""
+export_filename = st.session_state.get("feedback_export_filename", DEFAULT_EXPORT_FILENAME) or DEFAULT_EXPORT_FILENAME
 
 st.download_button(
     "⬇️ Feedback-Daten als Excel herunterladen",
