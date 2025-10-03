@@ -26,7 +26,7 @@ def _restart_application_after_offline() -> None:
         if key in preserve_keys:
             continue
         st.session_state.pop(key, None)
-    st.experimental_rerun()
+    st.rerun()
 
 if not st.session_state.get("is_admin"):
     st.error("Kein Zugriff: Dieser Bereich steht nur Administrator*innen zur Verfügung.")
@@ -123,7 +123,7 @@ else:
             try:
                 st.switch_page("pages/1_Anamnese.py")
             except Exception:
-                st.experimental_rerun()
+                st.rerun()
 
 st.subheader("Feedback-Export")
 
