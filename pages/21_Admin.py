@@ -3,6 +3,11 @@ import streamlit as st
 from module.admin_data import FeedbackExportError, build_feedback_export
 from module.sidebar import show_sidebar
 from module.footer import copyright_footer
+from module.fallverwaltung import (
+    fallauswahl_prompt,
+    lade_fallbeispiele,
+    reset_fall_session_state,
+)
 
 
 copyright_footer()
@@ -29,6 +34,40 @@ if st.button("🔒 Adminmodus beenden", type="primary"):
     except Exception:
         st.experimental_set_query_params(page="1_Anamnese")
         st.rerun()
+
+st.markdown("---")
+st.header("🩺 Fallverwaltung")
+
+fall_df = lade_fallbeispiele(pfad="fallbeispiele.xlsx")
+
+if fall_df.empty:
+    st.info("Die Fallliste konnte nicht geladen werden. Bitte prüfe die Datei 'fallbeispiele.xlsx'.")
+elif "Szenario" not in fall_df.columns:
+    st.error("Die Fallliste enthält keine Spalte 'Szenario'.")
+else:
+    szenario_options = sorted(
+        {str(s).strip() for s in fall_df["Szenario"].dropna() if str(s).strip()}
+    )
+
+    if not szenario_options:
+        st.info("In der Datei wurden keine Szenarien gefunden.")
+    else:
+        with st.form("admin_fallauswahl"):
+            ausgewaehltes_szenario = st.selectbox(
+                "Szenario auswählen",
+                szenario_options,
+                help="Wähle das Fallszenario aus, das für die nächste Sitzung verwendet werden soll.",
+            )
+            bestaetigt = st.form_submit_button("Szenario übernehmen", type="primary")
+
+        if bestaetigt and ausgewaehltes_szenario:
+            reset_fall_session_state()
+            fallauswahl_prompt(fall_df, ausgewaehltes_szenario)
+            st.session_state["admin_selected_szenario"] = ausgewaehltes_szenario
+            try:
+                st.switch_page("pages/1_Anamnese.py")
+            except Exception:
+                st.experimental_rerun()
 
 st.markdown("---")
 st.header("📊 Auswertungen")
