@@ -35,9 +35,31 @@ def show_impressum():
     Für die Richtigkeit der Inhalte kann entsprechend keine Haftung übernommen werden.
 
     ---
-    
-    
+
+
     Stand: August 2025
     """)
+
+    with st.form(key="admin_login_form"):
+        st.markdown("---")
+        st.markdown("### Admin-Zugang")
+        admin_password = st.text_input("Admin-Passwort", type="password")
+        submitted = st.form_submit_button("Anmelden")
+
+    if submitted:
+        admin_code = st.secrets.get("admin_code") if hasattr(st, "secrets") else None
+        if admin_code is None:
+            st.error("🚫 Es ist kein Admin-Code konfiguriert.")
+        elif admin_password.strip() == str(admin_code):
+            st.session_state["is_admin"] = True
+            st.success("🔑 Adminzugang aktiviert. Du wirst weitergeleitet …")
+            try:
+                st.switch_page("pages/21_Admin.py")
+            except Exception:
+                st.experimental_set_query_params(page="21_Admin")
+                st.rerun()
+            st.stop()
+        else:
+            st.error("❌ Das eingegebene Passwort ist nicht korrekt.")
 
 show_impressum()
