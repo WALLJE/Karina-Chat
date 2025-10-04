@@ -1,4 +1,4 @@
-der Anamense"""Hilfsfunktionen zur Verwaltung und Auswahl der Fallszenarien."""
+# """Hilfsfunktionen zur Verwaltung und Auswahl der Fallszenarien."""
 from __future__ import annotations
 
 import random
