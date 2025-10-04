@@ -246,10 +246,10 @@ def prepare_fall_session_state(
 
     verhaltensoptionen = {
         "knapp": "Beantworte Fragen grundsätzlich sehr knapp. Gib nur so viele Informationen preis, wie direkt erfragt wurden.",
-        "redselig": "Beantworte Fragen ohne Informationen über das gezielt Gefragte hinaus preiszugeben. Du redest aber gern. Erzähle freizügig z. B. von Beruf oder Privatleben.",
+        "redselig": "Beantworte Fragen ohne Informationen über das gezielt Gefragte hinaus preiszugeben. Du redest gern, aber nicht über Deine Krankheit. Erzähle freizügig z. B. von Beruf oder Privatleben.",
         "ängstlich": "Du bist sehr ängstlich, jede Frage macht Dir Angst, so dass Du häufig ungefragt von Sorgen und Angst vor Krebs oder Tod erzählst.",
         "wissbegierig": "Du hast zum Thema viel gelesen und stellst deswegen auch selber Fragen, teils mit Fachbegriffen.",
-        "verharmlosend": "Obwohl Du Dir große Sorgen machst, gibst Du Dich gelassen. Trotzdem nennst Du die Symptome korrekt.",
+        "verharmlosend": "Obwohl Du Dir große Sorgen machst, gibst Du Dich gelassen. Trotzdem nennst Du die Symptome korrekt, aber nur auf Nachfrage.",
     }
 
     verhalten_memo = random.choice(list(verhaltensoptionen.keys()))
