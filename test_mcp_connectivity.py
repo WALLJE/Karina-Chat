@@ -189,6 +189,87 @@ def _build_example_arguments(
     return example
 
 
+def _coerce_scalar(value: str) -> Any:
+    """Convert a simple textual value to a JSON-compatible scalar."""
+
+    text = value.strip()
+    if not text:
+        return ""
+
+    lowered = text.lower()
+    if lowered in {"true", "false"}:
+        return lowered == "true"
+    if lowered in {"null", "none"}:
+        return None
+
+    # Try numeric conversion before falling back to JSON parsing.
+    try:
+        if any(ch in text for ch in ".eE"):
+            return float(text)
+        return int(text)
+    except ValueError:
+        pass
+
+    if (text.startswith("[") and text.endswith("]")) or (
+        text.startswith("{") and text.endswith("}")
+    ):
+        try:
+            return json.loads(text)
+        except json.JSONDecodeError:
+            pass
+
+    if (text.startswith('"') and text.endswith('"')) or (
+        text.startswith("'") and text.endswith("'")
+    ):
+        return text[1:-1]
+
+    return text
+
+
+def _parse_arguments_input(raw_text: str) -> Dict[str, Any]:
+    """Parse user-supplied arguments entered as JSON or key/value text."""
+
+    text = raw_text.strip()
+    if not text:
+        return {}
+
+    try:
+        parsed = json.loads(text)
+    except json.JSONDecodeError:
+        parsed = None
+
+    if isinstance(parsed, dict):
+        return parsed
+
+    # Fallback: allow users to enter simple key=value pairs per line or comma separated.
+    entries: Dict[str, Any] = {}
+    candidate_lines = []
+    for line in text.splitlines():
+        stripped = line.strip()
+        if not stripped:
+            continue
+        candidate_lines.extend(part for part in stripped.split(",") if part.strip())
+
+    for item in candidate_lines:
+        entry = item.strip().rstrip(",")
+        if "=" in entry:
+            key, value = entry.split("=", 1)
+        elif ":" in entry:
+            key, value = entry.split(":", 1)
+        else:
+            raise ValueError(
+                "Argumentzeilen müssen entweder 'schlüssel=wert' oder 'schlüssel: wert' enthalten."
+            )
+
+        key = key.strip()
+        if not key:
+            raise ValueError("Argumentschlüssel dürfen nicht leer sein.")
+
+        entries[key] = _coerce_scalar(value)
+
+    return entries
+
+
 def _render_tool_description(tool: Dict[str, Any]) -> None:
     """Render the tool description with expandable details in Streamlit."""
 
@@ -508,18 +589,16 @@ def _run_cli_interactive_loop(
             default_args.setdefault("language", default_language)
 
         reporter.info(
-            "Provide JSON arguments for the tool (leave empty for {}):".format(
+            "Provide arguments (JSON or key=value pairs, leave empty for {}):".format(
                 json.dumps(default_args) if default_args else "{}"
             )
         )
-        raw_args = input("Arguments JSON: ").strip()
+        raw_args = input("Arguments: ").strip()
         if raw_args:
             try:
-                arguments = json.loads(raw_args)
-                if not isinstance(arguments, dict):
-                    raise ValueError("Arguments JSON must decode to an object/dict")
-            except (json.JSONDecodeError, ValueError) as exc:
-                reporter.info(f"Invalid JSON arguments: {exc}")
+                arguments = _parse_arguments_input(raw_args)
+            except ValueError as exc:
+                reporter.info(f"Invalid arguments: {exc}")
                 continue
         else:
             arguments = default_args
@@ -567,20 +646,28 @@ def _render_streamlit_tool_invocation(
         st.markdown("**Beispiel für gültige JSON-Argumente:**")
         st.code(json.dumps(example_args, indent=2, ensure_ascii=False), language="json")
     else:
-        st.caption("Argumente bitte als JSON-Objekt eingeben, z. B. {}.")
+        st.caption(
+            "Keine Beispieldaten verfügbar – geben Sie die gewünschten Argumente als JSON "
+            "oder als 'schlüssel=wert'-Zeilen ein."
+        )
+
+    st.caption(
+        "Argumente können als JSON **oder** als einfache Zeilen wie "
+        "`schlüssel=wert` eingegeben werden. Mehrere Werte bitte durch Zeilenumbrüche "
+        "oder Kommas trennen."
+    )
 
     args_text = st.text_area(
-        "Tool-Argumente als JSON",
-        value=json.dumps(default_args, indent=2, ensure_ascii=False) if default_args else "{}",
+        "Tool-Argumente",
+        value=json.dumps(default_args, indent=2, ensure_ascii=False) if default_args else "",
+        placeholder="language=de\nquery=Suchbegriff",
     )
 
     if st.button("Tool ausführen"):
         try:
-            parsed_args = json.loads(args_text) if args_text.strip() else {}
-            if not isinstance(parsed_args, dict):
-                raise ValueError("Argumente müssen als JSON-Objekt vorliegen")
-        except (json.JSONDecodeError, ValueError) as exc:
-            st.error(f"Ungültige JSON-Argumente: {exc}")
+            parsed_args = _parse_arguments_input(args_text)
+        except ValueError as exc:
+            st.error(f"Ungültige Eingabe: {exc}")
             return
 
         try:
