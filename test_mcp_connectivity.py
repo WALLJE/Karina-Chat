@@ -1,4 +1,4 @@
-""Utility script to validate access to the AMBOSS MCP endpoints.
+"""Utility script to validate access to the AMBOSS MCP endpoints.
 
 The script loads the MCP configuration from ``.streamlit/secrets.toml`` (or a
 custom path) and performs two optional checks:
