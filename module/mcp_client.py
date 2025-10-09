@@ -1,0 +1,377 @@
+"""Minimal MCP chat client compatible with the app's LLM interface."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from types import SimpleNamespace
+from typing import Any, Dict, Iterable, List, MutableMapping, Optional
+import json
+import os
+
+import requests
+
+try:  # pragma: no cover - optional dependency
+    from openai import (
+        OpenAI,
+        OpenAIError,
+        APIConnectionError as OpenAIAPIConnectionError,
+        APIError as OpenAIAPIError,
+        RateLimitError as OpenAIRateLimitError,
+    )
+except Exception:  # pragma: no cover - optional dependency missing
+    OpenAI = None  # type: ignore[assignment]
+    OpenAIError = OpenAIAPIConnectionError = OpenAIAPIError = OpenAIRateLimitError = Exception  # type: ignore[assignment]
+
+
+class MCPClientError(RuntimeError):
+    """Base error for all MCP client issues."""
+
+
+class ConfigurationError(MCPClientError):
+    """Raised when the MCP configuration is incomplete."""
+
+
+class RateLimitError(MCPClientError):
+    """Raised when the MCP server reports a rate limiting condition."""
+
+
+@dataclass
+class _Usage:
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
+    total_tokens: int = 0
+
+
+class _Choice:
+    def __init__(self, payload: MutableMapping[str, Any]):
+        message = _normalise_message(payload)
+        self.message = SimpleNamespace(**message)
+        self.finish_reason = payload.get("finish_reason")
+
+
+class ChatCompletionResponse:
+    """Lightweight object mirroring the OpenAI response structure."""
+
+    def __init__(self, data: MutableMapping[str, Any]):
+        self._raw = data
+        self.choices: List[_Choice] = [
+            _Choice(choice) for choice in data.get("choices", [])
+        ] or [_Choice({"message": {"role": "assistant", "content": ""}})]
+        usage_payload = data.get("usage") or {}
+        self.usage = _Usage(
+            prompt_tokens=int(usage_payload.get("prompt_tokens", 0) or 0),
+            completion_tokens=int(usage_payload.get("completion_tokens", 0) or 0),
+            total_tokens=int(usage_payload.get("total_tokens") or (
+                (usage_payload.get("prompt_tokens") or 0)
+                + (usage_payload.get("completion_tokens") or 0)
+            )),
+        )
+
+    @property
+    def raw(self) -> MutableMapping[str, Any]:
+        return self._raw
+
+
+def _normalise_message(choice_payload: MutableMapping[str, Any]) -> Dict[str, str]:
+    """Return a dictionary with ``role`` and ``content`` keys.
+
+    MCP responses may follow different schemas.  The adapter tries to
+    cover the most common variants (OpenAI-compatible or Claude-style
+    content blocks).
+    """
+
+    message = choice_payload.get("message") or {}
+
+    if not message and "delta" in choice_payload:
+        # Some implementations stream via ``delta``; take the aggregated
+        # delta as the final message.
+        message = choice_payload.get("delta") or {}
+
+    role = message.get("role", "assistant")
+    content = message.get("content")
+
+    if isinstance(content, list):
+        # Combine textual segments from Claude/MCP responses.
+        parts: List[str] = []
+        for block in content:
+            if isinstance(block, str):
+                parts.append(block)
+            elif isinstance(block, MutableMapping):
+                if block.get("type") == "text" and "text" in block:
+                    parts.append(str(block["text"]))
+                elif "content" in block and isinstance(block["content"], str):
+                    parts.append(block["content"])
+        content = "".join(parts)
+
+    if content is None:
+        # Fallbacks for alternative payload shapes
+        if "content" in choice_payload:
+            content = choice_payload.get("content")
+        elif "text" in choice_payload:
+            content = choice_payload.get("text")
+        else:
+            content = ""
+
+    return {"role": role, "content": str(content)}
+
+
+class _ChatCompletions:
+    def __init__(self, client: "MCPClient") -> None:
+        self._client = client
+
+    def create(self, *, model: Optional[str] = None, messages: Iterable[Dict[str, Any]], temperature: Optional[float] = None, **kwargs: Any) -> ChatCompletionResponse:  # noqa: E501
+        payload: Dict[str, Any] = {
+            "model": model or self._client.default_model,
+            "messages": list(messages),
+        }
+        if temperature is not None:
+            payload["temperature"] = temperature
+        if kwargs:
+            payload.update(kwargs)
+        data = self._client._post(self._client.chat_completions_path, payload)
+        return ChatCompletionResponse(data)
+
+
+class _ChatNamespace:
+    def __init__(self, client: "MCPClient") -> None:
+        self.completions = _ChatCompletions(client)
+
+
+class MCPClient:
+    """Thin HTTP client for MCP chat completions."""
+
+    def __init__(
+        self,
+        base_url: str,
+        *,
+        api_key: Optional[str] = None,
+        default_model: Optional[str] = None,
+        timeout: float = 60.0,
+        auth_header: str = "Authorization",
+        chat_completions_path: str = "/v1/chat/completions",
+        extra_headers: Optional[Dict[str, str]] = None,
+    ) -> None:
+        if not base_url:
+            raise ConfigurationError("MCP base URL is missing")
+        self.base_url = base_url.rstrip("/")
+        self.api_key = api_key
+        self.default_model = default_model or os.getenv("MCP_MODEL", "default")
+        self.timeout = timeout
+        self.auth_header = auth_header or "Authorization"
+        self.chat_completions_path = chat_completions_path
+        self.extra_headers = extra_headers or {}
+        self.chat = _ChatNamespace(self)
+
+    def _post(self, path: str, payload: Dict[str, Any]) -> MutableMapping[str, Any]:
+        url = f"{self.base_url}{path}"
+        headers = {
+            "Content-Type": "application/json",
+            "Accept": "application/json, text/event-stream",
+        }
+        headers.update(self.extra_headers)
+        if self.api_key:
+            headers[self.auth_header] = f"Bearer {self.api_key}" if self.auth_header.lower() == "authorization" else self.api_key
+        try:
+            response = requests.post(url, json=payload, timeout=self.timeout, headers=headers)
+        except requests.RequestException as exc:  # pragma: no cover - network failure
+            raise MCPClientError(f"MCP request failed: {exc}") from exc
+
+        if response.status_code == 429:
+            raise RateLimitError("MCP server rate limit exceeded")
+        if response.status_code >= 500:
+            raise MCPClientError(
+                f"MCP server error {response.status_code}: {response.text}"
+            )
+        if response.status_code >= 400:
+            raise MCPClientError(
+                f"MCP request failed with status {response.status_code}: {response.text}"
+            )
+
+        if not response.content:
+            return {}
+
+        content_type = response.headers.get("Content-Type", "")
+        body_text = response.text
+
+        if "text/event-stream" in content_type or body_text.lstrip().startswith("event:"):
+            data_lines: List[str] = []
+            for line in body_text.splitlines():
+                if line.startswith("data:"):
+                    data_lines.append(line[5:].lstrip())
+                elif not line.strip() and data_lines:
+                    break
+
+            if not data_lines:
+                raise MCPClientError(
+                    "Received an SSE response without any data payload to decode."
+                )
+
+            body_text = "\n".join(data_lines)
+
+        try:
+            data = json.loads(body_text)
+        except json.JSONDecodeError as exc:  # pragma: no cover - invalid response
+            raise MCPClientError(
+                f"Invalid MCP response: {exc}. Raw payload: {body_text[:200]}"
+            ) from exc
+
+        if isinstance(data, MutableMapping) and data.get("error"):
+            raise MCPClientError(
+                "MCP server returned an error: "
+                + json.dumps(data.get("error"), ensure_ascii=False)
+            )
+
+        return data
+
+
+class _OpenAIChatCompletions:
+    def __init__(self, client: "OpenAIChatClient") -> None:
+        self._client = client
+
+    def create(
+        self,
+        *,
+        model: Optional[str] = None,
+        messages: Iterable[Dict[str, Any]],
+        temperature: Optional[float] = None,
+        **kwargs: Any,
+    ) -> Any:
+        payload: Dict[str, Any] = {
+            "model": model or self._client.default_model,
+            "messages": list(messages),
+        }
+        if temperature is not None:
+            payload["temperature"] = temperature
+        if kwargs:
+            payload.update(kwargs)
+
+        try:
+            return self._client._client.chat.completions.create(**payload)
+        except OpenAIRateLimitError as exc:  # pragma: no cover - network failure
+            raise RateLimitError("OpenAI rate limit exceeded") from exc
+        except (OpenAIAPIError, OpenAIAPIConnectionError, OpenAIError) as exc:  # pragma: no cover - network failure
+            raise MCPClientError(f"OpenAI request failed: {exc}") from exc
+
+
+class _OpenAIChatNamespace:
+    def __init__(self, client: "OpenAIChatClient") -> None:
+        self.completions = _OpenAIChatCompletions(client)
+
+
+class OpenAIChatClient:
+    """Wrapper that provides the same interface as :class:`MCPClient`."""
+
+    def __init__(self, raw_client: "OpenAI", default_model: Optional[str] = None) -> None:
+        self._client = raw_client
+        self.default_model = default_model or os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+        self.chat = _OpenAIChatNamespace(self)
+
+
+def _load_extra_headers(raw: Optional[str]) -> Dict[str, str]:
+    if not raw:
+        return {}
+    try:
+        data = json.loads(raw)
+        if not isinstance(data, dict):
+            raise ValueError("extra headers must decode into a dict")
+        return {str(key): str(value) for key, value in data.items()}
+    except (json.JSONDecodeError, ValueError) as exc:
+        raise ConfigurationError(
+            "MCP_EXTRA_HEADERS must be a JSON object with string values"
+        ) from exc
+
+
+def create_mcp_client_from_env() -> MCPClient:
+    """Create an :class:`MCPClient` based on environment variables."""
+
+    base_url = os.getenv("MCP_SERVER_URL")
+    if not base_url:
+        raise ConfigurationError(
+            "MCP_SERVER_URL is not set. Provide the MCP endpoint before starting the app."
+        )
+    api_key = os.getenv("MCP_API_KEY")
+    default_model = os.getenv("MCP_MODEL")
+    timeout = float(os.getenv("MCP_TIMEOUT", "60"))
+    auth_header = os.getenv("MCP_AUTH_HEADER", "Authorization")
+    chat_path = os.getenv("MCP_CHAT_COMPLETIONS_PATH", "/v1/chat/completions")
+    extra_headers = _load_extra_headers(os.getenv("MCP_EXTRA_HEADERS"))
+
+    return MCPClient(
+        base_url,
+        api_key=api_key,
+        default_model=default_model,
+        timeout=timeout,
+        auth_header=auth_header,
+        chat_completions_path=chat_path,
+        extra_headers=extra_headers,
+    )
+
+
+def create_openai_client_from_env() -> OpenAIChatClient:
+    """Create an :class:`OpenAIChatClient` using the OpenAI SDK configuration."""
+
+    if OpenAI is None:  # pragma: no cover - optional dependency missing
+        raise ConfigurationError(
+            "Das OpenAI-Python-Paket ist nicht installiert. Bitte ergänze 'openai' in den Abhängigkeiten."
+        )
+
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        raise ConfigurationError(
+            "OPENAI_API_KEY ist nicht gesetzt. Bitte trage den Schlüssel in den Umgebungsvariablen ein."
+        )
+
+    base_url = os.getenv("OPENAI_BASE_URL") or None
+    organization = os.getenv("OPENAI_ORG") or None
+
+    try:
+        client = OpenAI(
+            api_key=api_key,
+            base_url=base_url,
+            organization=organization,
+        )
+    except OpenAIError as exc:  # pragma: no cover - SDK initialisation failure
+        raise MCPClientError(f"OpenAI-Client konnte nicht initialisiert werden: {exc}") from exc
+
+    default_model = os.getenv("OPENAI_MODEL") or os.getenv("OPENAI_DEFAULT_MODEL")
+    return OpenAIChatClient(client, default_model=default_model)
+
+
+def has_mcp_configuration() -> bool:
+    """Return True if the environment is configured for MCP usage."""
+
+    return bool(os.getenv("MCP_SERVER_URL"))
+
+
+def has_openai_configuration() -> bool:
+    """Return True if the environment provides OpenAI credentials."""
+
+    return OpenAI is not None and bool(os.getenv("OPENAI_API_KEY"))
+
+
+def create_client_for_provider(provider: str) -> Any:
+    """Return a chat client for the requested provider."""
+
+    normalized = (provider or "").strip().lower()
+    if normalized in {"mcp", "mcp-client", "mcp_server"}:
+        return create_mcp_client_from_env()
+    if normalized in {"openai", "chatgpt", "gpt"}:
+        return create_openai_client_from_env()
+    raise ConfigurationError(
+        f"Unbekannter LLM-Provider '{provider}'. Unterstützt werden 'mcp' und 'openai'."
+    )
+
+
+__all__ = [
+    "ChatCompletionResponse",
+    "ConfigurationError",
+    "MCPClient",
+    "MCPClientError",
+    "RateLimitError",
+    "OpenAIChatClient",
+    "create_mcp_client_from_env",
+    "create_openai_client_from_env",
+    "create_client_for_provider",
+    "has_mcp_configuration",
+    "has_openai_configuration",
+]

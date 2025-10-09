@@ -1,11 +1,16 @@
 import streamlit as st
 from datetime import datetime
-import streamlit.components.v1 as components
 from module.untersuchungsmodul import generiere_koerperbefund
-from openai import RateLimitError
 from module.sidebar import show_sidebar
 from module.footer import copyright_footer
 from module.offline import display_offline_banner, is_offline
+from module.llm_state import (
+    ConfigurationError,
+    MCPClientError,
+    RateLimitError,
+    ensure_llm_client,
+    get_provider_label,
+)
 
 copyright_footer()
 show_sidebar()
@@ -38,11 +43,30 @@ if "koerper_befund" in st.session_state:
     st.markdown(st.session_state.koerper_befund)
 
 elif fragen_gestellt:
+    if "mcp_client" not in st.session_state and not is_offline():
+        try:
+            ensure_llm_client()
+        except ConfigurationError as exc:
+            st.warning(
+                "⚙️ Die Konfiguration für {provider} ist unvollständig."
+                " Die Seite wechselt in den Offline-Modus.\n\n"
+                f"Details: {exc}".format(provider=get_provider_label())
+            )
+            st.session_state["offline_mode"] = True
+            st.session_state["mcp_client"] = None
+        except MCPClientError as exc:
+            st.error(
+                "❌ Der LLM-Client konnte nicht initialisiert werden. Bitte prüfe die "
+                "aktuellen Zugangsdaten oder die Netzwerkverbindung.\n\n"
+                f"Fehlerdetails: {exc}"
+            )
+            st.stop()
+
     if st.button("🩺 Untersuchung durchführen"):
         try:
             if is_offline():
                 koerper_befund = generiere_koerperbefund(
-                    st.session_state.get("openai_client"),
+                    st.session_state.get("mcp_client"),
                     st.session_state.diagnose_szenario,
                     st.session_state.diagnose_features,
                     st.session_state.get("koerper_befund_tip", "")
@@ -50,7 +74,7 @@ elif fragen_gestellt:
             else:
                 with st.spinner(f"{st.session_state.patient_name} wird untersucht..."):
                     koerper_befund = generiere_koerperbefund(
-                        st.session_state["openai_client"],
+                        st.session_state["mcp_client"],
                         st.session_state.diagnose_szenario,
                         st.session_state.diagnose_features,
                         st.session_state.get("koerper_befund_tip", "")
@@ -60,7 +84,9 @@ elif fragen_gestellt:
                 st.info("🔌 Offline-Befund geladen. Sobald der Online-Modus aktiv ist, kannst du einen KI-generierten Befund abrufen.")
             st.rerun()
         except RateLimitError:
-            st.error("🚫 Die Untersuchung konnte nicht erstellt werden. Die OpenAI-API ist derzeit überlastet.")
+            st.error(
+                "🚫 Die Untersuchung konnte nicht erstellt werden. Der LLM-Dienst ist aktuell ausgelastet."
+            )
 else:
     st.subheader("🩺 Untersuchung")
     st.button("Untersuchung durchführen", disabled=True)
