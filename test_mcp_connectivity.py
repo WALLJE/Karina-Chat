@@ -139,18 +139,25 @@ def send_mcp_request(url: str, api_key: str, payload: Dict[str, Any], timeout: f
         raise MCPConnectionError("MCP endpoint returned an empty response.")
 
     try:
-        return response.json()
+        data = response.json()
     except json.JSONDecodeError as exc:
         raise MCPConnectionError(
             f"Response was not valid JSON: {exc}. Raw payload: {response.text[:200]}"
         ) from exc
+
+    if isinstance(data, dict) and data.get("error"):
+        raise MCPConnectionError(
+            "MCP server returned an error: " + json.dumps(data.get("error"), ensure_ascii=False)
+        )
+
+    return data
 
 
 def list_tools(url: str, api_key: str, timeout: float) -> Iterable[Dict[str, Any]]:
     """Request the catalogue of MCP tools."""
 
     payload = {
-        "type": "request",
+        "jsonrpc": "2.0",
         "id": "tools/list",
         "method": "tools/list",
         "params": {},
@@ -177,7 +184,7 @@ def call_tool(
     """Invoke a specific MCP tool and return the decoded result."""
 
     payload = {
-        "type": "request",
+        "jsonrpc": "2.0",
         "id": f"tools/call:{name}",
         "method": "tools/call",
         "params": {
