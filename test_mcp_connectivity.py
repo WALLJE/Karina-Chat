@@ -1,7 +1,7 @@
 """Utility script to validate access to the AMBOSS MCP endpoints.
 
-The script loads the MCP configuration from ``.streamlit/secrets.toml`` (or a
-custom path) and performs two optional checks:
+The script only reads the AMBOSS partner token from ``.streamlit/secrets.toml``
+(or a custom path) and performs two optional checks:
 
 1. Establishing an authenticated SSE connection to verify that the streaming
    endpoint accepts the provided API key.
@@ -18,18 +18,12 @@ Usage examples::
     python test_mcp_connection.py --no-sse        # skip the SSE check
     python test_mcp_connection.py --tool list_all_articles --language de
 
-The secrets file is expected to provide an ``amboss_mcp`` section with at
-least the following entries:
+The secrets file must define an ``Amboss_Token`` entry::
 
-.. code-block:: toml
+    Amboss_Token = "YOUR-PARTNER-MCP-KEY"
 
-    [amboss_mcp]
-    streamable_http_url = "https://content-mcp.de.production.amboss.com/mcp"
-    sse_url = "https://content-mcp.de.production.amboss.com/sse"
-    api_key = "YOUR-PARTNER-MCP-KEY"
-
-Optional keys include ``timeout`` (seconds) and ``default_language`` (``de`` or
-``en``). If no SSE URL is configured the SSE check is skipped automatically.
+Optional command line flags can override the HTTP/SSE endpoints, language and
+timeout. If no SSE URL is provided the SSE check is skipped automatically.
 """
 
 from __future__ import annotations
@@ -49,14 +43,16 @@ except ModuleNotFoundError:  # pragma: no cover - fallback for 3.10
 
 
 DEFAULT_SECRETS_PATH = Path(".streamlit") / "secrets.toml"
+DEFAULT_HTTP_URL = "https://content-mcp.de.production.amboss.com/mcp"
+DEFAULT_SSE_URL = "https://content-mcp.de.production.amboss.com/sse"
 
 
 class MCPConnectionError(RuntimeError):
     """Raised when the MCP connectivity test fails."""
 
 
-def load_secrets(path: Path) -> Dict[str, Any]:
-    """Load the Streamlit secrets file and return the MCP section."""
+def load_amboss_token(path: Path) -> str:
+    """Return the AMBOSS MCP token stored in the secrets file."""
 
     if not path.exists():
         raise MCPConnectionError(
@@ -69,13 +65,18 @@ def load_secrets(path: Path) -> Dict[str, Any]:
     except (OSError, tomllib.TOMLDecodeError) as exc:  # pragma: no cover - I/O failure
         raise MCPConnectionError(f"Failed to read secrets file '{path}': {exc}") from exc
 
-    section = data.get("amboss_mcp")
-    if not isinstance(section, dict):
+    token: Optional[Any] = data.get("Amboss_Token")
+
+    # Backwards compatibility with the previous [amboss_mcp] format.
+    if token is None and isinstance(data.get("amboss_mcp"), dict):
+        token = data["amboss_mcp"].get("api_key")
+
+    if not token or not isinstance(token, str):
         raise MCPConnectionError(
-            "The secrets file is missing the [amboss_mcp] section with connection details."
+            "The secrets file must contain an 'Amboss_Token' entry with your MCP key."
         )
 
-    return section
+    return token
 
 
 def build_headers(api_key: str, extra: Optional[Dict[str, str]] = None) -> Dict[str, str]:
@@ -197,6 +198,24 @@ def parse_args(argv: Optional[Iterable[str]] = None) -> argparse.Namespace:
         help="Path to the Streamlit secrets TOML file (default: .streamlit/secrets.toml).",
     )
     parser.add_argument(
+        "--token",
+        type=str,
+        default=None,
+        help="AMBOSS MCP token. Overrides the value loaded from the secrets file.",
+    )
+    parser.add_argument(
+        "--http-url",
+        type=str,
+        default=DEFAULT_HTTP_URL,
+        help="AMBOSS MCP HTTP endpoint (default: %(default)s).",
+    )
+    parser.add_argument(
+        "--sse-url",
+        type=str,
+        default=DEFAULT_SSE_URL,
+        help="AMBOSS MCP SSE endpoint (default: %(default)s). Use an empty string to skip.",
+    )
+    parser.add_argument(
         "--no-sse",
         action="store_true",
         help="Skip the SSE connectivity check.",
@@ -217,32 +236,23 @@ def parse_args(argv: Optional[Iterable[str]] = None) -> argparse.Namespace:
     parser.add_argument(
         "--timeout",
         type=float,
-        default=None,
-        help="Request timeout in seconds (overrides the value from secrets).",
+        default=30.0,
+        help="Request timeout in seconds (default: %(default)s).",
     )
     return parser.parse_args(argv)
 
 
 def main(argv: Optional[Iterable[str]] = None) -> int:
     args = parse_args(argv)
-    secrets = load_secrets(args.secrets_path)
+    api_key = args.token or load_amboss_token(args.secrets_path)
+    http_url = (args.http_url or "").strip()
+    sse_url = (args.sse_url or "").strip()
+    timeout = float(args.timeout)
 
-    api_key = secrets.get("api_key")
-    http_url = secrets.get("streamable_http_url")
-    sse_url = secrets.get("sse_url")
-    default_language = secrets.get("default_language")
-    timeout = args.timeout or float(secrets.get("timeout", 30.0))
+    if not http_url:
+        raise MCPConnectionError("An MCP HTTP endpoint must be provided via --http-url.")
 
-    if not api_key or not isinstance(api_key, str):
-        raise MCPConnectionError(
-            "The [amboss_mcp] section must include an 'api_key' entry with your MCP key."
-        )
-    if not http_url or not isinstance(http_url, str):
-        raise MCPConnectionError(
-            "The [amboss_mcp] section must include 'streamable_http_url' with the MCP HTTP endpoint."
-        )
-
-    language = args.language or default_language
+    language = args.language
 
     print("=== MCP HTTP connectivity test ===")
     tools = list_tools(http_url, api_key, timeout)
