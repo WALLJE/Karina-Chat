@@ -11,7 +11,10 @@ fallback, in a dedicated TOML file.  It performs two optional checks:
 
 Both checks are useful to confirm that networking, authentication and the MCP
 server itself are working before wiring the credentials into the main
-application.
+application.  When run in a terminal the script can start an interactive
+REPL (``--interactive``) to call arbitrary tools.  Executed via Streamlit, the
+results are rendered in the browser together with simple controls for invoking
+tools.
 
 Usage examples::
 
@@ -37,7 +40,7 @@ import argparse
 import json
 import sys
 from pathlib import Path
-from typing import Any, Dict, Iterable, Optional
+from typing import Any, Dict, Iterable, Optional, Sequence
 
 import requests
 
@@ -132,10 +135,63 @@ def build_headers(api_key: str, extra: Optional[Dict[str, str]] = None) -> Dict[
     return headers
 
 
-def check_sse_endpoint(url: str, api_key: str, timeout: float) -> None:
+class Reporter:
+    """Utility class that abstracts printing vs. Streamlit rendering."""
+
+    def section(self, title: str) -> None:  # pragma: no cover - overridden
+        raise NotImplementedError
+
+    def info(self, message: str) -> None:  # pragma: no cover - overridden
+        raise NotImplementedError
+
+    def bullet(self, title: str, body: str) -> None:  # pragma: no cover - overridden
+        raise NotImplementedError
+
+    def json(self, data: Any) -> None:  # pragma: no cover - overridden
+        raise NotImplementedError
+
+
+class ConsoleReporter(Reporter):
+    """Reporter that writes results to stdout."""
+
+    def section(self, title: str) -> None:
+        print(f"=== {title} ===")
+
+    def info(self, message: str) -> None:
+        print(message)
+
+    def bullet(self, title: str, body: str) -> None:
+        print(f"- {title}: {body}")
+
+    def json(self, data: Any) -> None:
+        print(json.dumps(data, indent=2, ensure_ascii=False))
+
+
+class StreamlitReporter(Reporter):
+    """Reporter that renders output via Streamlit widgets."""
+
+    def __init__(self) -> None:
+        if st is None:
+            raise RuntimeError("Streamlit is not available")
+        self._container = st.container()
+
+    def section(self, title: str) -> None:
+        self._container.subheader(title)
+
+    def info(self, message: str) -> None:
+        self._container.write(message)
+
+    def bullet(self, title: str, body: str) -> None:
+        self._container.markdown(f"- **{title}**: {body}")
+
+    def json(self, data: Any) -> None:
+        self._container.json(data)
+
+
+def check_sse_endpoint(url: str, api_key: str, timeout: float, reporter: Reporter) -> None:
     """Attempt to open the SSE stream and print the first line if available."""
 
-    print(f"Connecting to SSE endpoint: {url}")
+    reporter.info(f"Connecting to SSE endpoint: {url}")
     headers = build_headers(api_key, {"Accept": "text/event-stream"})
 
     try:
@@ -147,10 +203,10 @@ def check_sse_endpoint(url: str, api_key: str, timeout: float) -> None:
 
             for line in resp.iter_lines(decode_unicode=True):
                 if line:
-                    print(f"First SSE event line: {line}")
+                    reporter.info(f"First SSE event line: {line}")
                     break
             else:
-                print("SSE connection established but no events were received (yet).")
+                reporter.info("SSE connection established but no events were received (yet).")
     except requests.RequestException as exc:  # pragma: no cover - network failure
         raise MCPConnectionError(f"Failed to connect to SSE endpoint: {exc}") from exc
 
@@ -322,7 +378,134 @@ def parse_args(argv: Optional[Iterable[str]] = None) -> argparse.Namespace:
         default=30.0,
         help="Request timeout in seconds (default: %(default)s).",
     )
+    parser.add_argument(
+        "--interactive",
+        action="store_true",
+        help="Enter an interactive prompt to call MCP tools after the health checks.",
+    )
     return parser.parse_args(argv)
+
+
+def _run_cli_interactive_loop(
+    *,
+    tools: Sequence[Dict[str, Any]],
+    http_url: str,
+    api_key: str,
+    timeout: float,
+    default_language: Optional[str],
+    reporter: Reporter,
+) -> None:
+    """Provide a simple REPL to call MCP tools from the terminal."""
+
+    name_to_tool = {tool.get("name", ""): tool for tool in tools}
+    reporter.info(
+        "Entering interactive mode. Press Enter without typing a tool name to exit."
+    )
+    while True:
+        try:
+            tool_name = input("Tool to call (blank to quit): ").strip()
+        except EOFError:
+            reporter.info("EOF received – exiting interactive mode.")
+            break
+
+        if not tool_name:
+            reporter.info("Interactive mode finished.")
+            break
+
+        if tool_name not in name_to_tool:
+            available = ", ".join(sorted(name for name in name_to_tool if name))
+            reporter.info(
+                f"Unknown tool '{tool_name}'. Available tools: {available}"
+            )
+            continue
+
+        default_args: Dict[str, Any] = {}
+        if default_language:
+            default_args.setdefault("language", default_language)
+
+        reporter.info(
+            "Provide JSON arguments for the tool (leave empty for {}):".format(
+                json.dumps(default_args) if default_args else "{}"
+            )
+        )
+        raw_args = input("Arguments JSON: ").strip()
+        if raw_args:
+            try:
+                arguments = json.loads(raw_args)
+                if not isinstance(arguments, dict):
+                    raise ValueError("Arguments JSON must decode to an object/dict")
+            except (json.JSONDecodeError, ValueError) as exc:
+                reporter.info(f"Invalid JSON arguments: {exc}")
+                continue
+        else:
+            arguments = default_args
+
+        result = call_tool(
+            http_url,
+            api_key,
+            name=tool_name,
+            arguments=arguments or None,
+            timeout=timeout,
+        )
+        reporter.json(result)
+
+
+def _render_streamlit_tool_invocation(
+    *,
+    tools: Sequence[Dict[str, Any]],
+    http_url: str,
+    api_key: str,
+    timeout: float,
+    default_language: Optional[str],
+) -> None:
+    """Render interactive controls in Streamlit to call MCP tools."""
+
+    if st is None:
+        return
+
+    st.subheader("Interaktive MCP-Tool-Abfrage")
+    tool_names = [tool.get("name", "") for tool in tools if tool.get("name")]
+    if not tool_names:
+        st.info("Keine Tools verfügbar, Interaktion übersprungen.")
+        return
+
+    selected_tool = st.selectbox("Tool auswählen", tool_names)
+    tool = next((t for t in tools if t.get("name") == selected_tool), None)
+    if tool and tool.get("description"):
+        st.caption(tool.get("description"))
+
+    default_args: Dict[str, Any] = {}
+    if default_language:
+        default_args["language"] = default_language
+
+    args_text = st.text_area(
+        "Tool-Argumente als JSON",
+        value=json.dumps(default_args, indent=2, ensure_ascii=False) if default_args else "{}",
+    )
+
+    if st.button("Tool ausführen"):
+        try:
+            parsed_args = json.loads(args_text) if args_text.strip() else {}
+            if not isinstance(parsed_args, dict):
+                raise ValueError("Argumente müssen als JSON-Objekt vorliegen")
+        except (json.JSONDecodeError, ValueError) as exc:
+            st.error(f"Ungültige JSON-Argumente: {exc}")
+            return
+
+        try:
+            result = call_tool(
+                http_url,
+                api_key,
+                name=selected_tool,
+                arguments=parsed_args or None,
+                timeout=timeout,
+            )
+        except MCPConnectionError as exc:
+            st.error(str(exc))
+            return
+
+        st.success("Tool erfolgreich ausgeführt.")
+        st.json(result)
 
 
 def main(argv: Optional[Iterable[str]] = None) -> int:
@@ -337,16 +520,19 @@ def main(argv: Optional[Iterable[str]] = None) -> int:
 
     language = args.language
 
-    print("=== MCP HTTP connectivity test ===")
+    use_streamlit = bool(st and getattr(st, "_is_running_with_streamlit", False))
+    reporter: Reporter = StreamlitReporter() if use_streamlit else ConsoleReporter()
+
+    reporter.section("MCP HTTP connectivity test")
     tools = list_tools(http_url, api_key, timeout)
-    print(f"Retrieved {len(tools)} tools from the MCP server.")
+    reporter.info(f"Retrieved {len(tools)} tools from the MCP server.")
     for tool in tools:
         name = tool.get("name", "<unknown>")
         description = tool.get("description", "")
-        print(f"- {name}: {description}")
+        reporter.bullet(name, description)
 
     if args.tool:
-        print(f"\n=== Invoking MCP tool '{args.tool}' ===")
+        reporter.section(f"Invoking MCP tool '{args.tool}'")
         arguments: Dict[str, Any] = {}
         if language:
             arguments["language"] = language
@@ -357,15 +543,34 @@ def main(argv: Optional[Iterable[str]] = None) -> int:
             arguments=arguments or None,
             timeout=timeout,
         )
-        print(json.dumps(result, indent=2, ensure_ascii=False))
+        reporter.json(result)
+
+    if args.interactive and not use_streamlit:
+        _run_cli_interactive_loop(
+            tools=tools,
+            http_url=http_url,
+            api_key=api_key,
+            timeout=timeout,
+            default_language=language,
+            reporter=reporter,
+        )
 
     if not args.no_sse and sse_url:
-        print("\n=== MCP SSE connectivity test ===")
-        check_sse_endpoint(sse_url, api_key, timeout)
+        reporter.section("MCP SSE connectivity test")
+        check_sse_endpoint(sse_url, api_key, timeout, reporter)
     elif not sse_url:
-        print("\n(No SSE URL configured – skipping SSE check.)")
+        reporter.info("(No SSE URL configured – skipping SSE check.)")
 
-    print("\nAll MCP checks completed successfully.")
+    if use_streamlit:
+        _render_streamlit_tool_invocation(
+            tools=tools,
+            http_url=http_url,
+            api_key=api_key,
+            timeout=timeout,
+            default_language=language,
+        )
+
+    reporter.info("All MCP checks completed successfully.")
     return 0
 
 

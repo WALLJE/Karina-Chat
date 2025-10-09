@@ -35,7 +35,7 @@ Beim Betrieb über Streamlit (lokal mit `streamlit run` oder in Streamlit Cloud)
 Amboss_Token = "YOUR-PARTNER-MCP-KEY"
 ```
 
-Für lokale Tests kann alternativ eine `.streamlit/secrets.toml` mit demselben Eintrag verwendet oder der Schlüssel per `--token` an `test_mcp_connectivity.py` übergeben werden. Das Skript greift nur auf den benötigten Eintrag zu und lädt keine weiteren Secrets.
+Für lokale Tests kann alternativ eine `.streamlit/secrets.toml` mit demselben Eintrag verwendet oder der Schlüssel per `--token` an `test_mcp_connectivity.py` übergeben werden. Das Skript greift nur auf den benötigten Eintrag zu und lädt keine weiteren Secrets. Mit `--interactive` lässt sich im Terminal eine einfache REPL starten, über die beliebige MCP-Tools samt JSON-Argumenten getestet werden können. Wird das Skript via `streamlit run` gestartet, erscheinen die Ergebnisse direkt in der Weboberfläche – inklusive Auswahlbox und JSON-Feld zum Ausprobieren einzelner Tools.
 
 ### OpenAI / ChatGPT
 
