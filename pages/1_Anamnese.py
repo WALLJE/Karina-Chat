@@ -1,6 +1,4 @@
 import streamlit as st
-from openai import OpenAI, RateLimitError
-import os
 from datetime import datetime
 from module.sidebar import show_sidebar
 from module.footer import copyright_footer
@@ -8,6 +6,13 @@ from module.offline import (
     display_offline_banner,
     get_offline_patient_reply,
     is_offline,
+)
+from module.llm_state import (
+    ConfigurationError,
+    MCPClientError,
+    RateLimitError,
+    ensure_llm_client,
+    get_provider_label,
 )
 
 copyright_footer()
@@ -20,11 +25,27 @@ if "SYSTEM_PROMPT" not in st.session_state or "patient_name" not in st.session_s
     st.page_link("Karina_Chat_2.py", label="⬅ Zur Startseite")
     st.stop()
 
-# OpenAI-Client initialisieren (nur wenn nicht bereits vorhanden)
-if "openai_client" not in st.session_state:
-    st.session_state["openai_client"] = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+# LLM-Client initialisieren (Fallback, falls Seite direkt geöffnet wurde)
+if "mcp_client" not in st.session_state and not is_offline():
+    try:
+        ensure_llm_client()
+    except ConfigurationError as exc:
+        st.warning(
+            "⚙️ Die Konfiguration für {provider} ist unvollständig."
+            " Die Seite wechselt in den Offline-Modus.\n\n"
+            f"Details: {exc}".format(provider=get_provider_label())
+        )
+        st.session_state["offline_mode"] = True
+        st.session_state["mcp_client"] = None
+    except MCPClientError as exc:
+        st.error(
+            "❌ Der LLM-Client konnte nicht initialisiert werden. Bitte prüfe die "
+            "aktuellen Zugangsdaten oder die Netzwerkverbindung.\n\n"
+            f"Fehlerdetails: {exc}"
+        )
+        st.stop()
 
-client = st.session_state["openai_client"]
+client = st.session_state.get("mcp_client")
 
 # Titel
 st.subheader(f"Anamnese - {st.session_state.patient_name}")
@@ -53,7 +74,7 @@ with st.form(key="eingabe_formular", clear_on_submit=True):
 
 if submit_button and user_input:
     st.session_state.messages.append({"role": "user", "content": user_input})
-    if is_offline():
+    if is_offline() or client is None:
         reply = get_offline_patient_reply(st.session_state.get("patient_name", ""))
         st.session_state.messages.append({"role": "assistant", "content": reply})
     else:
@@ -67,7 +88,10 @@ if submit_button and user_input:
                 reply = response.choices[0].message.content
                 st.session_state.messages.append({"role": "assistant", "content": reply})
             except RateLimitError:
-                st.error("🚫 Die Anfrage konnte nicht verarbeitet werden, da die OpenAI-API derzeit überlastet ist. Bitte versuchen Sie es in einigen Minuten erneut.")
+                st.error(
+                    "🚫 Die Anfrage konnte nicht verarbeitet werden, weil der LLM-Dienst aktuell ausgelastet ist."
+                    " Bitte versuche es in einigen Minuten erneut."
+                )
     st.rerun()
 
 # Abschlussoption anzeigen

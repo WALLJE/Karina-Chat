@@ -4,30 +4,63 @@ from module.footer import copyright_footer
 from diagnostikmodul import diagnostik_und_befunde_routine
 from befundmodul import generiere_befund
 from module.offline import display_offline_banner, is_offline
+from module.llm_state import (
+    ConfigurationError,
+    MCPClientError,
+    ensure_llm_client,
+    get_provider_label,
+)
 
 show_sidebar()
 display_offline_banner()
 
 # st.subheader("Diagnostik und Befunde")
 
+# LLM-Client sicherstellen
+if "mcp_client" not in st.session_state and not is_offline():
+    try:
+        ensure_llm_client()
+    except ConfigurationError as exc:
+        st.warning(
+            "⚙️ Die Konfiguration für {provider} ist unvollständig."
+            " Die Seite wechselt in den Offline-Modus.\n\n"
+            f"Details: {exc}".format(provider=get_provider_label())
+        )
+        st.session_state["offline_mode"] = True
+        st.session_state["mcp_client"] = None
+    except MCPClientError as exc:
+        st.error(
+            "❌ Der LLM-Client konnte nicht initialisiert werden. Bitte prüfe die "
+            "aktuellen Zugangsdaten oder die Netzwerkverbindung.\n\n"
+            f"Fehlerdetails: {exc}"
+        )
+        st.stop()
+
 # --- Voraussetzungen wie in Hauptdatei beachten ---
 if "koerper_befund" in st.session_state:
-        if "user_ddx2" not in st.session_state:
-                with st.form("differentialdiagnosen_diagnostik_formular"):
-                    ddx_input2 = st.text_area("Welche drei Differentialdiagnosen halten Sie nach Anamnese und Untersuchung für möglich?", key="ddx_input2")
-                    diag_input2 = st.text_area("Welche konkreten diagnostischen Maßnahmen möchten Sie vorschlagen?", key="diag_input2")
-                    submitted_diag = st.form_submit_button("✅ Eingaben speichern")
-        
-                if submitted_diag:
-                    from sprachmodul import sprach_check
-                    client = st.session_state.get("openai_client")
-                    st.session_state.user_ddx2 = sprach_check(ddx_input2, client)
-                    st.session_state.user_diagnostics = sprach_check(diag_input2, client)
-                    st.rerun()
+    if "user_ddx2" not in st.session_state:
+        with st.form("differentialdiagnosen_diagnostik_formular"):
+            ddx_input2 = st.text_area(
+                "Welche drei Differentialdiagnosen halten Sie nach Anamnese und Untersuchung für möglich?",
+                key="ddx_input2"
+            )
+            diag_input2 = st.text_area(
+                "Welche konkreten diagnostischen Maßnahmen möchten Sie vorschlagen?",
+                key="diag_input2"
+            )
+            submitted_diag = st.form_submit_button("✅ Eingaben speichern")
 
-        else:
-                st.markdown(f"**Differentialdiagnosen:**  \n{st.session_state.user_ddx2}")
-                st.markdown(f"**Diagnostische Maßnahmen:**  \n{st.session_state.user_diagnostics}")
+        if submitted_diag:
+            from sprachmodul import sprach_check
+
+            client = st.session_state.get("mcp_client")
+            st.session_state.user_ddx2 = sprach_check(ddx_input2, client)
+            st.session_state.user_diagnostics = sprach_check(diag_input2, client)
+            st.rerun()
+
+    else:
+        st.markdown(f"**Differentialdiagnosen:**  \n{st.session_state.user_ddx2}")
+        st.markdown(f"**Diagnostische Maßnahmen:**  \n{st.session_state.user_diagnostics}")
 else:
     st.subheader("Diagnostik und Befunde")
     st.button("Untersuchung durchführen", disabled=True)
@@ -50,7 +83,7 @@ if (
             try:
                 diagnostik_eingabe = st.session_state.user_diagnostics
                 diagnose_szenario = st.session_state.diagnose_szenario
-                client = st.session_state.get("openai_client")
+                client = st.session_state.get("mcp_client")
 
                 if is_offline():
                     befund = generiere_befund(client, diagnose_szenario, diagnostik_eingabe)
@@ -78,7 +111,7 @@ if not st.session_state.get("final_diagnose", "").strip():
         or "gpt_befunde" not in st.session_state
         or st.session_state.get("diagnostik_aktiv", False)
     ):
-        client = st.session_state.get("openai_client")
+        client = st.session_state.get("mcp_client")
         diagnostik_eingaben, gpt_befunde = diagnostik_und_befunde_routine(
             client,
             start_runde=2,
@@ -120,7 +153,7 @@ if (
         st.session_state[f"diagnostik_runde_{neuer_termin}"] = neue_diagnostik
 
         szenario = st.session_state.get("diagnose_szenario", "")
-        client = st.session_state.get("openai_client")
+        client = st.session_state.get("mcp_client")
         if is_offline():
             befund = generiere_befund(client, szenario, neue_diagnostik)
         else:
