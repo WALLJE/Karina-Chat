@@ -2,7 +2,7 @@
 #
 
 import streamlit as st
-from openai import OpenAI
+from typing import Any, Optional
 from sprachmodul import sprach_check
 from befundmodul import generiere_befund
 from module.offline import is_offline
@@ -33,7 +33,7 @@ def aktualisiere_diagnostik_zusammenfassung(start_runde=2):
     st.session_state["gpt_befunde_kumuliert"] = gpt_befunde.strip()
 
 
-def diagnostik_und_befunde_routine(client: OpenAI, start_runde=2, weitere_diagnostik_aktiv=False):
+def diagnostik_und_befunde_routine(client: Optional[Any], start_runde=2, weitere_diagnostik_aktiv=False):
 
     # Ermittle höchste vorhandene Befund-Runde
     vorhandene_runden = [
