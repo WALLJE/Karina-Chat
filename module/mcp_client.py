@@ -164,7 +164,10 @@ class MCPClient:
 
     def _post(self, path: str, payload: Dict[str, Any]) -> MutableMapping[str, Any]:
         url = f"{self.base_url}{path}"
-        headers = {"Content-Type": "application/json"}
+        headers = {
+            "Content-Type": "application/json",
+            "Accept": "application/json, text/event-stream",
+        }
         headers.update(self.extra_headers)
         if self.api_key:
             headers[self.auth_header] = f"Bearer {self.api_key}" if self.auth_header.lower() == "authorization" else self.api_key

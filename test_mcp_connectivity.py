@@ -114,7 +114,13 @@ def check_sse_endpoint(url: str, api_key: str, timeout: float) -> None:
 def send_mcp_request(url: str, api_key: str, payload: Dict[str, Any], timeout: float) -> Dict[str, Any]:
     """Send a JSON request to the MCP HTTP endpoint and return the decoded response."""
 
-    headers = build_headers(api_key, {"Content-Type": "application/json"})
+    headers = build_headers(
+        api_key,
+        {
+            "Content-Type": "application/json",
+            "Accept": "application/json, text/event-stream",
+        },
+    )
     try:
         response = requests.post(url, headers=headers, json=payload, timeout=timeout)
     except requests.RequestException as exc:  # pragma: no cover - network failure
