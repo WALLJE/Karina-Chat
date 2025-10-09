@@ -2,7 +2,7 @@ import streamlit as st
 
 
 def is_offline() -> bool:
-    """Return True if the application runs without OpenAI connectivity."""
+    """Return True if the application runs without MCP connectivity."""
     return bool(st.session_state.get("offline_mode", False))
 
 
@@ -11,7 +11,7 @@ def display_offline_banner() -> None:
     if is_offline():
         st.warning(
             "Offline-Modus aktiv: Antworten stammen aus statischen Platzhaltern. "
-            "Es werden keine OpenAI-Anfragen gesendet und keine Tokens gezählt."
+            "Es werden keine MCP-Anfragen gesendet und keine Tokens gezählt."
         )
 
 
