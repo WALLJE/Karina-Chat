@@ -126,6 +126,171 @@ def load_amboss_token(path: Optional[Path]) -> str:
     return _load_token_from_file(path)
 
 
+def _is_running_with_streamlit() -> bool:
+    """Return ``True`` when the script runs inside a Streamlit app."""
+
+    if st is None:
+        return False
+
+    # ``st._is_running_with_streamlit`` existed in older releases. Some hosted
+    # environments no longer set it, therefore we fall back to the official
+    # runtime helper if available.
+    if getattr(st, "_is_running_with_streamlit", False):
+        return True
+
+    try:  # pragma: no cover - depends on Streamlit internals
+        from streamlit.runtime.scriptrunner import get_script_run_ctx
+    except Exception:  # pragma: no cover - runtime helper unavailable
+        return False
+
+    return get_script_run_ctx() is not None
+
+
+def _build_example_arguments(
+    tool: Dict[str, Any], default_language: Optional[str]
+) -> Dict[str, Any]:
+    """Derive an example JSON payload for the selected tool."""
+
+    example: Dict[str, Any] = {}
+    if default_language:
+        example["language"] = default_language
+
+    schema = tool.get("input_schema") if isinstance(tool, dict) else None
+    if not isinstance(schema, dict):
+        return example
+
+    properties = schema.get("properties")
+    if not isinstance(properties, dict):
+        return example
+
+    for name, definition in properties.items():
+        if name in example or not isinstance(definition, dict):
+            continue
+
+        if "default" in definition:
+            example[name] = definition["default"]
+            continue
+
+        enum_values = definition.get("enum")
+        if isinstance(enum_values, list) and enum_values:
+            example[name] = enum_values[0]
+            continue
+
+        value_type = definition.get("type")
+        if value_type == "string":
+            example[name] = "Beispieltext"
+        elif value_type == "number":
+            example[name] = 1
+        elif value_type == "integer":
+            example[name] = 1
+        elif value_type == "boolean":
+            example[name] = True
+
+    return example
+
+
+def _coerce_scalar(value: str) -> Any:
+    """Convert a simple textual value to a JSON-compatible scalar."""
+
+    text = value.strip()
+    if not text:
+        return ""
+
+    lowered = text.lower()
+    if lowered in {"true", "false"}:
+        return lowered == "true"
+    if lowered in {"null", "none"}:
+        return None
+
+    # Try numeric conversion before falling back to JSON parsing.
+    try:
+        if any(ch in text for ch in ".eE"):
+            return float(text)
+        return int(text)
+    except ValueError:
+        pass
+
+    if (text.startswith("[") and text.endswith("]")) or (
+        text.startswith("{") and text.endswith("}")
+    ):
+        try:
+            return json.loads(text)
+        except json.JSONDecodeError:
+            pass
+
+    if (text.startswith('"') and text.endswith('"')) or (
+        text.startswith("'") and text.endswith("'")
+    ):
+        return text[1:-1]
+
+    return text
+
+
+def _parse_arguments_input(raw_text: str) -> Dict[str, Any]:
+    """Parse user-supplied arguments entered as JSON or key/value text."""
+
+    text = raw_text.strip()
+    if not text:
+        return {}
+
+    try:
+        parsed = json.loads(text)
+    except json.JSONDecodeError:
+        parsed = None
+
+    if isinstance(parsed, dict):
+        return parsed
+
+    # Fallback: allow users to enter simple key=value pairs per line or comma separated.
+    entries: Dict[str, Any] = {}
+    candidate_lines = []
+    for line in text.splitlines():
+        stripped = line.strip()
+        if not stripped:
+            continue
+        candidate_lines.extend(part for part in stripped.split(",") if part.strip())
+
+    for item in candidate_lines:
+        entry = item.strip().rstrip(",")
+        if "=" in entry:
+            key, value = entry.split("=", 1)
+        elif ":" in entry:
+            key, value = entry.split(":", 1)
+        else:
+            raise ValueError(
+                "Argumentzeilen müssen entweder 'schlüssel=wert' oder 'schlüssel: wert' enthalten."
+            )
+
+        key = key.strip()
+        if not key:
+            raise ValueError("Argumentschlüssel dürfen nicht leer sein.")
+
+        entries[key] = _coerce_scalar(value)
+
+    return entries
+
+
+def _render_tool_description(tool: Dict[str, Any]) -> None:
+    """Render the tool description with expandable details in Streamlit."""
+
+    if st is None:
+        return
+
+    description = tool.get("description")
+    if not isinstance(description, str):
+        return
+
+    paragraphs = [part.strip() for part in description.split("\n\n") if part.strip()]
+    if not paragraphs:
+        return
+
+    st.markdown(paragraphs[0])
+    if len(paragraphs) > 1:
+        with st.expander("Weitere Hinweise", expanded=False):
+            for paragraph in paragraphs[1:]:
+                st.markdown(paragraph)
+
+
 def build_headers(api_key: str, extra: Optional[Dict[str, str]] = None) -> Dict[str, str]:
     """Create the HTTP headers required for MCP requests."""
 
@@ -424,18 +589,16 @@ def _run_cli_interactive_loop(
             default_args.setdefault("language", default_language)
 
         reporter.info(
-            "Provide JSON arguments for the tool (leave empty for {}):".format(
+            "Provide arguments (JSON or key=value pairs, leave empty for {}):".format(
                 json.dumps(default_args) if default_args else "{}"
             )
         )
-        raw_args = input("Arguments JSON: ").strip()
+        raw_args = input("Arguments: ").strip()
         if raw_args:
             try:
-                arguments = json.loads(raw_args)
-                if not isinstance(arguments, dict):
-                    raise ValueError("Arguments JSON must decode to an object/dict")
-            except (json.JSONDecodeError, ValueError) as exc:
-                reporter.info(f"Invalid JSON arguments: {exc}")
+                arguments = _parse_arguments_input(raw_args)
+            except ValueError as exc:
+                reporter.info(f"Invalid arguments: {exc}")
                 continue
         else:
             arguments = default_args
@@ -471,25 +634,40 @@ def _render_streamlit_tool_invocation(
 
     selected_tool = st.selectbox("Tool auswählen", tool_names)
     tool = next((t for t in tools if t.get("name") == selected_tool), None)
-    if tool and tool.get("description"):
-        st.caption(tool.get("description"))
+    if tool:
+        _render_tool_description(tool)
 
     default_args: Dict[str, Any] = {}
     if default_language:
         default_args["language"] = default_language
 
+    example_args = _build_example_arguments(tool or {}, default_language)
+    if example_args:
+        st.markdown("**Beispiel für gültige JSON-Argumente:**")
+        st.code(json.dumps(example_args, indent=2, ensure_ascii=False), language="json")
+    else:
+        st.caption(
+            "Keine Beispieldaten verfügbar – geben Sie die gewünschten Argumente als JSON "
+            "oder als 'schlüssel=wert'-Zeilen ein."
+        )
+
+    st.caption(
+        "Argumente können als JSON **oder** als einfache Zeilen wie "
+        "`schlüssel=wert` eingegeben werden. Mehrere Werte bitte durch Zeilenumbrüche "
+        "oder Kommas trennen."
+    )
+
     args_text = st.text_area(
-        "Tool-Argumente als JSON",
-        value=json.dumps(default_args, indent=2, ensure_ascii=False) if default_args else "{}",
+        "Tool-Argumente",
+        value=json.dumps(default_args, indent=2, ensure_ascii=False) if default_args else "",
+        placeholder="language=de\nquery=Suchbegriff",
     )
 
     if st.button("Tool ausführen"):
         try:
-            parsed_args = json.loads(args_text) if args_text.strip() else {}
-            if not isinstance(parsed_args, dict):
-                raise ValueError("Argumente müssen als JSON-Objekt vorliegen")
-        except (json.JSONDecodeError, ValueError) as exc:
-            st.error(f"Ungültige JSON-Argumente: {exc}")
+            parsed_args = _parse_arguments_input(args_text)
+        except ValueError as exc:
+            st.error(f"Ungültige Eingabe: {exc}")
             return
 
         try:
@@ -520,7 +698,7 @@ def main(argv: Optional[Iterable[str]] = None) -> int:
 
     language = args.language
 
-    use_streamlit = bool(st and getattr(st, "_is_running_with_streamlit", False))
+    use_streamlit = _is_running_with_streamlit()
     reporter: Reporter = StreamlitReporter() if use_streamlit else ConsoleReporter()
 
     reporter.section("MCP HTTP connectivity test")
