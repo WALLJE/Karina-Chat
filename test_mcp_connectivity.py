@@ -126,6 +126,26 @@ def load_amboss_token(path: Optional[Path]) -> str:
     return _load_token_from_file(path)
 
 
+def _is_running_with_streamlit() -> bool:
+    """Return ``True`` when the script runs inside a Streamlit app."""
+
+    if st is None:
+        return False
+
+    # ``st._is_running_with_streamlit`` existed in older releases. Some hosted
+    # environments no longer set it, therefore we fall back to the official
+    # runtime helper if available.
+    if getattr(st, "_is_running_with_streamlit", False):
+        return True
+
+    try:  # pragma: no cover - depends on Streamlit internals
+        from streamlit.runtime.scriptrunner import get_script_run_ctx
+    except Exception:  # pragma: no cover - runtime helper unavailable
+        return False
+
+    return get_script_run_ctx() is not None
+
+
 def build_headers(api_key: str, extra: Optional[Dict[str, str]] = None) -> Dict[str, str]:
     """Create the HTTP headers required for MCP requests."""
 
@@ -520,7 +540,7 @@ def main(argv: Optional[Iterable[str]] = None) -> int:
 
     language = args.language
 
-    use_streamlit = bool(st and getattr(st, "_is_running_with_streamlit", False))
+    use_streamlit = _is_running_with_streamlit()
     reporter: Reporter = StreamlitReporter() if use_streamlit else ConsoleReporter()
 
     reporter.section("MCP HTTP connectivity test")
