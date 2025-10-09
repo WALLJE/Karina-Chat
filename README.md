@@ -27,6 +27,16 @@ Die folgenden Umgebungsvariablen steuern den MCP-Zugriff:
 
 Fehlt `MCP_SERVER_URL`, schaltet die Anwendung automatisch in den Offline-Modus und nutzt ausschließlich die statischen Platzhalter aus `module/offline.py`.
 
+#### Streamlit-Secrets hinterlegen
+
+Beim Betrieb über Streamlit (lokal mit `streamlit run` oder in Streamlit Cloud) wird das AMBOSS-Zugangs-Token aus `st.secrets["Amboss_Token"]` gelesen. Hinterlegen Sie den Schlüssel daher in den Streamlit-Secrets, zum Beispiel:
+
+```
+Amboss_Token = "YOUR-PARTNER-MCP-KEY"
+```
+
+Für lokale Tests kann alternativ eine `.streamlit/secrets.toml` mit demselben Eintrag verwendet oder der Schlüssel per `--token` an `test_mcp_connectivity.py` übergeben werden. Das Skript greift nur auf den benötigten Eintrag zu und lädt keine weiteren Secrets.
+
 ### OpenAI / ChatGPT
 
 Für den OpenAI-Client kommen folgende Variablen zum Einsatz:

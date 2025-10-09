@@ -1,7 +1,8 @@
 """Utility script to validate access to the AMBOSS MCP endpoints.
 
-The script only reads the AMBOSS partner token from ``.streamlit/secrets.toml``
-(or a custom path) and performs two optional checks:
+The script expects the AMBOSS partner token to be available via
+``st.secrets["Amboss_Token"]`` (when executed with ``streamlit run``) or, as a
+fallback, in a dedicated TOML file.  It performs two optional checks:
 
 1. Establishing an authenticated SSE connection to verify that the streaming
    endpoint accepts the provided API key.
@@ -18,9 +19,13 @@ Usage examples::
     python test_mcp_connectivity.py --no-sse        # skip the SSE check
     python test_mcp_connectivity.py --tool list_all_articles --language de
 
-The secrets file must define an ``Amboss_Token`` entry::
+When using Streamlit Cloud or ``streamlit run``, add the token to the secrets
+configuration (e.g. via the "Secrets" editor)::
 
     Amboss_Token = "YOUR-PARTNER-MCP-KEY"
+
+If a TOML file is preferred locally, pass ``--secrets-path`` and ensure the
+file contains the same key/value pair.
 
 Optional command line flags can override the HTTP/SSE endpoints, language and
 timeout. If no SSE URL is provided the SSE check is skipped automatically.
@@ -35,6 +40,11 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, Optional
 
 import requests
+
+try:  # pragma: no cover - optional dependency
+    import streamlit as st
+except Exception:  # pragma: no cover - streamlit unavailable
+    st = None  # type: ignore[assignment]
 
 try:  # Python 3.11+
     import tomllib  # type: ignore[attr-defined]
@@ -51,17 +61,35 @@ class MCPConnectionError(RuntimeError):
     """Raised when the MCP connectivity test fails."""
 
 
-def load_amboss_token(path: Path) -> str:
-    """Return the AMBOSS MCP token stored in the secrets file."""
+def _load_token_from_streamlit() -> Optional[str]:
+    """Return the token from ``st.secrets`` if available."""
 
-    if not path.exists():
-        raise MCPConnectionError(
-            f"Secrets file '{path}' not found. Pass --secrets-path if it lives elsewhere."
-        )
+    if st is None:  # Streamlit not installed
+        return None
+
+    try:
+        secrets = st.secrets  # type: ignore[attr-defined]
+    except Exception:
+        return None
+
+    try:
+        token = secrets["Amboss_Token"]
+    except KeyError:
+        return None
+
+    return str(token) if token else None
+
+
+def _load_token_from_file(path: Path) -> str:
+    """Return the AMBOSS MCP token stored in a secrets TOML file."""
 
     try:
         with path.open("rb") as fh:
             data = tomllib.load(fh)
+    except FileNotFoundError as exc:
+        raise MCPConnectionError(
+            f"Secrets file '{path}' not found. Pass --secrets-path if it lives elsewhere."
+        ) from exc
     except (OSError, tomllib.TOMLDecodeError) as exc:  # pragma: no cover - I/O failure
         raise MCPConnectionError(f"Failed to read secrets file '{path}': {exc}") from exc
 
@@ -77,6 +105,22 @@ def load_amboss_token(path: Path) -> str:
         )
 
     return token
+
+
+def load_amboss_token(path: Optional[Path]) -> str:
+    """Return the AMBOSS MCP token from Streamlit secrets or a TOML file."""
+
+    token = _load_token_from_streamlit()
+    if token:
+        return token
+
+    if path is None:
+        raise MCPConnectionError(
+            "No MCP token found in st.secrets and no secrets file path provided. "
+            "Add 'Amboss_Token' to your Streamlit secrets or pass --secrets-path."
+        )
+
+    return _load_token_from_file(path)
 
 
 def build_headers(api_key: str, extra: Optional[Dict[str, str]] = None) -> Dict[str, str]:
@@ -138,11 +182,34 @@ def send_mcp_request(url: str, api_key: str, payload: Dict[str, Any], timeout: f
     if not response.content:
         raise MCPConnectionError("MCP endpoint returned an empty response.")
 
+    content_type = response.headers.get("Content-Type", "")
+    body_text = response.text
+
+    # Some MCP servers reply to tool invocations using server-sent events even on
+    # the HTTP endpoint when the ``Accept`` header includes ``text/event-stream``.
+    # In that case we need to extract the JSON payload from the SSE ``data:``
+    # lines before attempting to decode the response.
+    if "text/event-stream" in content_type or body_text.lstrip().startswith("event:"):
+        data_lines: list[str] = []
+        for line in body_text.splitlines():
+            if line.startswith("data:"):
+                data_lines.append(line[5:].lstrip())
+            elif not line.strip() and data_lines:
+                # Blank line signals the end of the first SSE event.
+                break
+
+        if not data_lines:
+            raise MCPConnectionError(
+                "Received an SSE response without any data payload to decode."
+            )
+
+        body_text = "\n".join(data_lines)
+
     try:
-        data = response.json()
+        data = json.loads(body_text)
     except json.JSONDecodeError as exc:
         raise MCPConnectionError(
-            f"Response was not valid JSON: {exc}. Raw payload: {response.text[:200]}"
+            f"Response was not valid JSON: {exc}. Raw payload: {body_text[:200]}"
         ) from exc
 
     if isinstance(data, dict) and data.get("error"):
@@ -208,7 +275,10 @@ def parse_args(argv: Optional[Iterable[str]] = None) -> argparse.Namespace:
         "--secrets-path",
         type=Path,
         default=DEFAULT_SECRETS_PATH,
-        help="Path to the Streamlit secrets TOML file (default: .streamlit/secrets.toml).",
+        help=(
+            "Path to a local Streamlit secrets TOML file. If omitted the script tries "
+            "st.secrets['Amboss_Token'] first and only reads this file when necessary."
+        ),
     )
     parser.add_argument(
         "--token",

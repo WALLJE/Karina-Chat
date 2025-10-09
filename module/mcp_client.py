@@ -190,10 +190,38 @@ class MCPClient:
         if not response.content:
             return {}
 
+        content_type = response.headers.get("Content-Type", "")
+        body_text = response.text
+
+        if "text/event-stream" in content_type or body_text.lstrip().startswith("event:"):
+            data_lines: List[str] = []
+            for line in body_text.splitlines():
+                if line.startswith("data:"):
+                    data_lines.append(line[5:].lstrip())
+                elif not line.strip() and data_lines:
+                    break
+
+            if not data_lines:
+                raise MCPClientError(
+                    "Received an SSE response without any data payload to decode."
+                )
+
+            body_text = "\n".join(data_lines)
+
         try:
-            return response.json()
+            data = json.loads(body_text)
         except json.JSONDecodeError as exc:  # pragma: no cover - invalid response
-            raise MCPClientError(f"Invalid MCP response: {exc}") from exc
+            raise MCPClientError(
+                f"Invalid MCP response: {exc}. Raw payload: {body_text[:200]}"
+            ) from exc
+
+        if isinstance(data, MutableMapping) and data.get("error"):
+            raise MCPClientError(
+                "MCP server returned an error: "
+                + json.dumps(data.get("error"), ensure_ascii=False)
+            )
+
+        return data
 
 
 class _OpenAIChatCompletions:
