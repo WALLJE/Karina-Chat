@@ -6,6 +6,12 @@ from module.footer import copyright_footer
 from module.gpt_feedback import speichere_gpt_feedback_in_supabase
 from diagnostikmodul import aktualisiere_diagnostik_zusammenfassung
 from module.offline import display_offline_banner, is_offline
+from module.llm_state import (
+    ConfigurationError,
+    MCPClientError,
+    ensure_llm_client,
+    get_provider_label,
+)
 
 show_sidebar()
 copyright_footer()
@@ -42,9 +48,28 @@ if not feedback_text:
     ])
     anzahl_termine = st.session_state.get("diagnostik_runden_gesamt", 1)
 
+    if "mcp_client" not in st.session_state and not is_offline():
+        try:
+            ensure_llm_client()
+        except ConfigurationError as exc:
+            st.warning(
+                "⚙️ Die Konfiguration für {provider} ist unvollständig."
+                " Die Seite wechselt in den Offline-Modus.\n\n"
+                f"Details: {exc}".format(provider=get_provider_label())
+            )
+            st.session_state["offline_mode"] = True
+            st.session_state["mcp_client"] = None
+        except MCPClientError as exc:
+            st.error(
+                "❌ Der LLM-Client konnte nicht initialisiert werden. Bitte prüfe die "
+                "aktuellen Zugangsdaten oder die Netzwerkverbindung.\n\n"
+                f"Fehlerdetails: {exc}"
+            )
+            st.stop()
+
     if is_offline():
         feedback = feedback_erzeugen(
-            st.session_state.get("openai_client"),
+            st.session_state.get("mcp_client"),
             final_diagnose,
             therapie_vorschlag,
             user_ddx2,
@@ -58,7 +83,7 @@ if not feedback_text:
     else:
         with st.spinner("⏳ Abschluss-Feedback wird erstellt..."):
             feedback = feedback_erzeugen(
-                st.session_state["openai_client"],
+                st.session_state["mcp_client"],
                 final_diagnose,
                 therapie_vorschlag,
                 user_ddx2,

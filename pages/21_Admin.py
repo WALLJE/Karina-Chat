@@ -4,6 +4,15 @@ from module.admin_data import FeedbackExportError, build_feedback_export
 from module.sidebar import show_sidebar
 from module.footer import copyright_footer
 from module.offline import display_offline_banner, is_offline
+from module.llm_state import (
+    ConfigurationError,
+    MCPClientError,
+    ensure_llm_client,
+    get_current_provider,
+    get_provider_label,
+    get_provider_status,
+    set_llm_provider,
+)
 from module.fallverwaltung import (
     fallauswahl_prompt,
     lade_fallbeispiele,
@@ -48,8 +57,8 @@ offline_toggle = st.toggle(
     "Offline-Modus aktivieren",
     value=current_offline,
     help=(
-        "Im Offline-Modus werden statische Platzhalter statt GPT-Antworten verwendet. "
-        "Die OpenAI-API wird dabei nicht angesprochen."
+        "Im Offline-Modus werden statische Platzhalter statt KI-Antworten verwendet. "
+        "Es werden keine externen LLM-Schnittstellen angesprochen."
     ),
     key="admin_offline_toggle",
 )
@@ -61,6 +70,65 @@ if offline_toggle != current_offline:
     else:
         st.info("Online-Modus reaktiviert. Die Anwendung wird neu gestartet.")
         _restart_application_after_offline()
+
+st.subheader("LLM-Client")
+provider_status = get_provider_status()
+provider_order = list(provider_status.keys())
+current_provider = get_current_provider()
+
+def _format_provider_option(key: str) -> str:
+    info = provider_status[key]
+    suffix = "" if info["available"] else " – nicht konfiguriert"
+    return f"{info['label']}{suffix}"
+
+selected_provider = st.selectbox(
+    "Welcher Dienst soll für KI-Antworten verwendet werden?",
+    provider_order,
+    index=provider_order.index(current_provider),
+    format_func=_format_provider_option,
+    disabled=is_offline(),
+    help=(
+        "Wähle hier zwischen dem medizinischen MCP-Server und dem regulären ChatGPT-Client."
+        " Die Auswahl gilt für alle Module."
+    ),
+)
+
+if is_offline():
+    st.info("Der Offline-Modus ist aktiv. Die Auswahl wird nach Reaktivierung des Online-Modus angewendet.")
+elif selected_provider != current_provider:
+    previous_provider = current_provider
+    try:
+        set_llm_provider(selected_provider, reload=False)
+        ensure_llm_client(force_reload=True)
+        st.success(
+            f"✅ {get_provider_label(selected_provider)} ist jetzt als LLM-Client aktiv."
+        )
+    except ConfigurationError as exc:
+        set_llm_provider(previous_provider, reload=False)
+        try:
+            ensure_llm_client(force_reload=True)
+        except (ConfigurationError, MCPClientError):
+            pass
+        st.error(
+            "⚙️ Die Konfiguration für {provider} ist unvollständig."
+            " Bitte ergänze die Umgebungsvariablen und versuche es erneut.\n\n"
+            f"Details: {exc}".format(provider=get_provider_label(selected_provider))
+        )
+    except MCPClientError as exc:
+        set_llm_provider(previous_provider, reload=False)
+        try:
+            ensure_llm_client(force_reload=True)
+        except (ConfigurationError, MCPClientError):
+            pass
+        st.error(
+            "❌ {provider} konnte nicht initialisiert werden."
+            " Bitte prüfe die Verbindung oder Zugangsdaten.\n\n"
+            f"Fehlerdetails: {exc}".format(provider=get_provider_label(selected_provider))
+        )
+
+st.caption(
+    "Aktiver Client: {label}.".format(label=get_provider_label())
+)
 
 st.subheader("Adminmodus")
 st.write("Der Adminmodus ist aktiv. Bei Bedarf kannst du ihn hier wieder deaktivieren.")

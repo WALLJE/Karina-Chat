@@ -14,9 +14,9 @@ application.
 
 Usage examples::
 
-    python test_mcp_connection.py                 # run HTTP and SSE checks
-    python test_mcp_connection.py --no-sse        # skip the SSE check
-    python test_mcp_connection.py --tool list_all_articles --language de
+    python test_mcp_connectivity.py                 # run HTTP and SSE checks
+    python test_mcp_connectivity.py --no-sse        # skip the SSE check
+    python test_mcp_connectivity.py --tool list_all_articles --language de
 
 The secrets file must define an ``Amboss_Token`` entry::
 
