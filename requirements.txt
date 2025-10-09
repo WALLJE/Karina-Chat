@@ -3,3 +3,4 @@ openai
 openpyxl
 supabase
 cryptography
+requests
