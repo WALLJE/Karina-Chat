@@ -126,6 +126,90 @@ def load_amboss_token(path: Optional[Path]) -> str:
     return _load_token_from_file(path)
 
 
+def _is_running_with_streamlit() -> bool:
+    """Return ``True`` when the script runs inside a Streamlit app."""
+
+    if st is None:
+        return False
+
+    # ``st._is_running_with_streamlit`` existed in older releases. Some hosted
+    # environments no longer set it, therefore we fall back to the official
+    # runtime helper if available.
+    if getattr(st, "_is_running_with_streamlit", False):
+        return True
+
+    try:  # pragma: no cover - depends on Streamlit internals
+        from streamlit.runtime.scriptrunner import get_script_run_ctx
+    except Exception:  # pragma: no cover - runtime helper unavailable
+        return False
+
+    return get_script_run_ctx() is not None
+
+
+def _build_example_arguments(
+    tool: Dict[str, Any], default_language: Optional[str]
+) -> Dict[str, Any]:
+    """Derive an example JSON payload for the selected tool."""
+
+    example: Dict[str, Any] = {}
+    if default_language:
+        example["language"] = default_language
+
+    schema = tool.get("input_schema") if isinstance(tool, dict) else None
+    if not isinstance(schema, dict):
+        return example
+
+    properties = schema.get("properties")
+    if not isinstance(properties, dict):
+        return example
+
+    for name, definition in properties.items():
+        if name in example or not isinstance(definition, dict):
+            continue
+
+        if "default" in definition:
+            example[name] = definition["default"]
+            continue
+
+        enum_values = definition.get("enum")
+        if isinstance(enum_values, list) and enum_values:
+            example[name] = enum_values[0]
+            continue
+
+        value_type = definition.get("type")
+        if value_type == "string":
+            example[name] = "Beispieltext"
+        elif value_type == "number":
+            example[name] = 1
+        elif value_type == "integer":
+            example[name] = 1
+        elif value_type == "boolean":
+            example[name] = True
+
+    return example
+
+
+def _render_tool_description(tool: Dict[str, Any]) -> None:
+    """Render the tool description with expandable details in Streamlit."""
+
+    if st is None:
+        return
+
+    description = tool.get("description")
+    if not isinstance(description, str):
+        return
+
+    paragraphs = [part.strip() for part in description.split("\n\n") if part.strip()]
+    if not paragraphs:
+        return
+
+    st.markdown(paragraphs[0])
+    if len(paragraphs) > 1:
+        with st.expander("Weitere Hinweise", expanded=False):
+            for paragraph in paragraphs[1:]:
+                st.markdown(paragraph)
+
+
 def build_headers(api_key: str, extra: Optional[Dict[str, str]] = None) -> Dict[str, str]:
     """Create the HTTP headers required for MCP requests."""
 
@@ -471,12 +555,19 @@ def _render_streamlit_tool_invocation(
 
     selected_tool = st.selectbox("Tool auswählen", tool_names)
     tool = next((t for t in tools if t.get("name") == selected_tool), None)
-    if tool and tool.get("description"):
-        st.caption(tool.get("description"))
+    if tool:
+        _render_tool_description(tool)
 
     default_args: Dict[str, Any] = {}
     if default_language:
         default_args["language"] = default_language
+
+    example_args = _build_example_arguments(tool or {}, default_language)
+    if example_args:
+        st.markdown("**Beispiel für gültige JSON-Argumente:**")
+        st.code(json.dumps(example_args, indent=2, ensure_ascii=False), language="json")
+    else:
+        st.caption("Argumente bitte als JSON-Objekt eingeben, z. B. {}.")
 
     args_text = st.text_area(
         "Tool-Argumente als JSON",
@@ -520,7 +611,7 @@ def main(argv: Optional[Iterable[str]] = None) -> int:
 
     language = args.language
 
-    use_streamlit = bool(st and getattr(st, "_is_running_with_streamlit", False))
+    use_streamlit = _is_running_with_streamlit()
     reporter: Reporter = StreamlitReporter() if use_streamlit else ConsoleReporter()
 
     reporter.section("MCP HTTP connectivity test")
