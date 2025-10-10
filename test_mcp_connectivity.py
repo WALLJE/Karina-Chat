@@ -267,11 +267,28 @@ def build_headers(api_key: str, extra: Optional[Dict[str, str]] = None) -> Dict[
     return headers
 
 
+_KNOWN_PRIMARY_ARGUMENTS = {
+    "search_article_sections": "query",
+    "search_questions": "query",
+    "search_pharma_substances": "query",
+    "search_media": "query",
+    "get_guidelines": "query",
+    "get_definition": "term",
+}
+
+
 def _extract_primary_argument_name(tool: Dict[str, Any]) -> Optional[str]:
     """Return the most relevant argument key for free-text inputs."""
 
     schema = tool.get("input_schema") if isinstance(tool, dict) else None
     if not isinstance(schema, dict):
+        name = tool.get("name") if isinstance(tool, dict) else None
+        if isinstance(name, str):
+            mapped = _KNOWN_PRIMARY_ARGUMENTS.get(name)
+            if mapped:
+                return mapped
+            if name.startswith("search_"):
+                return "query"
         return None
 
     required = schema.get("required")
@@ -285,6 +302,14 @@ def _extract_primary_argument_name(tool: Dict[str, Any]) -> Optional[str]:
         for name in properties:
             if isinstance(name, str) and name != "language":
                 return name
+
+    tool_name = tool.get("name") if isinstance(tool, dict) else None
+    if isinstance(tool_name, str):
+        mapped = _KNOWN_PRIMARY_ARGUMENTS.get(tool_name)
+        if mapped:
+            return mapped
+        if tool_name.startswith("search_"):
+            return "query"
 
     return None
 
@@ -643,9 +668,11 @@ def _run_cli_interactive_loop(
             )
             continue
 
+        tool = name_to_tool[tool_name]
         default_args: Dict[str, Any] = {}
         if default_language:
             default_args.setdefault("language", default_language)
+        primary_argument = _extract_primary_argument_name(tool)
 
         reporter.info(
             "Provide arguments (JSON or key=value pairs, leave empty for {}):".format(
@@ -655,12 +682,17 @@ def _run_cli_interactive_loop(
         raw_args = input("Arguments: ").strip()
         if raw_args:
             try:
-                arguments = _parse_arguments_input(raw_args)
+                arguments = _parse_arguments_input(
+                    raw_args, fallback_key=primary_argument
+                )
             except ValueError as exc:
                 reporter.info(f"Invalid arguments: {exc}")
                 continue
         else:
             arguments = default_args
+
+        if default_language:
+            arguments.setdefault("language", default_language)
 
         result = call_tool(
             http_url,
