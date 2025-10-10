@@ -38,6 +38,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from pathlib import Path
 from typing import Any, Dict, Iterable, Optional, Sequence
@@ -146,49 +147,6 @@ def _is_running_with_streamlit() -> bool:
     return get_script_run_ctx() is not None
 
 
-def _build_example_arguments(
-    tool: Dict[str, Any], default_language: Optional[str]
-) -> Dict[str, Any]:
-    """Derive an example JSON payload for the selected tool."""
-
-    example: Dict[str, Any] = {}
-    if default_language:
-        example["language"] = default_language
-
-    schema = tool.get("input_schema") if isinstance(tool, dict) else None
-    if not isinstance(schema, dict):
-        return example
-
-    properties = schema.get("properties")
-    if not isinstance(properties, dict):
-        return example
-
-    for name, definition in properties.items():
-        if name in example or not isinstance(definition, dict):
-            continue
-
-        if "default" in definition:
-            example[name] = definition["default"]
-            continue
-
-        enum_values = definition.get("enum")
-        if isinstance(enum_values, list) and enum_values:
-            example[name] = enum_values[0]
-            continue
-
-        value_type = definition.get("type")
-        if value_type == "string":
-            example[name] = "Beispieltext"
-        elif value_type == "number":
-            example[name] = 1
-        elif value_type == "integer":
-            example[name] = 1
-        elif value_type == "boolean":
-            example[name] = True
-
-    return example
-
-
 def _coerce_scalar(value: str) -> Any:
     """Convert a simple textual value to a JSON-compatible scalar."""
 
@@ -226,7 +184,9 @@ def _coerce_scalar(value: str) -> Any:
     return text
 
 
-def _parse_arguments_input(raw_text: str) -> Dict[str, Any]:
+def _parse_arguments_input(
+    raw_text: str, *, fallback_key: Optional[str] = None
+) -> Dict[str, Any]:
     """Parse user-supplied arguments entered as JSON or key/value text."""
 
     text = raw_text.strip()
@@ -240,6 +200,11 @@ def _parse_arguments_input(raw_text: str) -> Dict[str, Any]:
 
     if isinstance(parsed, dict):
         return parsed
+    if isinstance(parsed, str) and fallback_key:
+        return {fallback_key: parsed}
+
+    if fallback_key and not any(sep in text for sep in ("=", ":")):
+        return {fallback_key: text}
 
     # Fallback: allow users to enter simple key=value pairs per line or comma separated.
     entries: Dict[str, Any] = {}
@@ -254,9 +219,11 @@ def _parse_arguments_input(raw_text: str) -> Dict[str, Any]:
         entry = item.strip().rstrip(",")
         if "=" in entry:
             key, value = entry.split("=", 1)
-        elif ":" in entry:
+        elif ":" in entry and (": " in entry or " :" in entry):
             key, value = entry.split(":", 1)
         else:
+            if fallback_key and not entries:
+                return {fallback_key: text}
             raise ValueError(
                 "Argumentzeilen müssen entweder 'schlüssel=wert' oder 'schlüssel: wert' enthalten."
             )
@@ -298,6 +265,98 @@ def build_headers(api_key: str, extra: Optional[Dict[str, str]] = None) -> Dict[
     if extra:
         headers.update(extra)
     return headers
+
+
+def _extract_primary_argument_name(tool: Dict[str, Any]) -> Optional[str]:
+    """Return the most relevant argument key for free-text inputs."""
+
+    schema = tool.get("input_schema") if isinstance(tool, dict) else None
+    if not isinstance(schema, dict):
+        return None
+
+    required = schema.get("required")
+    if isinstance(required, list):
+        for name in required:
+            if isinstance(name, str) and name != "language":
+                return name
+
+    properties = schema.get("properties")
+    if isinstance(properties, dict):
+        for name in properties:
+            if isinstance(name, str) and name != "language":
+                return name
+
+    return None
+
+
+PLACEHOLDER_REPLACEMENTS = {
+    "{Sub}": "<sub>",
+    "{/Sub}": "</sub>",
+    "{Sup}": "<sup>",
+    "{/Sup}": "</sup>",
+    "{NewLine}": "<br />",
+}
+
+_FOOTNOTE_REF_PATTERN = re.compile(r"\{RefNote:([^}]+)\}")
+_FOOTNOTE_PATTERN = re.compile(r"\{Note:([^}]+)\}")
+
+
+def _normalise_placeholders(text: str) -> str:
+    """Replace custom MCP placeholders with HTML/Markdown equivalents."""
+
+    normalised = text
+    for needle, replacement in PLACEHOLDER_REPLACEMENTS.items():
+        normalised = normalised.replace(needle, replacement)
+
+    normalised = normalised.replace("{RefYUp}", "").replace("{RefXLeft}", "").replace(
+        "{RefYUpXLeft}", ""
+    ).replace("{/Note}", "")
+    normalised = _FOOTNOTE_REF_PATTERN.sub(r"[Fußnote \1]", normalised)
+    normalised = _FOOTNOTE_PATTERN.sub(r"**Fußnote \1:**", normalised)
+    return normalised
+
+
+def _extract_textual_payload(data: Any) -> Optional[str]:
+    """Try to extract a human-readable text payload from tool results."""
+
+    if isinstance(data, str):
+        return data
+
+    if isinstance(data, dict):
+        for key in ("text", "content", "markdown", "response", "result"):
+            value = data.get(key)
+            if isinstance(value, str):
+                return value
+            if isinstance(value, list):
+                joined = _extract_textual_payload(value)
+                if joined:
+                    return joined
+            if isinstance(value, dict):
+                nested = _extract_textual_payload(value)
+                if nested:
+                    return nested
+
+    if isinstance(data, list):
+        parts = [part for part in (_extract_textual_payload(item) for item in data) if part]
+        if parts:
+            return "\n\n".join(parts)
+
+    return None
+
+
+def _render_streamlit_result(result: Any) -> None:
+    """Display tool results in Streamlit using readable Markdown."""
+
+    if st is None:
+        return
+
+    text_payload = _extract_textual_payload(result)
+    if text_payload:
+        st.markdown(_normalise_placeholders(text_payload), unsafe_allow_html=True)
+        with st.expander("Rohdaten anzeigen"):
+            st.json(result)
+    else:
+        st.json(result)
 
 
 class Reporter:
@@ -637,45 +696,52 @@ def _render_streamlit_tool_invocation(
     if tool:
         _render_tool_description(tool)
 
-    default_args: Dict[str, Any] = {}
-    if default_language:
-        default_args["language"] = default_language
+    default_lang = default_language or "de"
+    primary_argument = _extract_primary_argument_name(tool or {})
 
-    example_args = _build_example_arguments(tool or {}, default_language)
-    if example_args:
-        st.markdown("**Beispiel für gültige JSON-Argumente:**")
-        st.code(json.dumps(example_args, indent=2, ensure_ascii=False), language="json")
+    if primary_argument:
+        st.caption(
+            "Bitte geben Sie entweder gültiges JSON **oder** einen Suchbegriff ein. "
+            "Freitext wird automatisch als Argument '{arg}' übernommen.".format(
+                arg=primary_argument
+            )
+        )
     else:
         st.caption(
-            "Keine Beispieldaten verfügbar – geben Sie die gewünschten Argumente als JSON "
-            "oder als 'schlüssel=wert'-Zeilen ein."
+            "Argumente können als JSON **oder** als einfache Zeilen wie "
+            "`schlüssel=wert` eingegeben werden. Mehrere Werte bitte durch Zeilenumbrüche "
+            "oder Kommas trennen."
         )
 
-    st.caption(
-        "Argumente können als JSON **oder** als einfache Zeilen wie "
-        "`schlüssel=wert` eingegeben werden. Mehrere Werte bitte durch Zeilenumbrüche "
-        "oder Kommas trennen."
-    )
+    st.caption(f"Die Sprache wird automatisch auf '{default_lang}' gesetzt.")
 
+    placeholder = "Suchbegriff eingeben" if primary_argument else "schlüssel=wert"
     args_text = st.text_area(
         "Tool-Argumente",
-        value=json.dumps(default_args, indent=2, ensure_ascii=False) if default_args else "",
-        placeholder="language=de\nquery=Suchbegriff",
+        value="",
+        placeholder=placeholder,
     )
 
     if st.button("Tool ausführen"):
         try:
-            parsed_args = _parse_arguments_input(args_text)
+            parsed_args = _parse_arguments_input(
+                args_text, fallback_key=primary_argument
+            )
         except ValueError as exc:
             st.error(f"Ungültige Eingabe: {exc}")
             return
+
+        arguments: Dict[str, Any] = {}
+        if default_lang:
+            arguments["language"] = default_lang
+        arguments.update(parsed_args)
 
         try:
             result = call_tool(
                 http_url,
                 api_key,
                 name=selected_tool,
-                arguments=parsed_args or None,
+                arguments=arguments or None,
                 timeout=timeout,
             )
         except MCPConnectionError as exc:
@@ -683,7 +749,7 @@ def _render_streamlit_tool_invocation(
             return
 
         st.success("Tool erfolgreich ausgeführt.")
-        st.json(result)
+        _render_streamlit_result(result)
 
 
 def main(argv: Optional[Iterable[str]] = None) -> int:
