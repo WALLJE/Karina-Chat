@@ -319,9 +319,9 @@ PLACEHOLDER_REPLACEMENTS = {
     "{/Sub}": "</sub>",
     "{Sup}": "<sup>",
     "{/Sup}": "</sup>",
-    "{NewLine}": "<br />",
 }
 
+_NEWLINE_PATTERN = re.compile(r"\s*\{NewLine\}\s*")
 _FOOTNOTE_REF_PATTERN = re.compile(r"\{RefNote:([^}]+)\}")
 _FOOTNOTE_PATTERN = re.compile(r"\{Note:([^}]+)\}")
 
@@ -333,6 +333,7 @@ def _normalise_placeholders(text: str) -> str:
     for needle, replacement in PLACEHOLDER_REPLACEMENTS.items():
         normalised = normalised.replace(needle, replacement)
 
+    normalised = _NEWLINE_PATTERN.sub("&#10;", normalised)
     normalised = normalised.replace("{RefYUp}", "").replace("{RefXLeft}", "").replace(
         "{RefYUpXLeft}", ""
     ).replace("{/Note}", "")
@@ -341,31 +342,103 @@ def _normalise_placeholders(text: str) -> str:
     return normalised
 
 
+def _maybe_parse_json_string(text: str) -> Any:
+    """Return JSON when the provided text payload looks like encoded JSON."""
+
+    stripped = text.strip()
+    if not stripped or stripped[0] not in "[{":
+        return text
+
+    try:
+        return json.loads(stripped)
+    except json.JSONDecodeError:
+        return text
+
+
+def _collect_text_blocks(data: Any, blocks: Optional[list[str]] = None) -> list[str]:
+    """Recursively extract textual chunks from the MCP response payload."""
+
+    if blocks is None:
+        blocks = []
+
+    if isinstance(data, str):
+        decoded = _maybe_parse_json_string(data)
+        if isinstance(decoded, str):
+            blocks.append(decoded)
+        else:
+            _collect_text_blocks(decoded, blocks)
+        return blocks
+
+    if isinstance(data, dict):
+        if "chunk" in data and isinstance(data["chunk"], str):
+            _collect_text_blocks(data["chunk"], blocks)
+        if "text" in data and isinstance(data["text"], str):
+            _collect_text_blocks(data["text"], blocks)
+        if "markdown" in data and isinstance(data["markdown"], str):
+            _collect_text_blocks(data["markdown"], blocks)
+        if "results" in data and isinstance(data["results"], list):
+            for item in data["results"]:
+                _collect_text_blocks(item, blocks)
+        if "content" in data and isinstance(data["content"], list):
+            for item in data["content"]:
+                _collect_text_blocks(item, blocks)
+        if "response" in data and isinstance(data["response"], (dict, list, str)):
+            _collect_text_blocks(data["response"], blocks)
+        if "result" in data and isinstance(data["result"], (dict, list, str)):
+            _collect_text_blocks(data["result"], blocks)
+        for key, value in data.items():
+            if key in {
+                "chunk",
+                "text",
+                "markdown",
+                "results",
+                "content",
+                "response",
+                "result",
+                "syntax_guide",
+            }:
+                continue
+            if isinstance(value, (dict, list, str)):
+                _collect_text_blocks(value, blocks)
+        return blocks
+
+    if isinstance(data, list):
+        for item in data:
+            _collect_text_blocks(item, blocks)
+        return blocks
+
+    return blocks
+
+
 def _extract_textual_payload(data: Any) -> Optional[str]:
     """Try to extract a human-readable text payload from tool results."""
 
-    if isinstance(data, str):
-        return data
+    blocks = [block for block in _collect_text_blocks(data) if isinstance(block, str)]
+    if blocks:
+        return "\n\n".join(blocks)
+    return None
+
+
+def _extract_syntax_guide(data: Any) -> Optional[str]:
+    """Return the syntax guide string from nested MCP responses if present."""
 
     if isinstance(data, dict):
-        for key in ("text", "content", "markdown", "response", "result"):
-            value = data.get(key)
-            if isinstance(value, str):
-                return value
-            if isinstance(value, list):
-                joined = _extract_textual_payload(value)
-                if joined:
-                    return joined
-            if isinstance(value, dict):
-                nested = _extract_textual_payload(value)
-                if nested:
-                    return nested
-
+        guide = data.get("syntax_guide")
+        if isinstance(guide, str):
+            return guide
+        for value in data.values():
+            guide = _extract_syntax_guide(value)
+            if guide:
+                return guide
     if isinstance(data, list):
-        parts = [part for part in (_extract_textual_payload(item) for item in data) if part]
-        if parts:
-            return "\n\n".join(parts)
-
+        for item in data:
+            guide = _extract_syntax_guide(item)
+            if guide:
+                return guide
+    if isinstance(data, str):
+        decoded = _maybe_parse_json_string(data)
+        if isinstance(decoded, (dict, list)):
+            return _extract_syntax_guide(decoded)
     return None
 
 
@@ -375,12 +448,17 @@ def _render_streamlit_result(result: Any) -> None:
     if st is None:
         return
 
+    syntax_guide = _extract_syntax_guide(result)
+    if syntax_guide:
+        st.info(_normalise_placeholders(syntax_guide), icon="ℹ️")
+
     text_payload = _extract_textual_payload(result)
     if text_payload:
         st.markdown(_normalise_placeholders(text_payload), unsafe_allow_html=True)
-        with st.expander("Rohdaten anzeigen"):
-            st.json(result)
     else:
+        st.write("Keine formatierte Antwort erhalten.")
+
+    with st.expander("Rohdaten anzeigen"):
         st.json(result)
 
 
