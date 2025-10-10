@@ -14,6 +14,7 @@ from module.llm_state import (
     set_llm_provider,
 )
 from module.fallverwaltung import (
+    VERHALTENSOPTIONEN,
     fallauswahl_prompt,
     lade_fallbeispiele,
     prepare_fall_session_state,
@@ -21,8 +22,11 @@ from module.fallverwaltung import (
     speichere_fallbeispiel,
 )
 from module.fall_config import (
+    clear_fixed_behavior,
     clear_fixed_scenario,
+    get_behavior_fix_state,
     get_fall_fix_state,
+    set_fixed_behavior,
     set_fixed_scenario,
 )
 
@@ -229,6 +233,52 @@ else:
                 st.switch_page("pages/1_Anamnese.py")
             except Exception:
                 st.rerun()
+
+    st.subheader("Verhaltensoptionen")
+    verhaltensoption_keys = list(VERHALTENSOPTIONEN.keys())
+    behavior_fixed, aktuelles_verhalten = get_behavior_fix_state()
+
+    vorauswahl_verhalten = st.session_state.get("patient_verhalten_memo") or aktuelles_verhalten
+    if vorauswahl_verhalten in verhaltensoption_keys:
+        verhalten_index = verhaltensoption_keys.index(vorauswahl_verhalten)
+    else:
+        verhalten_index = 0
+
+    with st.form("admin_verhaltensoptionen"):
+        ausgewaehltes_verhalten = st.selectbox(
+            "Verhaltensoption auswählen",
+            verhaltensoption_keys,
+            index=verhalten_index,
+            format_func=lambda key: f"{key} – {VERHALTENSOPTIONEN[key]}",
+            help=(
+                "Wähle, wie sich die Patient*innen in der Konversation verhalten sollen. "
+                "Ohne Fixierung erfolgt weiterhin eine zufällige Auswahl."
+            ),
+        )
+        verhalten_fix_toggle = st.toggle(
+            "Verhalten fixieren",
+            value=behavior_fixed,
+            help=(
+                "Aktiviere die Fixierung, um künftige Sitzungen mit dieser Verhaltensoption zu starten. "
+                "Fixierungen laufen nach vier Stunden automatisch aus."
+            ),
+        )
+        verhalten_bestaetigt = st.form_submit_button("Verhalten übernehmen", type="primary")
+
+    if verhalten_bestaetigt:
+        st.session_state["patient_verhalten_memo"] = ausgewaehltes_verhalten
+        st.session_state["patient_verhalten"] = VERHALTENSOPTIONEN[ausgewaehltes_verhalten]
+        if verhalten_fix_toggle:
+            set_fixed_behavior(ausgewaehltes_verhalten)
+            st.session_state["admin_selected_behavior"] = ausgewaehltes_verhalten
+        else:
+            clear_fixed_behavior()
+            st.session_state.pop("admin_selected_behavior", None)
+        prepare_fall_session_state()
+        try:
+            st.switch_page("pages/1_Anamnese.py")
+        except Exception:
+            st.rerun()
 
     st.divider()
     st.subheader("Neues Fallbeispiel")

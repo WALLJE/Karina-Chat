@@ -33,11 +33,17 @@ from module.llm_state import (
 )
 from module.fallverwaltung import (
     DEFAULT_FALLDATEI_URL,
+    VERHALTENSOPTIONEN,
     fallauswahl_prompt,
     lade_fallbeispiele,
     prepare_fall_session_state,
 )
-from module.fall_config import clear_fixed_scenario, get_fall_fix_state
+from module.fall_config import (
+    clear_fixed_behavior,
+    clear_fixed_scenario,
+    get_behavior_fix_state,
+    get_fall_fix_state,
+)
 from module.footer import copyright_footer
 
 # Für Einbinden Supabase Tabellen
@@ -137,6 +143,7 @@ initialisiere_session_state()
 
 szenario_df = lade_fallbeispiele(url=DEFAULT_FALLDATEI_URL)
 fixed, fixed_szenario = get_fall_fix_state()
+behavior_fixed, fixed_behavior = get_behavior_fix_state()
 
 if not szenario_df.empty:
     admin_szenario = st.session_state.pop("admin_selected_szenario", None)
@@ -161,6 +168,20 @@ if not szenario_df.empty:
             fallauswahl_prompt(szenario_df)
     elif "diagnose_szenario" not in st.session_state:
         fallauswahl_prompt(szenario_df)
+
+admin_behavior = st.session_state.pop("admin_selected_behavior", None)
+if admin_behavior:
+    st.session_state["patient_verhalten_memo"] = admin_behavior
+
+if behavior_fixed and fixed_behavior:
+    if fixed_behavior in VERHALTENSOPTIONEN:
+        st.session_state["patient_verhalten_memo"] = fixed_behavior
+    else:
+        st.warning(
+            f"Die fixierte Verhaltensoption '{fixed_behavior}' ist nicht verfügbar. "
+            "Die Fixierung wurde aufgehoben."
+        )
+        clear_fixed_behavior()
 
 if st.session_state.get("diagnose_szenario"):
     prepare_fall_session_state()
