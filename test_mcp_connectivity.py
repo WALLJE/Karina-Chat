@@ -38,6 +38,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from pathlib import Path
 from typing import Any, Dict, Iterable, Optional, Sequence
@@ -126,6 +127,137 @@ def load_amboss_token(path: Optional[Path]) -> str:
     return _load_token_from_file(path)
 
 
+def _is_running_with_streamlit() -> bool:
+    """Return ``True`` when the script runs inside a Streamlit app."""
+
+    if st is None:
+        return False
+
+    # ``st._is_running_with_streamlit`` existed in older releases. Some hosted
+    # environments no longer set it, therefore we fall back to the official
+    # runtime helper if available.
+    if getattr(st, "_is_running_with_streamlit", False):
+        return True
+
+    try:  # pragma: no cover - depends on Streamlit internals
+        from streamlit.runtime.scriptrunner import get_script_run_ctx
+    except Exception:  # pragma: no cover - runtime helper unavailable
+        return False
+
+    return get_script_run_ctx() is not None
+
+
+def _coerce_scalar(value: str) -> Any:
+    """Convert a simple textual value to a JSON-compatible scalar."""
+
+    text = value.strip()
+    if not text:
+        return ""
+
+    lowered = text.lower()
+    if lowered in {"true", "false"}:
+        return lowered == "true"
+    if lowered in {"null", "none"}:
+        return None
+
+    # Try numeric conversion before falling back to JSON parsing.
+    try:
+        if any(ch in text for ch in ".eE"):
+            return float(text)
+        return int(text)
+    except ValueError:
+        pass
+
+    if (text.startswith("[") and text.endswith("]")) or (
+        text.startswith("{") and text.endswith("}")
+    ):
+        try:
+            return json.loads(text)
+        except json.JSONDecodeError:
+            pass
+
+    if (text.startswith('"') and text.endswith('"')) or (
+        text.startswith("'") and text.endswith("'")
+    ):
+        return text[1:-1]
+
+    return text
+
+
+def _parse_arguments_input(
+    raw_text: str, *, fallback_key: Optional[str] = None
+) -> Dict[str, Any]:
+    """Parse user-supplied arguments entered as JSON or key/value text."""
+
+    text = raw_text.strip()
+    if not text:
+        return {}
+
+    try:
+        parsed = json.loads(text)
+    except json.JSONDecodeError:
+        parsed = None
+
+    if isinstance(parsed, dict):
+        return parsed
+    if isinstance(parsed, str) and fallback_key:
+        return {fallback_key: parsed}
+
+    if fallback_key and not any(sep in text for sep in ("=", ":")):
+        return {fallback_key: text}
+
+    # Fallback: allow users to enter simple key=value pairs per line or comma separated.
+    entries: Dict[str, Any] = {}
+    candidate_lines = []
+    for line in text.splitlines():
+        stripped = line.strip()
+        if not stripped:
+            continue
+        candidate_lines.extend(part for part in stripped.split(",") if part.strip())
+
+    for item in candidate_lines:
+        entry = item.strip().rstrip(",")
+        if "=" in entry:
+            key, value = entry.split("=", 1)
+        elif ":" in entry and (": " in entry or " :" in entry):
+            key, value = entry.split(":", 1)
+        else:
+            if fallback_key and not entries:
+                return {fallback_key: text}
+            raise ValueError(
+                "Argumentzeilen müssen entweder 'schlüssel=wert' oder 'schlüssel: wert' enthalten."
+            )
+
+        key = key.strip()
+        if not key:
+            raise ValueError("Argumentschlüssel dürfen nicht leer sein.")
+
+        entries[key] = _coerce_scalar(value)
+
+    return entries
+
+
+def _render_tool_description(tool: Dict[str, Any]) -> None:
+    """Render the tool description with expandable details in Streamlit."""
+
+    if st is None:
+        return
+
+    description = tool.get("description")
+    if not isinstance(description, str):
+        return
+
+    paragraphs = [part.strip() for part in description.split("\n\n") if part.strip()]
+    if not paragraphs:
+        return
+
+    st.markdown(paragraphs[0])
+    if len(paragraphs) > 1:
+        with st.expander("Weitere Hinweise", expanded=False):
+            for paragraph in paragraphs[1:]:
+                st.markdown(paragraph)
+
+
 def build_headers(api_key: str, extra: Optional[Dict[str, str]] = None) -> Dict[str, str]:
     """Create the HTTP headers required for MCP requests."""
 
@@ -133,6 +265,201 @@ def build_headers(api_key: str, extra: Optional[Dict[str, str]] = None) -> Dict[
     if extra:
         headers.update(extra)
     return headers
+
+
+_KNOWN_PRIMARY_ARGUMENTS = {
+    "search_article_sections": "query",
+    "search_questions": "query",
+    "search_pharma_substances": "query",
+    "search_media": "query",
+    "get_guidelines": "query",
+    "get_definition": "term",
+}
+
+
+def _extract_primary_argument_name(tool: Dict[str, Any]) -> Optional[str]:
+    """Return the most relevant argument key for free-text inputs."""
+
+    schema = tool.get("input_schema") if isinstance(tool, dict) else None
+    if not isinstance(schema, dict):
+        name = tool.get("name") if isinstance(tool, dict) else None
+        if isinstance(name, str):
+            mapped = _KNOWN_PRIMARY_ARGUMENTS.get(name)
+            if mapped:
+                return mapped
+            if name.startswith("search_"):
+                return "query"
+        return None
+
+    required = schema.get("required")
+    if isinstance(required, list):
+        for name in required:
+            if isinstance(name, str) and name != "language":
+                return name
+
+    properties = schema.get("properties")
+    if isinstance(properties, dict):
+        for name in properties:
+            if isinstance(name, str) and name != "language":
+                return name
+
+    tool_name = tool.get("name") if isinstance(tool, dict) else None
+    if isinstance(tool_name, str):
+        mapped = _KNOWN_PRIMARY_ARGUMENTS.get(tool_name)
+        if mapped:
+            return mapped
+        if tool_name.startswith("search_"):
+            return "query"
+
+    return None
+
+
+PLACEHOLDER_REPLACEMENTS = {
+    "{Sub}": "<sub>",
+    "{/Sub}": "</sub>",
+    "{Sup}": "<sup>",
+    "{/Sup}": "</sup>",
+}
+
+_NEWLINE_PATTERN = re.compile(r"\s*\{NewLine\}\s*")
+_FOOTNOTE_REF_PATTERN = re.compile(r"\{RefNote:([^}]+)\}")
+_FOOTNOTE_PATTERN = re.compile(r"\{Note:([^}]+)\}")
+
+
+def _normalise_placeholders(text: str) -> str:
+    """Replace custom MCP placeholders with HTML/Markdown equivalents."""
+
+    normalised = text
+    for needle, replacement in PLACEHOLDER_REPLACEMENTS.items():
+        normalised = normalised.replace(needle, replacement)
+
+    normalised = _NEWLINE_PATTERN.sub("&#10;", normalised)
+    normalised = normalised.replace("{RefYUp}", "").replace("{RefXLeft}", "").replace(
+        "{RefYUpXLeft}", ""
+    ).replace("{/Note}", "")
+    normalised = _FOOTNOTE_REF_PATTERN.sub(r"[Fußnote \1]", normalised)
+    normalised = _FOOTNOTE_PATTERN.sub(r"**Fußnote \1:**", normalised)
+    return normalised
+
+
+def _maybe_parse_json_string(text: str) -> Any:
+    """Return JSON when the provided text payload looks like encoded JSON."""
+
+    stripped = text.strip()
+    if not stripped or stripped[0] not in "[{":
+        return text
+
+    try:
+        return json.loads(stripped)
+    except json.JSONDecodeError:
+        return text
+
+
+def _collect_text_blocks(data: Any, blocks: Optional[list[str]] = None) -> list[str]:
+    """Recursively extract textual chunks from the MCP response payload."""
+
+    if blocks is None:
+        blocks = []
+
+    if isinstance(data, str):
+        decoded = _maybe_parse_json_string(data)
+        if isinstance(decoded, str):
+            blocks.append(decoded)
+        else:
+            _collect_text_blocks(decoded, blocks)
+        return blocks
+
+    if isinstance(data, dict):
+        if "chunk" in data and isinstance(data["chunk"], str):
+            _collect_text_blocks(data["chunk"], blocks)
+        if "text" in data and isinstance(data["text"], str):
+            _collect_text_blocks(data["text"], blocks)
+        if "markdown" in data and isinstance(data["markdown"], str):
+            _collect_text_blocks(data["markdown"], blocks)
+        if "results" in data and isinstance(data["results"], list):
+            for item in data["results"]:
+                _collect_text_blocks(item, blocks)
+        if "content" in data and isinstance(data["content"], list):
+            for item in data["content"]:
+                _collect_text_blocks(item, blocks)
+        if "response" in data and isinstance(data["response"], (dict, list, str)):
+            _collect_text_blocks(data["response"], blocks)
+        if "result" in data and isinstance(data["result"], (dict, list, str)):
+            _collect_text_blocks(data["result"], blocks)
+        for key, value in data.items():
+            if key in {
+                "chunk",
+                "text",
+                "markdown",
+                "results",
+                "content",
+                "response",
+                "result",
+                "syntax_guide",
+            }:
+                continue
+            if isinstance(value, (dict, list, str)):
+                _collect_text_blocks(value, blocks)
+        return blocks
+
+    if isinstance(data, list):
+        for item in data:
+            _collect_text_blocks(item, blocks)
+        return blocks
+
+    return blocks
+
+
+def _extract_textual_payload(data: Any) -> Optional[str]:
+    """Try to extract a human-readable text payload from tool results."""
+
+    blocks = [block for block in _collect_text_blocks(data) if isinstance(block, str)]
+    if blocks:
+        return "\n\n".join(blocks)
+    return None
+
+
+def _extract_syntax_guide(data: Any) -> Optional[str]:
+    """Return the syntax guide string from nested MCP responses if present."""
+
+    if isinstance(data, dict):
+        guide = data.get("syntax_guide")
+        if isinstance(guide, str):
+            return guide
+        for value in data.values():
+            guide = _extract_syntax_guide(value)
+            if guide:
+                return guide
+    if isinstance(data, list):
+        for item in data:
+            guide = _extract_syntax_guide(item)
+            if guide:
+                return guide
+    if isinstance(data, str):
+        decoded = _maybe_parse_json_string(data)
+        if isinstance(decoded, (dict, list)):
+            return _extract_syntax_guide(decoded)
+    return None
+
+
+def _render_streamlit_result(result: Any) -> None:
+    """Display tool results in Streamlit using readable Markdown."""
+
+    if st is None:
+        return
+
+    syntax_guide = _extract_syntax_guide(result)
+    if syntax_guide:
+        st.info(_normalise_placeholders(syntax_guide), icon="ℹ️")
+
+    text_payload = _extract_textual_payload(result)
+    if text_payload:
+        st.markdown(_normalise_placeholders(text_payload), unsafe_allow_html=True)
+    else:
+        st.write("Keine formatierte Antwort erhalten.")
+
+    with st.expander("Rohdaten anzeigen"):
+        st.json(result)
 
 
 class Reporter:
@@ -419,26 +746,31 @@ def _run_cli_interactive_loop(
             )
             continue
 
+        tool = name_to_tool[tool_name]
         default_args: Dict[str, Any] = {}
         if default_language:
             default_args.setdefault("language", default_language)
+        primary_argument = _extract_primary_argument_name(tool)
 
         reporter.info(
-            "Provide JSON arguments for the tool (leave empty for {}):".format(
+            "Provide arguments (JSON or key=value pairs, leave empty for {}):".format(
                 json.dumps(default_args) if default_args else "{}"
             )
         )
-        raw_args = input("Arguments JSON: ").strip()
+        raw_args = input("Arguments: ").strip()
         if raw_args:
             try:
-                arguments = json.loads(raw_args)
-                if not isinstance(arguments, dict):
-                    raise ValueError("Arguments JSON must decode to an object/dict")
-            except (json.JSONDecodeError, ValueError) as exc:
-                reporter.info(f"Invalid JSON arguments: {exc}")
+                arguments = _parse_arguments_input(
+                    raw_args, fallback_key=primary_argument
+                )
+            except ValueError as exc:
+                reporter.info(f"Invalid arguments: {exc}")
                 continue
         else:
             arguments = default_args
+
+        if default_language:
+            arguments.setdefault("language", default_language)
 
         result = call_tool(
             http_url,
@@ -471,33 +803,55 @@ def _render_streamlit_tool_invocation(
 
     selected_tool = st.selectbox("Tool auswählen", tool_names)
     tool = next((t for t in tools if t.get("name") == selected_tool), None)
-    if tool and tool.get("description"):
-        st.caption(tool.get("description"))
+    if tool:
+        _render_tool_description(tool)
 
-    default_args: Dict[str, Any] = {}
-    if default_language:
-        default_args["language"] = default_language
+    default_lang = default_language or "de"
+    primary_argument = _extract_primary_argument_name(tool or {})
 
+    if primary_argument:
+        st.caption(
+            "Bitte geben Sie entweder gültiges JSON **oder** einen Suchbegriff ein. "
+            "Freitext wird automatisch als Argument '{arg}' übernommen.".format(
+                arg=primary_argument
+            )
+        )
+    else:
+        st.caption(
+            "Argumente können als JSON **oder** als einfache Zeilen wie "
+            "`schlüssel=wert` eingegeben werden. Mehrere Werte bitte durch Zeilenumbrüche "
+            "oder Kommas trennen."
+        )
+
+    st.caption(f"Die Sprache wird automatisch auf '{default_lang}' gesetzt.")
+
+    placeholder = "Suchbegriff eingeben" if primary_argument else "schlüssel=wert"
     args_text = st.text_area(
-        "Tool-Argumente als JSON",
-        value=json.dumps(default_args, indent=2, ensure_ascii=False) if default_args else "{}",
+        "Tool-Argumente",
+        value="",
+        placeholder=placeholder,
     )
 
     if st.button("Tool ausführen"):
         try:
-            parsed_args = json.loads(args_text) if args_text.strip() else {}
-            if not isinstance(parsed_args, dict):
-                raise ValueError("Argumente müssen als JSON-Objekt vorliegen")
-        except (json.JSONDecodeError, ValueError) as exc:
-            st.error(f"Ungültige JSON-Argumente: {exc}")
+            parsed_args = _parse_arguments_input(
+                args_text, fallback_key=primary_argument
+            )
+        except ValueError as exc:
+            st.error(f"Ungültige Eingabe: {exc}")
             return
+
+        arguments: Dict[str, Any] = {}
+        if default_lang:
+            arguments["language"] = default_lang
+        arguments.update(parsed_args)
 
         try:
             result = call_tool(
                 http_url,
                 api_key,
                 name=selected_tool,
-                arguments=parsed_args or None,
+                arguments=arguments or None,
                 timeout=timeout,
             )
         except MCPConnectionError as exc:
@@ -505,7 +859,7 @@ def _render_streamlit_tool_invocation(
             return
 
         st.success("Tool erfolgreich ausgeführt.")
-        st.json(result)
+        _render_streamlit_result(result)
 
 
 def main(argv: Optional[Iterable[str]] = None) -> int:
@@ -520,7 +874,7 @@ def main(argv: Optional[Iterable[str]] = None) -> int:
 
     language = args.language
 
-    use_streamlit = bool(st and getattr(st, "_is_running_with_streamlit", False))
+    use_streamlit = _is_running_with_streamlit()
     reporter: Reporter = StreamlitReporter() if use_streamlit else ConsoleReporter()
 
     reporter.section("MCP HTTP connectivity test")
