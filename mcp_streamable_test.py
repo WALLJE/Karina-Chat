@@ -72,6 +72,13 @@ if st.button("📤 Anfrage an AMBOSS senden"):
         amboss_result = data  # hier steht das JSON-Ergebnis als Variable bereit
     except Exception as e:
         st.error(f"Fehler beim Parsen der Antwort: {e}")
+        st.text(response.text)    try:
+        data = response.json()
+        st.success("✅ Antwort von AMBOSS erhalten:")
+        st.json(data)  # Rohanzeige der MCP-Antwort
+        amboss_result = data  # hier steht das JSON-Ergebnis als Variable bereit
+    except Exception as e:
+        st.error(f"Fehler beim Parsen der Antwort: {e}")
         st.text(response.text)        # -> hier als Variable verfügbar:
         amboss_result = data["result"]        
         st.error(f"Fehler beim Parsen der Antwort: {e}")
