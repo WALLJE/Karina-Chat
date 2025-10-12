@@ -294,7 +294,8 @@ if st.button("📤 Anfrage an AMBOSS senden"):
     )
 
     # Ergebnis als Variable verfügbar
-    amboss_result = data    t = t.replace("{Sup}", "<sup>").replace("{/Sup}", "</sup>")
+    amboss_result = data    
+    t = t.replace("{Sup}", "<sup>")
     t = t.replace("{NewLine}", "<br>")
 
     # {RefNote:...} → †-Link (wenn URL vorhanden)
