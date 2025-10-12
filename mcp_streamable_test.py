@@ -50,7 +50,6 @@ def fix_mojibake(s: str) -> str:
             s = s.replace(a, b)
         return s
 
-
 def clean_placeholders(text: str, url: Optional[str] = None) -> str:
     """
     Wandelt AMBOSS-Platzhalter in nutzbares Markdown/HTML um:
@@ -81,7 +80,6 @@ def clean_placeholders(text: str, url: Optional[str] = None) -> str:
     t = re.sub(r"[ \t]{2,}", " ", t)
     return t
 
-
 def try_parse_embedded_json_text(content_item_text: str):
     """Parst eingebetteten JSON-Text, falls vorhanden."""
     if not isinstance(content_item_text, str):
@@ -92,11 +90,9 @@ def try_parse_embedded_json_text(content_item_text: str):
     except Exception:
         return None
 
-
 def truncate(s: str, n: int = 800) -> str:
     s = s or ""
     return (s[:n] + " …") if len(s) > n else s
-
 
 # -----------------------------------------------------------
 # Benutzeroberfläche
@@ -160,11 +156,12 @@ if st.button("📤 Anfrage an AMBOSS senden"):
         if "application/json" in content_type:
             data = response.json()
         else:
-            json_chunks = [
-                line[len("data:"):].strip()
-                for line in body.splitlines()
-                if line.strip().startswith("data:")
-            ]
+            # Server-Sent-Events: Zeilen nach "data:" extrahieren
+            json_chunks = []
+            for line in body.splitlines():
+                line = line.strip()
+                if line.startswith("data:"):
+                    json_chunks.append(line[len("data:"):].strip())
             data = json.loads("".join(json_chunks))
     except Exception as e:
         st.error(f"Fehler beim Parsen der Antwort: {e}")
@@ -285,35 +282,7 @@ if st.button("📤 Anfrage an AMBOSS senden"):
     )
 
     # Ergebnis als Variable verfügbar
-    amboss_result = datand(clean_placeholders(seg.get("text") or ""))
-                        else:
-                            pretty_blocks.append(
-                                "```json\n" + json.dumps(seg, ensure_ascii=False, indent=2) + "\n```"
-                            )
-            else:
-                pretty_blocks.append(
-                    "Unbekanntes 'content'-Format:\n\n```json\n" +
-                    json.dumps(content, ensure_ascii=False, indent=2) +
-                    "\n```"
-                )
-        else:
-            pretty_blocks.append(
-                "Unbekannter 'result'-Inhalt:\n\n```json\n" +
-                json.dumps(result, ensure_ascii=False, indent=2) +
-                "\n```"
-            )
-
-    pretty_md = ("\n\n---\n\n").join(pretty_blocks) if pretty_blocks else "_Keine darstellbaren Inhalte_"
-
-    st.markdown("---")
-    st.subheader("📘 Aufbereitete Antwort (kopierbar)")
-    st.code(pretty_md, language="markdown")
-    st.download_button(
-        "⬇️ Aufbereitete Antwort als Markdown speichern",
-        data=pretty_md.encode("utf-8"),
-        file_name="amboss_mcp_pretty.md",
-        mime="text/markdown"
-    )
+    amboss_result = data    )
 
     # Ergebnis als Variable verfügbar
     amboss_result = data    
