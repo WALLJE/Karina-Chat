@@ -2,12 +2,13 @@ import streamlit as st
 import requests
 import json
 import re
+from typing import Optional
 
 # -----------------------------------------------------------
 # 🧩 Grundkonfiguration
 # -----------------------------------------------------------
 st.set_page_config(page_title="AMBOSS MCP Demo", page_icon="💊")
-st.title("💊 AMBOSS MCP – JSON-RPC Beispiel mit Formatierung + Umlaut-Fix")
+st.title("💊 AMBOSS MCP – JSON-RPC Beispiel mit Formatierung + Kopier-Ansicht")
 
 # 🔑 Token aus Streamlit-Secrets laden
 AMBOSS_KEY = st.secrets["Amboss_Token"]
@@ -28,44 +29,30 @@ TOOLS = {
 # -----------------------------------------------------------
 # 🔧 Hilfsfunktionen
 # -----------------------------------------------------------
-
 def fix_mojibake(s: str) -> str:
-    """
-    Repariert typische UTF-8/Latin-1-Mojibake (Ã¼, Ã¤, â€“, Â, …).
-    Heuristik: wir interpretieren die bereits dekodierte Zeichenkette
-    als Latin-1 Bytes und dekodieren erneut als UTF-8.
-    """
     if not isinstance(s, str):
         return s
     try:
         return s.encode("latin1").decode("utf-8")
     except Exception:
-        # Häufige Artefakte
-        repl = (
-            ("â€“", "–"),
-            ("â€”", "—"),
-            ("â€ž", "„"),
-            ("â€œ", "“"),
-            ("â€˜", "‚"),
-            ("â€™", "’"),
-            ("â€¡", "‡"),
-            ("â€¢", "•"),
-            ("Â", ""),
-        )
-        for a, b in repl:
+        for a, b in (
+            ("â€“", "–"), ("â€”", "—"), ("â€ž", "„"), ("â€œ", "“"),
+            ("â€˜", "‚"), ("â€™", "’"), ("â€¡", "‡"), ("â€¢", "•"),
+            ("Â", "")
+        ):
             s = s.replace(a, b)
         return s
 
-def clean_placeholders(text: str, url: str | None = None) -> str:
-    """
-    Wandelt AMBOSS-Platzhalter in nutzbares Markdown/HTML um:
-    - {NewLine} -> <br>
-    - {Sub}/{/Sub} -> <sub>...</sub>
-    - {Sup}/{/Sup} -> <sup>...</sup>
-    - {RefNote:ID} -> [†](url) (ein Symbol-Link)
-    - alle übrigen {Ref...} Platzhalter entfernen
-    """
+def clean_placeholders(text: str, url: Optional[str] = None) -> str:
     if not isinstance(text, str):
+        return text
+    t = fix_mojibake(text)
+    # Sub/Sup
+    t = t.replace("{Sub}", "<sub>").replace("{/Sub}", "</sub>")
+    t = t.replace("{Sup}", "<sup>").replace("{/Sup}", "</sup>")
+    # NewLine in Tabellen/Zellen (erstmal allgemein als <br>)
+    t = t.replace("{NewLine}", "<br>")
+    # RefNote    if not isinstance(text, str):
         return text
 
     t = fix_mojibake(text)
