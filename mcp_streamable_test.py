@@ -8,7 +8,7 @@ st.set_page_config(page_title="AMBOSS MCP Demo", page_icon="💊")
 st.title("💊 AMBOSS MCP – Einfaches Beispiel")
 
 # --- Token aus Streamlit Secrets laden ---
-AMBOSS_KEY = st.secrets["AMBOSS_MCP_KEY"]
+AMBOSS_KEY = st.secrets["Amboss_Token"]
 
 # --- Basis-URL für Streamable HTTP (nicht SSE!) ---
 AMBOSS_URL = "https://content-mcp.de.production.amboss.com/mcp"
