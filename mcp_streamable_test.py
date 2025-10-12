@@ -2,8 +2,11 @@ import streamlit as st
 import requests
 import json
 
+# -----------------------------------------------------------
+# 🧩 Grundkonfiguration
+# -----------------------------------------------------------
 st.set_page_config(page_title="AMBOSS MCP Demo", page_icon="💊")
-st.title("💊 AMBOSS MCP – JSON-RPC Beispiel")
+st.title("💊 AMBOSS MCP – JSON-RPC Beispiel mit Formatierung")
 
 # 🔑 Token aus Streamlit-Secrets laden
 AMBOSS_KEY = st.secrets["Amboss_Token"]
@@ -11,7 +14,7 @@ AMBOSS_KEY = st.secrets["Amboss_Token"]
 # 🌐 MCP-Endpunkt (Streamable HTTP)
 AMBOSS_URL = "https://content-mcp.de.production.amboss.com/mcp"
 
-# 📚 Auswahl der verfügbaren Tools
+# 📚 Liste der verfügbaren Tools
 TOOLS = {
     "Artikelabschnitte suchen": "search_article_sections",
     "Arzneistoff suchen": "search_pharma_substances",
@@ -21,15 +24,19 @@ TOOLS = {
     "Medien suchen": "search_media",
 }
 
-# 🔽 Tool auswählen
+# -----------------------------------------------------------
+# 🧭 Benutzeroberfläche
+# -----------------------------------------------------------
 tool_label = st.selectbox("Welches AMBOSS-Tool möchtest du verwenden?", list(TOOLS.keys()))
 tool_name = TOOLS[tool_label]
 
-# ✍️ Freitext-Eingabe
 query = st.text_input("🔍 Freitext (z. B. 'Mesalazin', 'Ileitis terminalis' oder eine EID/ID)")
 
+# -----------------------------------------------------------
 # 🚀 Anfrage senden
+# -----------------------------------------------------------
 if st.button("📤 Anfrage an AMBOSS senden"):
+
     # Argumente je nach Tooltyp
     arguments = {"language": "de"}
 
@@ -40,7 +47,7 @@ if st.button("📤 Anfrage an AMBOSS senden"):
     elif tool_name == "get_drug_monograph":
         arguments["substance_eid"] = query  # benötigt EID
     elif tool_name == "get_guidelines":
-        arguments["guideline_ids"] = [query]  # Liste erwartet
+        arguments["guideline_ids"] = [query]  # erwartet Liste
 
     # JSON-RPC-Payload
     payload = {
@@ -59,27 +66,68 @@ if st.button("📤 Anfrage an AMBOSS senden"):
         "Accept": "application/json, text/event-stream",
     }
 
-    st.write("⏳ Anfrage wird gesendet...")
+    st.write("⏳ Anfrage wird gesendet ...")
 
-    # Anfrage an AMBOSS schicken
-    response = requests.post(AMBOSS_URL, headers=headers, data=json.dumps(payload), timeout=20)
+    # HTTP-POST an den MCP-Server
+    response = requests.post(AMBOSS_URL, headers=headers, data=json.dumps(payload), timeout=30)
 
-    # 🔍 Antwort anzeigen (roh)
+    # -------------------------------------------------------
+    # 🔍 Antwort parsen: JSON oder SSE
+    # -------------------------------------------------------
+    content_type = response.headers.get("Content-Type", "")
+    body = response.text
+
     try:
-        data = response.json()
-        st.success("✅ Antwort von AMBOSS erhalten:")
-        st.json(data)  # Rohanzeige der MCP-Antwort
-        amboss_result = data  # hier steht das JSON-Ergebnis als Variable bereit
+        if "application/json" in content_type:
+            data = response.json()
+        else:
+            # Server-Sent-Events: Zeilen nach "data:" extrahieren
+            json_chunks = []
+            for line in body.splitlines():
+                line = line.strip()
+                if line.startswith("data:"):
+                    json_chunks.append(line[len("data:"):].strip())
+            data = json.loads("".join(json_chunks))
     except Exception as e:
         st.error(f"Fehler beim Parsen der Antwort: {e}")
-        st.text(response.text)    try:
-        data = response.json()
-        st.success("✅ Antwort von AMBOSS erhalten:")
-        st.json(data)  # Rohanzeige der MCP-Antwort
-        amboss_result = data  # hier steht das JSON-Ergebnis als Variable bereit
-    except Exception as e:
-        st.error(f"Fehler beim Parsen der Antwort: {e}")
-        st.text(response.text)        # -> hier als Variable verfügbar:
-        amboss_result = data["result"]        
-        st.error(f"Fehler beim Parsen der Antwort: {e}")
-        st.text(response.text)
+        st.text(body)
+        st.stop()
+
+    # -------------------------------------------------------
+    # 🧾 Rohanzeige
+    # -------------------------------------------------------
+    st.success("✅ Antwort von AMBOSS erhalten (Rohdaten):")
+    st.json(data)
+
+    # -------------------------------------------------------
+    # 🧮 Aufbereitete Darstellung
+    # -------------------------------------------------------
+    st.markdown("---")
+    st.subheader("📘 Aufbereitete Antwort")
+
+    # JSON-RPC unterscheidet zwischen 'result' und 'error'
+    if "error" in data:
+        st.error(f"❌ AMBOSS-Fehler: {data['error'].get('message')}")
+        if "code" in data["error"]:
+            st.write(f"Fehlercode: {data['error']['code']}")
+        if "data" in data["error"]:
+            st.json(data["error"]["data"])
+    else:
+        result = data.get("result", {})
+        # Das eigentliche Ergebnis liegt meist in result["content"] oder result["results"]
+        if "results" in result:
+            st.markdown("### Ergebnisse")
+            for item in result["results"]:
+                title = item.get("title") or item.get("article_title") or "–"
+                snippet = item.get("snippet") or ""
+                st.markdown(f"**{title}**  \n{snippet}")
+                st.markdown("---")
+        elif "content" in result:
+            st.markdown("### Inhalt")
+            st.write(result["content"])
+        else:
+            st.info("Keine standardisierten Felder gefunden – gesamte Antwort:")
+            st.json(result)
+
+    # 👉 Ergebnis als Variable verfügbar
+    amboss_result = data
