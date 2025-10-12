@@ -5,9 +5,13 @@ import json
 st.set_page_config(page_title="AMBOSS MCP Demo", page_icon="💊")
 st.title("💊 AMBOSS MCP – JSON-RPC Beispiel")
 
+# 🔑 Token aus Streamlit-Secrets laden
 AMBOSS_KEY = st.secrets["Amboss_Token"]
+
+# 🌐 MCP-Endpunkt (Streamable HTTP)
 AMBOSS_URL = "https://content-mcp.de.production.amboss.com/mcp"
 
+# 📚 Auswahl der verfügbaren Tools
 TOOLS = {
     "Artikelabschnitte suchen": "search_article_sections",
     "Arzneistoff suchen": "search_pharma_substances",
@@ -17,13 +21,16 @@ TOOLS = {
     "Medien suchen": "search_media",
 }
 
+# 🔽 Tool auswählen
 tool_label = st.selectbox("Welches AMBOSS-Tool möchtest du verwenden?", list(TOOLS.keys()))
 tool_name = TOOLS[tool_label]
 
+# ✍️ Freitext-Eingabe
 query = st.text_input("🔍 Freitext (z. B. 'Mesalazin', 'Ileitis terminalis' oder eine EID/ID)")
 
+# 🚀 Anfrage senden
 if st.button("📤 Anfrage an AMBOSS senden"):
-    # Arguments je nach Tool bauen
+    # Argumente je nach Tooltyp
     arguments = {"language": "de"}
 
     if tool_name in ("search_article_sections", "search_pharma_substances", "search_media"):
@@ -31,16 +38,14 @@ if st.button("📤 Anfrage an AMBOSS senden"):
     elif tool_name == "get_definition":
         arguments["term"] = query
     elif tool_name == "get_drug_monograph":
-        # erwartet eine substance EID (vorher über search_* ermitteln)
-        arguments["substance_eid"] = query
+        arguments["substance_eid"] = query  # benötigt EID
     elif tool_name == "get_guidelines":
-        # erwartet i. d. R. eine Liste von IDs/EIDs
-        arguments["guideline_ids"] = [query]
+        arguments["guideline_ids"] = [query]  # Liste erwartet
 
-    # JSON-RPC 2.0 Payload
+    # JSON-RPC-Payload
     payload = {
         "jsonrpc": "2.0",
-        "id": "1",  # beliebige Korrelation; String oder Zahl
+        "id": "1",
         "method": "tools/call",
         "params": {
             "name": tool_name,
@@ -55,16 +60,19 @@ if st.button("📤 Anfrage an AMBOSS senden"):
     }
 
     st.write("⏳ Anfrage wird gesendet...")
-    resp = requests.post(AMBOSS_URL, headers=headers, data=json.dumps(payload), timeout=20)
 
-    # Ergebnis parsen: JSON-RPC → result / error
-    data = resp.json()
-    if "error" in data:
-        st.error(f"❌ AMBOSS-Fehler: {data['error'].get('message')}")
-        st.json(data)
-    else:
+    # Anfrage an AMBOSS schicken
+    response = requests.post(AMBOSS_URL, headers=headers, data=json.dumps(payload), timeout=20)
+
+    # 🔍 Antwort anzeigen (roh)
+    try:
+        data = response.json()
         st.success("✅ Antwort von AMBOSS erhalten:")
-        st.json(data)  # Rohanzeige
-        # -> hier als Variable verfügbar:
-        amboss_result = data["result"]        st.error(f"Fehler beim Parsen der Antwort: {e}")
+        st.json(data)  # Rohanzeige der MCP-Antwort
+        amboss_result = data  # hier steht das JSON-Ergebnis als Variable bereit
+    except Exception as e:
+        st.error(f"Fehler beim Parsen der Antwort: {e}")
+        st.text(response.text)        # -> hier als Variable verfügbar:
+        amboss_result = data["result"]        
+        st.error(f"Fehler beim Parsen der Antwort: {e}")
         st.text(response.text)
