@@ -54,11 +54,11 @@ def fix_mojibake(s: str) -> str:
 def clean_placeholders(text: str, url: Optional[str] = None) -> str:
     """
     Wandelt AMBOSS-Platzhalter in nutzbares Markdown/HTML um:
-    - {NewLine} -> <br>
-    - {Sub}/{/Sub} -> <sub>...</sub>
-    - {Sup}/{/Sup} -> <sup>...</sup>
-    - {RefNote:ID} -> [†](url) (ein Symbol-Link)
-    - übrige {Ref...} entfernen
+    - {NewLine} → <br>
+    - {Sub}/{/Sub} → <sub>…</sub>
+    - {Sup}/{/Sup} → <sup>…</sup>
+    - {RefNote:ID} → [†](url)
+    - übrige {Ref…} entfernen
     """
     if not isinstance(text, str):
         return text
@@ -68,13 +68,13 @@ def clean_placeholders(text: str, url: Optional[str] = None) -> str:
     t = t.replace("{Sup}", "<sup>").replace("{/Sup}", "</sup>")
     t = t.replace("{NewLine}", "<br>")
 
-    # {RefNote:...} → †-Link (wenn URL vorhanden)
+    # {RefNote:…} → †-Link
     if url:
         t = re.sub(r"\{RefNote:[^}]+\}", f"[†]({url})", t)
     else:
         t = re.sub(r"\{RefNote:[^}]+\}", "†", t)
 
-    # übrige {Ref...} entfernen (stört Tabellen)
+    # übrige {Ref…} entfernen
     t = re.sub(r"\{Ref[^\}]+\}", "", t)
 
     # überflüssige Leerzeichen glätten
@@ -83,10 +83,7 @@ def clean_placeholders(text: str, url: Optional[str] = None) -> str:
 
 
 def try_parse_embedded_json_text(content_item_text: str):
-    """
-    Einige Antworten liefern in content[*].text einen JSON-String.
-    Diesen versuchen wir zusätzlich zu parsen.
-    """
+    """Parst eingebetteten JSON-Text, falls vorhanden."""
     if not isinstance(content_item_text, str):
         return None
     candidate = fix_mojibake(content_item_text)
@@ -126,19 +123,16 @@ if st.button("📤 Anfrage an AMBOSS senden"):
     elif tool_name == "get_definition":
         arguments["term"] = query
     elif tool_name == "get_drug_monograph":
-        arguments["substance_eid"] = query  # benötigt EID (i. d. R. zuvor via search_* ermitteln)
+        arguments["substance_eid"] = query
     elif tool_name == "get_guidelines":
-        arguments["guideline_ids"] = [query]  # erwartet Liste
+        arguments["guideline_ids"] = [query]
 
     # JSON-RPC-Payload
     payload = {
         "jsonrpc": "2.0",
         "id": "1",
         "method": "tools/call",
-        "params": {
-            "name": tool_name,
-            "arguments": arguments
-        }
+        "params": {"name": tool_name, "arguments": arguments},
     }
 
     headers = {
@@ -147,9 +141,8 @@ if st.button("📤 Anfrage an AMBOSS senden"):
         "Accept": "application/json, text/event-stream",
     }
 
-    st.write("⏳ Anfrage wird gesendet ...")
+    st.write("⏳ Anfrage wird gesendet …")
 
-    # HTTP-POST an den MCP-Server
     response = requests.post(
         AMBOSS_URL,
         headers=headers,
@@ -167,12 +160,11 @@ if st.button("📤 Anfrage an AMBOSS senden"):
         if "application/json" in content_type:
             data = response.json()
         else:
-            # Server-Sent-Events: Zeilen nach "data:" extrahieren
-            json_chunks = []
-            for line in body.splitlines():
-                line = line.strip()
-                if line.startswith("data:"):
-                    json_chunks.append(line[len("data:"):].strip())
+            json_chunks = [
+                line[len("data:"):].strip()
+                for line in body.splitlines()
+                if line.strip().startswith("data:")
+            ]
             data = json.loads("".join(json_chunks))
     except Exception as e:
         st.error(f"Fehler beim Parsen der Antwort: {e}")
@@ -193,7 +185,7 @@ if st.button("📤 Anfrage an AMBOSS senden"):
     )
 
     # -------------------------------------------------------
-    # Aufbereitete Darstellung → als Markdown sammeln
+    # Aufbereitete Darstellung → Markdown sammeln
     # -------------------------------------------------------
     pretty_blocks = []
 
@@ -259,11 +251,41 @@ if st.button("📤 Anfrage an AMBOSS senden"):
                     pretty_blocks.append("### Extrahierte Ergebnisse (eingebettetes JSON)")
                     pretty_blocks.extend(embedded_blocks)
                 else:
-                    # Fallback: rohe Segmente, aber bereinigt
                     pretty_blocks.append("### Inhalt (Segmente)")
                     for seg in content:
                         if isinstance(seg, dict) and seg.get("type") == "text":
                             pretty_blocks.append(clean_placeholders(seg.get("text") or ""))
+                        else:
+                            pretty_blocks.append(
+                                "```json\n" + json.dumps(seg, ensure_ascii=False, indent=2) + "\n```"
+                            )
+            else:
+                pretty_blocks.append(
+                    "Unbekanntes 'content'-Format:\n\n```json\n" +
+                    json.dumps(content, ensure_ascii=False, indent=2) +
+                    "\n```"
+                )
+        else:
+            pretty_blocks.append(
+                "Unbekannter 'result'-Inhalt:\n\n```json\n" +
+                json.dumps(result, ensure_ascii=False, indent=2) +
+                "\n```"
+            )
+
+    pretty_md = ("\n\n---\n\n").join(pretty_blocks) if pretty_blocks else "_Keine darstellbaren Inhalte_"
+
+    st.markdown("---")
+    st.subheader("📘 Aufbereitete Antwort (kopierbar)")
+    st.code(pretty_md, language="markdown")
+    st.download_button(
+        "⬇️ Aufbereitete Antwort als Markdown speichern",
+        data=pretty_md.encode("utf-8"),
+        file_name="amboss_mcp_pretty.md",
+        mime="text/markdown"
+    )
+
+    # Ergebnis als Variable verfügbar
+    amboss_result = datand(clean_placeholders(seg.get("text") or ""))
                         else:
                             pretty_blocks.append(
                                 "```json\n" + json.dumps(seg, ensure_ascii=False, indent=2) + "\n```"
