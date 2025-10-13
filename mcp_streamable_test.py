@@ -8,7 +8,7 @@ from typing import Optional, Iterable
 # Grundkonfiguration
 # -----------------------------------------------------------
 st.set_page_config(page_title="AMBOSS MCP Demo (kompakt)", page_icon="💊")
-st.title("💊 AMBOSS MCP – Kompakte Version")
+st.title("💊 AMBOSS MCP – Kompakte Version mit structuredContent & Tabellen-Fix")
 
 AMBOSS_KEY = st.secrets["Amboss_Token"]
 AMBOSS_URL = "https://content-mcp.de.production.amboss.com/mcp"
@@ -40,7 +40,7 @@ def fix_mojibake(s: str) -> str:
         return s
 
 def clean_placeholders(text: str, url: Optional[str] = None) -> str:
-    """Bereinigt AMBOSS-spezifische Platzhalter und setzt †-Links."""
+    """Bereinigt AMBOSS-Platzhalter und setzt †-Links."""
     if not isinstance(text, str):
         return text
     t = fix_mojibake(text)
@@ -98,8 +98,78 @@ def build_payload(tool_name: str, query: str) -> dict:
         "params": {"name": tool_name, "arguments": args},
     }
 
+def format_markdown_tables(md: str) -> str:
+    """
+    Findet Markdown-Tabellenblöcke (Zeilen, die mit '|' beginnen) und säubert sie:
+    - {NewLine} nur IN ZELLEN -> <br>
+    - {Ref...} in Zellen entfernen
+    - Spaltenanzahl stabilisieren (Padding leerer Zellen)
+    - Separator-Zeile reparieren
+    """
+    lines = md.splitlines()
+    out, i, n = [], 0, len(lines)
+    table_pat = re.compile(r'^\s*\|.*\|\s*$')
+
+    def clean_cell(cell: str) -> str:
+        cell = cell.strip()
+        cell = cell.replace("{NewLine}", "<br>")
+        cell = re.sub(r"\{Ref[^}]*\}", "", cell)
+        return cell.strip()
+
+    while i < n:
+        if table_pat.match(lines[i]):
+            block = []
+            while i < n and table_pat.match(lines[i]):
+                block.append(lines[i])
+                i += 1
+
+            rows = []
+            max_cols = 0
+            for row in block:
+                parts = [p for p in row.strip().strip('|').split('|')]
+                parts = [clean_cell(p) for p in parts]
+                max_cols = max(max_cols, len(parts))
+                rows.append(parts)
+
+            if len(rows) >= 2:
+                # zweite Zeile als Separator sicherstellen
+                def is_sep(c: str) -> bool:
+                    cs = c.strip()
+                    return len(cs) >= 3 and set(cs) <= set("-: ")
+                if not all(is_sep(c) for c in rows[1]):
+                    rows.insert(1, ["---"] * max_cols)
+
+            for r in rows:
+                if len(r) < max_cols:
+                    r += [""] * (max_cols - len(r))
+
+            out.append("| " + " | ".join(rows[0]) + " |")
+            out.append("| " + " | ".join(rows[1]) + " |")
+            for r in rows[2:]:
+                out.append("| " + " | ".join(r) + " |")
+            continue
+
+        out.append(lines[i])
+        i += 1
+
+    return "\n".join(out)
+
+def extract_items_from_result(result: dict) -> list[dict]:
+    """Gibt Ergebnis-Items zurück, bevorzugt structuredContent.results."""
+    if not isinstance(result, dict):
+        return []
+    sc = result.get("structuredContent")
+    if isinstance(sc, dict):
+        sc_results = sc.get("results")
+        if isinstance(sc_results, list) and sc_results:
+            return sc_results
+    res = result.get("results")
+    if isinstance(res, list) and res:
+        return res
+    return []
+
 def render_items(items: Iterable[dict]) -> list[str]:
-    """Konvertiert Ergebnis-Items (egal ob aus results oder embedded) in Markdown-Blöcke."""
+    """Konvertiert Ergebnis-Items in Markdown-Blöcke inkl. Tabellen-Fix."""
     blocks = []
     for it in items:
         title = it.get("title") or it.get("article_title") or it.get("name") or "–"
@@ -107,6 +177,7 @@ def render_items(items: Iterable[dict]) -> list[str]:
         url = it.get("url")
         eid = it.get("article_id") or it.get("eid") or it.get("id")
         pretty = clean_placeholders(snippet, url)
+        pretty = format_markdown_tables(pretty)
         block = f"**{fix_mojibake(title)}**\n\n{pretty}"
         if url:
             block += f"\n\n🔗 {url}"
@@ -116,7 +187,7 @@ def render_items(items: Iterable[dict]) -> list[str]:
     return blocks
 
 def build_pretty_markdown(data: dict) -> str:
-    """Erzeugt die aufbereitete Markdown-Ausgabe (kompakt, ohne Dopplungen)."""
+    """Erzeugt die aufbereitete Markdown-Ausgabe (kompakt, mit structuredContent & Tabellen-Fix)."""
     if "error" in data:
         err = data["error"]
         msg = err.get("message", "Unbekannter Fehler")
@@ -124,23 +195,19 @@ def build_pretty_markdown(data: dict) -> str:
         return f"**Fehler:** {msg}" + (f" (Code {code})" if code is not None else "")
 
     result = data.get("result", {})
-    md_blocks: list[str] = []
 
-    # 1) Direkte results-Liste
-    if isinstance(result, dict) and "results" in result:
-        items = result.get("results") or []
-        if items:
-            md_blocks.append("### Ergebnisse")
-            md_blocks.extend(render_items(items))
-        return ("\n\n---\n\n").join(md_blocks) if md_blocks else "_Keine Ergebnisse_"
+    # 1) Ergebnisse aus structuredContent.results ODER result.results
+    items = extract_items_from_result(result)
+    if items:
+        md_blocks = ["### Ergebnisse"]
+        md_blocks.extend(render_items(items))
+        return ("\n\n---\n\n").join(md_blocks)
 
     # 2) content: Segmente oder eingebettetes JSON
     if isinstance(result, dict) and "content" in result:
         content = result["content"]
-        # a) Einfacher Text
         if isinstance(content, str):
-            return "### Inhalt (Text)\n\n" + clean_placeholders(content)
-        # b) Liste mit Textsegmenten / eingebettetem JSON
+            return format_markdown_tables("### Inhalt (Text)\n\n" + clean_placeholders(content))
         if isinstance(content, list):
             embedded_blocks, parsed_any = [], False
             for seg in content:
@@ -148,23 +215,22 @@ def build_pretty_markdown(data: dict) -> str:
                     embedded = try_parse_embedded_json_text(seg["text"])
                     if embedded:
                         parsed_any = True
-                        items = embedded.get("results") or embedded.get("data") or []
-                        if isinstance(items, list) and items:
-                            embedded_blocks.extend(render_items(items))
+                        emb_items = embedded.get("results") or embedded.get("data") or []
+                        if isinstance(emb_items, list) and emb_items:
+                            embedded_blocks.extend(render_items(emb_items))
                         else:
                             embedded_blocks.append("```json\n" + json.dumps(embedded, ensure_ascii=False, indent=2) + "\n```")
             if parsed_any and embedded_blocks:
-                return "### Extrahierte Ergebnisse (eingebettetes JSON)\n\n" + ("\n\n---\n\n").join(embedded_blocks)
+                return ("\n\n").join(["### Extrahierte Ergebnisse (eingebettetes JSON)"] + embedded_blocks)
             # Fallback: rohe Segmente bereinigt
             segment_blocks = []
             for seg in content:
                 if isinstance(seg, dict) and seg.get("type") == "text":
-                    segment_blocks.append(clean_placeholders(seg.get("text") or ""))
+                    segment_blocks.append(format_markdown_tables(clean_placeholders(seg.get("text") or "")))
                 else:
                     segment_blocks.append("```json\n" + json.dumps(seg, ensure_ascii=False, indent=2) + "\n```")
-            return "### Inhalt (Segmente)\n\n" + ("\n\n---\n\n").join(segment_blocks)
+            return ("\n\n---\n\n").join(["### Inhalt (Segmente)"] + segment_blocks)
 
-        # Unbekanntes content-Format
         return "Unbekanntes 'content'-Format:\n\n```json\n" + json.dumps(content, ensure_ascii=False, indent=2) + "\n```"
 
     # 3) Sonst – komplettes result zeigen
@@ -204,6 +270,7 @@ if st.button("📤 Anfrage an AMBOSS senden"):
 
     # Aufbereitete Darstellung – copy-friendly + Download
     pretty_md = build_pretty_markdown(data)
+    pretty_md = format_markdown_tables(pretty_md)  # finaler Sicherheitsdurchlauf
     st.markdown("---")
     st.subheader("📘 Aufbereitete Antwort (kopierbar)")
     st.code(pretty_md, language="markdown")
