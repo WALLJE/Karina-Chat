@@ -69,7 +69,6 @@ def parse_mcp_response(resp: requests.Response) -> dict:
     ctype = resp.headers.get("Content-Type", "")
     if "application/json" in ctype:
         return resp.json()
-    # SSE: sammle data:-Zeilen
     payload = "".join(
         line.strip()[len("data:"):].strip()
         for line in resp.text.splitlines()
@@ -98,6 +97,7 @@ def build_payload(tool_name: str, query: str) -> dict:
         "params": {"name": tool_name, "arguments": args},
     }
 
+# --- Tabellen-Formatierer -----------------------------------------------------
 def format_markdown_tables(md: str) -> str:
     """
     Findet Markdown-Tabellenblöcke (Zeilen, die mit '|' beginnen) und säubert sie:
@@ -112,9 +112,19 @@ def format_markdown_tables(md: str) -> str:
 
     def clean_cell(cell: str) -> str:
         cell = cell.strip()
+        # führende/abschließende <br> in Zellen entfernen
+        cell = re.sub(r"^(?:<br>\s*)+", "", cell)
+        cell = re.sub(r"(?:\s*<br>)+$", "", cell)
+        # Platzhalter aufräumen
         cell = cell.replace("{NewLine}", "<br>")
         cell = re.sub(r"\{Ref[^}]*\}", "", cell)
-        return cell.strip()
+        # Mehrfachspaces normalisieren
+        cell = re.sub(r"[ \t]{2,}", " ", cell).strip()
+        return cell
+
+    def is_sep_cell(c: str) -> bool:
+        cs = c.strip()
+        return len(cs) >= 3 and set(cs) <= set("-: ")
 
     while i < n:
         if table_pat.match(lines[i]):
@@ -131,18 +141,17 @@ def format_markdown_tables(md: str) -> str:
                 max_cols = max(max_cols, len(parts))
                 rows.append(parts)
 
+            # Separator sicherstellen/angleichen
             if len(rows) >= 2:
-                # zweite Zeile als Separator sicherstellen
-                def is_sep(c: str) -> bool:
-                    cs = c.strip()
-                    return len(cs) >= 3 and set(cs) <= set("-: ")
-                if not all(is_sep(c) for c in rows[1]):
+                if not all(is_sep_cell(c) for c in rows[1]):
                     rows.insert(1, ["---"] * max_cols)
 
+            # Spaltenzahl padden
             for r in rows:
                 if len(r) < max_cols:
                     r += [""] * (max_cols - len(r))
 
+            # zurück in Markdown
             out.append("| " + " | ".join(rows[0]) + " |")
             out.append("| " + " | ".join(rows[1]) + " |")
             for r in rows[2:]:
@@ -154,6 +163,18 @@ def format_markdown_tables(md: str) -> str:
 
     return "\n".join(out)
 
+def fix_inline_table_breaks(md: str) -> str:
+    """
+    Macht aus '... <br> | a | b |' eine neue Tabellenzeile:
+    - setzt vor '|' einen echten Zeilenumbruch
+    - reduziert überzählige Leerzeilen
+    """
+    md = re.sub(r"(?:<br>\s*)+\|", r"\n|", md)
+    md = re.sub(r"([^\n])\s*<br>\s*(\|)", r"\1\n\2", md)  # Titelzeilen sauber trennen
+    md = re.sub(r"\n{3,}", "\n\n", md)
+    return md
+
+# --- Ergebnisse extrahieren/rendern ------------------------------------------
 def extract_items_from_result(result: dict) -> list[dict]:
     """Gibt Ergebnis-Items zurück, bevorzugt structuredContent.results."""
     if not isinstance(result, dict):
@@ -177,6 +198,7 @@ def render_items(items: Iterable[dict]) -> list[str]:
         url = it.get("url")
         eid = it.get("article_id") or it.get("eid") or it.get("id")
         pretty = clean_placeholders(snippet, url)
+        pretty = fix_inline_table_breaks(pretty)
         pretty = format_markdown_tables(pretty)
         block = f"**{fix_mojibake(title)}**\n\n{pretty}"
         if url:
@@ -187,7 +209,7 @@ def render_items(items: Iterable[dict]) -> list[str]:
     return blocks
 
 def build_pretty_markdown(data: dict) -> str:
-    """Erzeugt die aufbereitete Markdown-Ausgabe (kompakt, mit structuredContent & Tabellen-Fix)."""
+    """Erzeugt die aufbereitete Markdown-Ausgabe (mit structuredContent & Tabellen-Fix)."""
     if "error" in data:
         err = data["error"]
         msg = err.get("message", "Unbekannter Fehler")
@@ -207,7 +229,9 @@ def build_pretty_markdown(data: dict) -> str:
     if isinstance(result, dict) and "content" in result:
         content = result["content"]
         if isinstance(content, str):
-            return format_markdown_tables("### Inhalt (Text)\n\n" + clean_placeholders(content))
+            md = "### Inhalt (Text)\n\n" + clean_placeholders(content)
+            md = fix_inline_table_breaks(md)
+            return format_markdown_tables(md)
         if isinstance(content, list):
             embedded_blocks, parsed_any = [], False
             for seg in content:
@@ -226,7 +250,10 @@ def build_pretty_markdown(data: dict) -> str:
             segment_blocks = []
             for seg in content:
                 if isinstance(seg, dict) and seg.get("type") == "text":
-                    segment_blocks.append(format_markdown_tables(clean_placeholders(seg.get("text") or "")))
+                    p = clean_placeholders(seg.get("text") or "")
+                    p = fix_inline_table_breaks(p)
+                    p = format_markdown_tables(p)
+                    segment_blocks.append(p)
                 else:
                     segment_blocks.append("```json\n" + json.dumps(seg, ensure_ascii=False, indent=2) + "\n```")
             return ("\n\n---\n\n").join(["### Inhalt (Segmente)"] + segment_blocks)
@@ -268,11 +295,17 @@ if st.button("📤 Anfrage an AMBOSS senden"):
     st.download_button("⬇️ Rohantwort als JSON speichern", data=raw_str.encode("utf-8"),
                        file_name="amboss_mcp_raw.json", mime="application/json")
 
-    # Aufbereitete Darstellung – copy-friendly + Download
+    # Aufbereitete Darstellung – gerendert + copy-friendly
     pretty_md = build_pretty_markdown(data)
-    pretty_md = format_markdown_tables(pretty_md)  # finaler Sicherheitsdurchlauf
+    # finaler Sicherheitsdurchlauf
+    pretty_md = fix_inline_table_breaks(pretty_md)
+    pretty_md = format_markdown_tables(pretty_md)
+
     st.markdown("---")
-    st.subheader("📘 Aufbereitete Antwort (kopierbar)")
+    st.subheader("📘 Aufbereitete Antwort (gerendert)")
+    st.markdown(pretty_md, unsafe_allow_html=True)
+
+    st.subheader("📋 Aufbereitete Antwort (zum Kopieren)")
     st.code(pretty_md, language="markdown")
     st.download_button("⬇️ Aufbereitete Antwort als Markdown speichern",
                        data=pretty_md.encode("utf-8"),
