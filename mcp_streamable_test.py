@@ -104,7 +104,7 @@ def format_markdown_tables(md: str) -> str:
     - {NewLine} nur IN ZELLEN -> <br>
     - {Ref...} in Zellen entfernen
     - Spaltenanzahl stabilisieren (Padding leerer Zellen)
-    - Separator-Zeile reparieren
+    - Separator-Zeile reparieren oder bei 1-zeiliger Tabelle einfügen
     """
     lines = md.splitlines()
     out, i, n = [], 0, len(lines)
@@ -112,7 +112,7 @@ def format_markdown_tables(md: str) -> str:
 
     def clean_cell(cell: str) -> str:
         cell = cell.strip()
-        # führende/abschließende <br> in Zellen entfernen
+        # führende/abschließende <br> entfernen
         cell = re.sub(r"^(?:<br>\s*)+", "", cell)
         cell = re.sub(r"(?:\s*<br>)+$", "", cell)
         # Platzhalter aufräumen
@@ -133,25 +133,39 @@ def format_markdown_tables(md: str) -> str:
                 block.append(lines[i])
                 i += 1
 
+            # parse block
             rows = []
             max_cols = 0
             for row in block:
+                # | a | b | c |
                 parts = [p for p in row.strip().strip('|').split('|')]
                 parts = [clean_cell(p) for p in parts]
+                # ignoriere komplett leere Zeilen
+                if len(parts) == 1 and parts[0] == "":
+                    continue
                 max_cols = max(max_cols, len(parts))
                 rows.append(parts)
 
-            # Separator sicherstellen/angleichen
-            if len(rows) >= 2:
-                if not all(is_sep_cell(c) for c in rows[1]):
-                    rows.insert(1, ["---"] * max_cols)
+            # wenn nichts verwertbares: als normale Zeilen ausgeben
+            if not rows or max_cols == 0:
+                out.extend(block)
+                continue
 
-            # Spaltenzahl padden
+            # 1-zeilige Tabelle -> Separator erzeugen
+            if len(rows) == 1:
+                rows.insert(1, ["---"] * max_cols)
+
+            # sonst: 2. Zeile sicher als Separator
+            elif not all(is_sep_cell(c) for c in rows[1]):
+                rows.insert(1, ["---"] * max_cols)
+
+            # Spalten paddden
             for r in rows:
                 if len(r) < max_cols:
                     r += [""] * (max_cols - len(r))
 
             # zurück in Markdown
+            # Schutz: rows hat jetzt mindestens 2 Zeilen
             out.append("| " + " | ".join(rows[0]) + " |")
             out.append("| " + " | ".join(rows[1]) + " |")
             for r in rows[2:]:
@@ -162,17 +176,6 @@ def format_markdown_tables(md: str) -> str:
         i += 1
 
     return "\n".join(out)
-
-def fix_inline_table_breaks(md: str) -> str:
-    """
-    Macht aus '... <br> | a | b |' eine neue Tabellenzeile:
-    - setzt vor '|' einen echten Zeilenumbruch
-    - reduziert überzählige Leerzeilen
-    """
-    md = re.sub(r"(?:<br>\s*)+\|", r"\n|", md)
-    md = re.sub(r"([^\n])\s*<br>\s*(\|)", r"\1\n\2", md)  # Titelzeilen sauber trennen
-    md = re.sub(r"\n{3,}", "\n\n", md)
-    return md
 
 # --- Ergebnisse extrahieren/rendern ------------------------------------------
 def extract_items_from_result(result: dict) -> list[dict]:
