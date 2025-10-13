@@ -6,26 +6,20 @@ from module.offline import is_offline
 
 
 def copyright_footer():
-    fall_fixed, scenario = get_fall_fix_state()
-    if fall_fixed and scenario:
-        fall_status_text = f"Fixierter Fall – {scenario}"
-        fall_status_class = "fixed"
-    elif fall_fixed:
-        fall_status_text = "Fixierter Fall"
+    fall_fixed, _ = get_fall_fix_state()
+    if fall_fixed:
+        fall_status_text = "Fallmodus: fixiert"
         fall_status_class = "fixed"
     else:
-        fall_status_text = "Zufälliger Fall"
+        fall_status_text = "Fallmodus: zufällig"
         fall_status_class = "random"
 
-    behavior_fixed, behavior_value = get_behavior_fix_state()
-    if behavior_fixed and behavior_value:
-        behavior_status_text = f"Fixiertes Verhalten – {behavior_value}"
-        behavior_status_class = "fixed"
-    elif behavior_fixed:
-        behavior_status_text = "Fixiertes Verhalten"
+    behavior_fixed, _ = get_behavior_fix_state()
+    if behavior_fixed:
+        behavior_status_text = "Verhalten: fixiert"
         behavior_status_class = "fixed"
     else:
-        behavior_status_text = "Zufälliges Verhalten"
+        behavior_status_text = "Verhalten: zufällig"
         behavior_status_class = "random"
 
     if is_offline():
