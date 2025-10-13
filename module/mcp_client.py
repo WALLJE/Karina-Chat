@@ -10,10 +10,12 @@ import os
 
 import requests
 
-try:  # pragma: no cover - optional dependency for Streamlit secrets
-    import streamlit as _st
-except Exception:  # pragma: no cover - streamlit not available during tests
-    _st = None
+import streamlit as st
+
+try:  # pragma: no cover - optional runtime exception class
+    from streamlit.errors import StreamlitSecretNotFoundError
+except Exception:  # pragma: no cover - fallback when the error class is unavailable
+    StreamlitSecretNotFoundError = Exception  # type: ignore[assignment]
 
 try:  # pragma: no cover - optional dependency
     from openai import (
@@ -40,13 +42,27 @@ class RateLimitError(MCPClientError):
     """Raised when the MCP server reports a rate limiting condition."""
 
 
+DEFAULT_AMBOSS_MCP_URL = "https://content-mcp.de.production.amboss.com/mcp"
+
+
+@dataclass
+class AmbossConfigurationStatus:
+    """Status information about the AMBOSS configuration."""
+
+    available: bool
+    message: Optional[str] = None
+    base_url: Optional[str] = None
+    source: Optional[str] = None
+    token_available: bool = False
+    details: Optional[str] = None
+
+
 def _get_secret(key: str) -> Optional[str]:
-    if _st is None:  # pragma: no cover - streamlit not available in tests
-        return None
     try:
-        return _st.secrets[key]
-    except Exception:
+        value = st.secrets[key]
+    except (KeyError, StreamlitSecretNotFoundError):
         return None
+    return str(value) if value is not None else None
 
 
 def _load_amboss_headers(api_key: Optional[str]) -> Dict[str, str]:
@@ -185,33 +201,35 @@ def _load_amboss_extra_headers() -> Dict[str, str]:
     return _load_extra_headers(os.getenv("AMBOSS_MCP_EXTRA_HEADERS"))
 
 
-def _determine_amboss_base_url() -> Optional[str]:
-    base_url = (
-        os.getenv("AMBOSS_MCP_URL")
-        or os.getenv("AMBOSS_MCP_ENDPOINT")
-        or _get_secret("Amboss_Url")
-    )
-    if base_url:
-        return str(base_url)
-    return os.getenv("MCP_SERVER_URL")
+def _determine_amboss_base_url() -> tuple[Optional[str], Optional[str]]:
+    """Return the configured AMBOSS base URL and its source label."""
+
+    candidates = [
+        ("env:AMBOSS_MCP_URL", os.getenv("AMBOSS_MCP_URL")),
+        ("env:AMBOSS_MCP_ENDPOINT", os.getenv("AMBOSS_MCP_ENDPOINT")),
+        ("secret:Amboss_Url", _get_secret("Amboss_Url")),
+        ("env:MCP_SERVER_URL", os.getenv("MCP_SERVER_URL")),
+    ]
+    for source, value in candidates:
+        if value:
+            return str(value), source
+    return DEFAULT_AMBOSS_MCP_URL, "default"
 
 
-def _determine_amboss_token() -> Optional[str]:
-    token = (
-        os.getenv("AMBOSS_MCP_TOKEN")
-        or os.getenv("AMBOSS_API_KEY")
-        or _get_secret("Amboss_Token")
-    )
-    if token:
-        return str(token)
-    return os.getenv("MCP_API_KEY")
+def _determine_amboss_token() -> str:
+    token = _get_secret("Amboss_Token")
+    if not token:
+        raise ConfigurationError(
+            "AMBOSS MCP Token fehlt. Hinterlege 'Amboss_Token' in den Streamlit Secrets."
+        )
+    return token
 
 
 def create_amboss_tool_client() -> AmbossToolClient:
-    base_url = _determine_amboss_base_url()
+    base_url, _ = _determine_amboss_base_url()
     if not base_url:
         raise ConfigurationError(
-            "AMBOSS MCP URL is not configured. Set AMBOSS_MCP_URL or Amboss_Url in the secrets."
+            "AMBOSS MCP URL ist nicht konfiguriert. Setze AMBOSS_MCP_URL oder Amboss_Url in den Secrets."
         )
     api_key = _determine_amboss_token()
     timeout = float(os.getenv("AMBOSS_MCP_TIMEOUT", os.getenv("MCP_TIMEOUT", "60")))
@@ -224,20 +242,60 @@ def create_amboss_tool_client() -> AmbossToolClient:
     )
 
 
+def get_amboss_configuration_status() -> AmbossConfigurationStatus:
+    """Return whether AMBOSS is configured and include diagnostic info."""
+
+    try:
+        _determine_amboss_token()
+    except ConfigurationError as exc:
+        return AmbossConfigurationStatus(False, str(exc), token_available=False)
+
+    base_url, source = _determine_amboss_base_url()
+    if not base_url:
+        return AmbossConfigurationStatus(
+            False,
+            "AMBOSS MCP URL ist nicht gesetzt. Hinterlege AMBOSS_MCP_URL oder Amboss_Url.",
+            base_url=None,
+            source=source,
+            token_available=True,
+        )
+
+    details = None
+    if source == "default":
+        details = (
+            "AMBOSS-Standardendpunkt wird verwendet: "
+            f"{DEFAULT_AMBOSS_MCP_URL}"
+        )
+    else:
+        details = f"AMBOSS-Endpunkt: {base_url} (Quelle: {source})"
+
+    return AmbossConfigurationStatus(
+        True,
+        None,
+        base_url=base_url,
+        source=source,
+        token_available=True,
+        details=details,
+    )
+
+
 def has_amboss_configuration() -> bool:
-    return bool(_determine_amboss_base_url() and _determine_amboss_token())
+    return get_amboss_configuration_status().available
 
 
 def fetch_amboss_scenario_knowledge(
     scenario_term: str,
     *,
-    tool_name: str = "search_article_sections",
     language: str = "de",
 ) -> Dict[str, Any]:
     if not scenario_term:
         raise ValueError("scenario_term must not be empty")
     client = create_amboss_tool_client()
-    return client.call_tool(tool_name, query=scenario_term, language=language)
+    return client.call_tool(
+        "search_article_sections",
+        query=scenario_term,
+        language=language,
+    )
 
 
 @dataclass
@@ -557,6 +615,7 @@ __all__ = [
     "AmbossToolClient",
     "ChatCompletionResponse",
     "ConfigurationError",
+    "AmbossConfigurationStatus",
     "fetch_amboss_scenario_knowledge",
     "create_amboss_tool_client",
     "MCPClient",
@@ -566,6 +625,7 @@ __all__ = [
     "create_mcp_client_from_env",
     "create_openai_client_from_env",
     "create_client_for_provider",
+    "get_amboss_configuration_status",
     "has_amboss_configuration",
     "has_mcp_configuration",
     "has_openai_configuration",

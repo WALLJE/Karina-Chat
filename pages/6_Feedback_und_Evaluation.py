@@ -8,6 +8,7 @@ from module.footer import copyright_footer
 from module.gpt_feedback import speichere_gpt_feedback_in_supabase
 from diagnostikmodul import aktualisiere_diagnostik_zusammenfassung
 from module.offline import display_offline_banner, is_offline
+from module.mcp_client import has_amboss_configuration
 from module.llm_state import (
     ConfigurationError,
     MCPClientError,
@@ -15,6 +16,7 @@ from module.llm_state import (
     get_provider_label,
 )
 from module.mcp_client import has_amboss_configuration
+
 
 show_sidebar()
 copyright_footer()
