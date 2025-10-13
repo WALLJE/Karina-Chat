@@ -58,6 +58,8 @@ class AmbossConfigurationStatus:
 
 
 def _get_secret(key: str) -> Optional[str]:
+    """Liest einen Secret-Wert und liefert ``None`` bei fehlendem Eintrag."""
+
     try:
         value = st.secrets[key]
     except (KeyError, StreamlitSecretNotFoundError):
@@ -217,12 +219,18 @@ def _determine_amboss_base_url() -> tuple[Optional[str], Optional[str]]:
 
 
 def _determine_amboss_token() -> str:
-    token = _get_secret("Amboss_Token")
-    if not token:
+    """Liest den AMBOSS-Token exakt wie in ``mcp_streamable_test.py``."""
+
+    try:
+        # Wir greifen bewusst direkt auf das Secret zu, damit sich der Workflow
+        # identisch zum stabilen Demotool verhält. Fehlende Secrets führen so zu
+        # einer klaren Konfigurationsmeldung statt zu einem versteckten Fallback.
+        token = st.secrets["Amboss_Token"]
+    except (KeyError, StreamlitSecretNotFoundError) as exc:
         raise ConfigurationError(
             "AMBOSS MCP Token fehlt. Hinterlege 'Amboss_Token' in den Streamlit Secrets."
-        )
-    return token
+        ) from exc
+    return str(token)
 
 
 def create_amboss_tool_client() -> AmbossToolClient:

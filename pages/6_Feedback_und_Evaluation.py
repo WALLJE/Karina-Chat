@@ -18,6 +18,7 @@ from module.llm_state import (
 from module.mcp_client import has_amboss_configuration
 
 
+
 show_sidebar()
 copyright_footer()
 display_offline_banner()
