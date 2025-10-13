@@ -1,6 +1,7 @@
 # """Hilfsfunktionen zur Verwaltung und Auswahl der Fallszenarien."""
 from __future__ import annotations
 
+import json
 import random
 from io import BytesIO
 from typing import Any, Iterable, Mapping
@@ -13,7 +14,14 @@ try:  # pragma: no cover - optional dependency safeguard
 except Exception:  # pragma: no cover - fallback when requests is unavailable
     requests = None  # type: ignore[assignment]
 
+from module.offline import is_offline
 from module.patient_language import get_patient_forms
+from module.mcp_client import (
+    ConfigurationError,
+    MCPClientError,
+    fetch_amboss_scenario_knowledge,
+    has_amboss_configuration,
+)
 
 
 DEFAULT_FALLDATEI = "fallbeispiele.xlsx"
@@ -172,6 +180,30 @@ def fallauswahl_prompt(df: pd.DataFrame, szenario: str | None = None) -> None:
     st.session_state.diagnose_szenario = fall.get("Szenario", "")
     st.session_state.diagnose_features = fall.get("Beschreibung", "")
     st.session_state.koerper_befund_tip = fall.get("Körperliche Untersuchung", "")
+
+    szenario_term = st.session_state.diagnose_szenario.strip()
+    st.session_state.pop("amboss_szenario_wissen_json", None)
+    if (
+        szenario_term
+        and not is_offline()
+        and has_amboss_configuration()
+    ):
+        try:
+            amboss_data = fetch_amboss_scenario_knowledge(szenario_term)
+        except ConfigurationError as exc:
+            st.warning(
+                "⚙️ Die AMBOSS-Konfiguration ist unvollständig und das Szenario-Wissen konnte nicht geladen werden."
+                f" Details: {exc}"
+            )
+        except MCPClientError as exc:
+            st.warning(
+                "⚠️ Die AMBOSS-Schnittstelle konnte keine Daten zum Szenario liefern."
+                f" Fehlerdetails: {exc}"
+            )
+        else:
+            st.session_state["amboss_szenario_wissen_json"] = json.dumps(
+                amboss_data, ensure_ascii=False
+            )
 
     alter_roh = fall.get("Alter")
     try:

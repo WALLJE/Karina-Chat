@@ -4,15 +4,7 @@ from module.admin_data import FeedbackExportError, build_feedback_export
 from module.sidebar import show_sidebar
 from module.footer import copyright_footer
 from module.offline import display_offline_banner, is_offline
-from module.llm_state import (
-    ConfigurationError,
-    MCPClientError,
-    ensure_llm_client,
-    get_current_provider,
-    get_provider_label,
-    get_provider_status,
-    set_llm_provider,
-)
+from module.mcp_client import has_amboss_configuration
 from module.fallverwaltung import (
     VERHALTENSOPTIONEN,
     fallauswahl_prompt,
@@ -75,63 +67,44 @@ if offline_toggle != current_offline:
         st.info("Online-Modus reaktiviert. Die Anwendung wird neu gestartet.")
         _restart_application_after_offline()
 
-st.subheader("LLM-Client")
-provider_status = get_provider_status()
-provider_order = list(provider_status.keys())
-current_provider = get_current_provider()
+st.subheader("Feedback-Modus")
+amboss_available = has_amboss_configuration()
+current_setting = st.session_state.get("use_amboss_feedback")
+if current_setting is None:
+    current_setting = amboss_available
 
-def _format_provider_option(key: str) -> str:
-    info = provider_status[key]
-    suffix = "" if info["available"] else " – nicht konfiguriert"
-    return f"{info['label']}{suffix}"
-
-selected_provider = st.selectbox(
-    "Welcher Dienst soll für KI-Antworten verwendet werden?",
-    provider_order,
-    index=provider_order.index(current_provider),
-    format_func=_format_provider_option,
-    disabled=is_offline(),
+amboss_toggle = st.toggle(
+    "AMBOSS-Wissen in das Abschlussfeedback einbeziehen",
+    value=current_setting,
+    key="admin_amboss_feedback_toggle",
+    disabled=is_offline() or not amboss_available,
     help=(
-        "Wähle hier zwischen dem medizinischen MCP-Server und dem regulären ChatGPT-Client."
-        " Die Auswahl gilt für alle Module."
+        "Aktiviere diese Option, um neben dem reinen ChatGPT-Feedback zusätzlich"
+        " AMBOSS-Wissensdaten in die Bewertung einfließen zu lassen."
     ),
 )
 
-if is_offline():
-    st.info("Der Offline-Modus ist aktiv. Die Auswahl wird nach Reaktivierung des Online-Modus angewendet.")
-elif selected_provider != current_provider:
-    previous_provider = current_provider
-    try:
-        set_llm_provider(selected_provider, reload=False)
-        ensure_llm_client(force_reload=True)
-        st.success(
-            f"✅ {get_provider_label(selected_provider)} ist jetzt als LLM-Client aktiv."
-        )
-    except ConfigurationError as exc:
-        set_llm_provider(previous_provider, reload=False)
-        try:
-            ensure_llm_client(force_reload=True)
-        except (ConfigurationError, MCPClientError):
-            pass
-        st.error(
-            "⚙️ Die Konfiguration für {provider} ist unvollständig."
-            " Bitte ergänze die Umgebungsvariablen und versuche es erneut.\n\n"
-            f"Details: {exc}".format(provider=get_provider_label(selected_provider))
-        )
-    except MCPClientError as exc:
-        set_llm_provider(previous_provider, reload=False)
-        try:
-            ensure_llm_client(force_reload=True)
-        except (ConfigurationError, MCPClientError):
-            pass
-        st.error(
-            "❌ {provider} konnte nicht initialisiert werden."
-            " Bitte prüfe die Verbindung oder Zugangsdaten.\n\n"
-            f"Fehlerdetails: {exc}".format(provider=get_provider_label(selected_provider))
-        )
+st.session_state["use_amboss_feedback"] = amboss_toggle
+
+if not amboss_available:
+    st.warning(
+        "AMBOSS ist nicht konfiguriert. Hinterlege Zugangsdaten, um das kombinierte"
+        " Feedback zu nutzen."
+    )
+elif is_offline():
+    st.info(
+        "Offline-Modus aktiv: Die Einstellung wird wirksam, sobald der Online-Modus"
+        " reaktiviert ist."
+    )
+elif amboss_toggle:
+    st.success("✅ Feedback-Modus: ChatGPT + AmbossMCP")
+else:
+    st.info("ℹ️ Feedback-Modus: Nur ChatGPT")
 
 st.caption(
-    "Aktiver Client: {label}.".format(label=get_provider_label())
+    "Aktuelle Einstellung: {label}.".format(
+        label="ChatGPT + AmbossMCP" if st.session_state.get("use_amboss_feedback") else "Nur ChatGPT"
+    )
 )
 
 st.subheader("Adminmodus")
@@ -460,3 +433,4 @@ else:
 
 if st.session_state.get("feedback_export_error"):
     st.error(st.session_state["feedback_export_error"])
+
