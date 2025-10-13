@@ -23,7 +23,7 @@ TOOLS = {
 }
 
 # -----------------------------------------------------------
-# Hilfsfunktionen
+# Hilfsfunktionen (Reihenfolge wichtig!)
 # -----------------------------------------------------------
 def fix_mojibake(s: str) -> str:
     """Repariert typische UTF-8/Latin-1-Mojibake."""
@@ -39,6 +39,7 @@ def fix_mojibake(s: str) -> str:
             s = s.replace(a, b)
         return s
 
+
 def clean_placeholders(text: str, url: Optional[str] = None) -> str:
     """Bereinigt AMBOSS-Platzhalter und setzt †-Links."""
     if not isinstance(text, str):
@@ -52,11 +53,13 @@ def clean_placeholders(text: str, url: Optional[str] = None) -> str:
     t = re.sub(r"[ \t]{2,}", " ", t)
     return t
 
+
 def try_parse_json(s: str) -> Optional[dict]:
     try:
         return json.loads(s)
     except Exception:
         return None
+
 
 def try_parse_embedded_json_text(content_item_text: str) -> Optional[dict]:
     """Parst eingebetteten JSON-String in content[*].text (falls vorhanden)."""
@@ -64,11 +67,13 @@ def try_parse_embedded_json_text(content_item_text: str) -> Optional[dict]:
         return None
     return try_parse_json(fix_mojibake(content_item_text))
 
+
 def parse_mcp_response(resp: requests.Response) -> dict:
     """Liest JSON direkt oder extrahiert es aus SSE-Frames."""
     ctype = resp.headers.get("Content-Type", "")
     if "application/json" in ctype:
         return resp.json()
+    # SSE: data:-Zeilen zusammensetzen
     payload = "".join(
         line.strip()[len("data:"):].strip()
         for line in resp.text.splitlines()
@@ -78,6 +83,7 @@ def parse_mcp_response(resp: requests.Response) -> dict:
     if parsed is None:
         raise ValueError("Konnte SSE-JSON nicht extrahieren.")
     return parsed
+
 
 def build_payload(tool_name: str, query: str) -> dict:
     """Baut JSON-RPC Payload; mappt Freitext auf passende Argumente je Tool."""
@@ -97,14 +103,32 @@ def build_payload(tool_name: str, query: str) -> dict:
         "params": {"name": tool_name, "arguments": args},
     }
 
-# --- Tabellen-Formatierer -----------------------------------------------------
+
+# ---------- Tabellen-Utilities (VOR erster Verwendung definieren!) -----------
+def fix_inline_table_breaks(md: str) -> str:
+    """
+    Macht aus '... <br> | a | b |' eine neue Tabellenzeile:
+    - setzt vor '|' einen echten Zeilenumbruch
+    - trennt Titelzeile von Table-Line
+    - reduziert überzählige Leerzeilen
+    """
+    # 1) Mehrere <br> direkt vor einer Pipe -> echte neue Tabellenzeile
+    md = re.sub(r"(?:<br>\s*)+\|", r"\n|", md)
+    # 2) Textzeile + <br> + Tabellenzeile -> trennen (Tabelle auf neuer Zeile beginnen)
+    md = re.sub(r"([^\n])\s*<br>\s*(\|)", r"\1\n\2", md)
+    # 3) überflüssige Leerzeilen glätten
+    md = re.sub(r"\n{3,}", "\n\n", md)
+    return md
+
+
 def format_markdown_tables(md: str) -> str:
     """
-    Findet Markdown-Tabellenblöcke (Zeilen, die mit '|' beginnen) und säubert sie:
+    Säubert Markdown-Tabellenblöcke:
     - {NewLine} nur IN ZELLEN -> <br>
     - {Ref...} in Zellen entfernen
-    - Spaltenanzahl stabilisieren (Padding leerer Zellen)
-    - Separator-Zeile reparieren
+    - Spaltenanzahl stabilisieren
+    - Separator-Zeile reparieren / bei 1-zeilig einfügen
+    - robust gegen 0/1-Zeilen-Blöcke (kein IndexError)
     """
     lines = md.splitlines()
     out, i, n = [], 0, len(lines)
@@ -133,25 +157,36 @@ def format_markdown_tables(md: str) -> str:
                 block.append(lines[i])
                 i += 1
 
+            # parse block
             rows = []
             max_cols = 0
             for row in block:
                 parts = [p for p in row.strip().strip('|').split('|')]
                 parts = [clean_cell(p) for p in parts]
+                # komplett leere Zeilen ignorieren
+                if len(parts) == 1 and parts[0] == "":
+                    continue
                 max_cols = max(max_cols, len(parts))
                 rows.append(parts)
 
-            # Separator sicherstellen/angleichen
-            if len(rows) >= 2:
-                if not all(is_sep_cell(c) for c in rows[1]):
-                    rows.insert(1, ["---"] * max_cols)
+            # nichts Verwertbares? → Originalblock übernehmen
+            if not rows or max_cols == 0:
+                out.extend(block)
+                continue
 
-            # Spaltenzahl padden
+            # 1-zeilige Tabelle -> Separator erzeugen
+            if len(rows) == 1:
+                rows.insert(1, ["---"] * max_cols)
+            # sonst: 2. Zeile sicher als Separator
+            elif not all(is_sep_cell(c) for c in rows[1]):
+                rows.insert(1, ["---"] * max_cols)
+
+            # Spalten paddden
             for r in rows:
                 if len(r) < max_cols:
                     r += [""] * (max_cols - len(r))
 
-            # zurück in Markdown
+            # zurück in Markdown (jetzt sicher >= 2 Zeilen)
             out.append("| " + " | ".join(rows[0]) + " |")
             out.append("| " + " | ".join(rows[1]) + " |")
             for r in rows[2:]:
@@ -163,18 +198,8 @@ def format_markdown_tables(md: str) -> str:
 
     return "\n".join(out)
 
-def fix_inline_table_breaks(md: str) -> str:
-    """
-    Macht aus '... <br> | a | b |' eine neue Tabellenzeile:
-    - setzt vor '|' einen echten Zeilenumbruch
-    - reduziert überzählige Leerzeilen
-    """
-    md = re.sub(r"(?:<br>\s*)+\|", r"\n|", md)
-    md = re.sub(r"([^\n])\s*<br>\s*(\|)", r"\1\n\2", md)  # Titelzeilen sauber trennen
-    md = re.sub(r"\n{3,}", "\n\n", md)
-    return md
 
-# --- Ergebnisse extrahieren/rendern ------------------------------------------
+# ---------- Ergebnisse extrahieren & rendern ----------------------------------
 def extract_items_from_result(result: dict) -> list[dict]:
     """Gibt Ergebnis-Items zurück, bevorzugt structuredContent.results."""
     if not isinstance(result, dict):
@@ -189,17 +214,24 @@ def extract_items_from_result(result: dict) -> list[dict]:
         return res
     return []
 
+
 def render_items(items: Iterable[dict]) -> list[str]:
-    """Konvertiert Ergebnis-Items in Markdown-Blöcke inkl. Tabellen-Fix."""
+    """Konvertiert Ergebnis-Items in Markdown-Blöcke inkl. Tabellen-Fix (fail-soft)."""
     blocks = []
     for it in items:
         title = it.get("title") or it.get("article_title") or it.get("name") or "–"
         snippet = it.get("snippet") or it.get("chunk") or ""
         url = it.get("url")
         eid = it.get("article_id") or it.get("eid") or it.get("id")
+
         pretty = clean_placeholders(snippet, url)
-        pretty = fix_inline_table_breaks(pretty)
-        pretty = format_markdown_tables(pretty)
+        try:
+            pretty = fix_inline_table_breaks(pretty)
+            pretty = format_markdown_tables(pretty)
+        except Exception:
+            # Fail-soft: notfalls unformatiert weiter
+            pass
+
         block = f"**{fix_mojibake(title)}**\n\n{pretty}"
         if url:
             block += f"\n\n🔗 {url}"
@@ -207,6 +239,7 @@ def render_items(items: Iterable[dict]) -> list[str]:
             block += f"\n\n_EID/ID: {eid}_"
         blocks.append(block)
     return blocks
+
 
 def build_pretty_markdown(data: dict) -> str:
     """Erzeugt die aufbereitete Markdown-Ausgabe (mit structuredContent & Tabellen-Fix)."""
@@ -262,6 +295,7 @@ def build_pretty_markdown(data: dict) -> str:
 
     # 3) Sonst – komplettes result zeigen
     return "Unbekannter 'result'-Inhalt:\n\n```json\n" + json.dumps(result, ensure_ascii=False, indent=2) + "\n```"
+
 
 # -----------------------------------------------------------
 # UI

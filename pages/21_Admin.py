@@ -4,7 +4,7 @@ from module.admin_data import FeedbackExportError, build_feedback_export
 from module.sidebar import show_sidebar
 from module.footer import copyright_footer
 from module.offline import display_offline_banner, is_offline
-from module.mcp_client import has_amboss_configuration
+from module.mcp_client import get_amboss_configuration_status
 from module.fallverwaltung import (
     VERHALTENSOPTIONEN,
     fallauswahl_prompt,
@@ -68,7 +68,8 @@ if offline_toggle != current_offline:
         _restart_application_after_offline()
 
 st.subheader("Feedback-Modus")
-amboss_available = has_amboss_configuration()
+amboss_status = get_amboss_configuration_status()
+amboss_available = amboss_status.available
 current_setting = st.session_state.get("use_amboss_feedback")
 if current_setting is None:
     current_setting = amboss_available
@@ -86,11 +87,15 @@ amboss_toggle = st.toggle(
 
 st.session_state["use_amboss_feedback"] = amboss_toggle
 
+if amboss_status.details:
+    st.caption(amboss_status.details)
+
 if not amboss_available:
-    st.warning(
-        "AMBOSS ist nicht konfiguriert. Hinterlege Zugangsdaten, um das kombinierte"
-        " Feedback zu nutzen."
+    warning = (
+        amboss_status.message
+        or "AMBOSS ist nicht konfiguriert. Hinterlege Zugangsdaten, um das kombinierte Feedback zu nutzen."
     )
+    st.warning(warning)
 elif is_offline():
     st.info(
         "Offline-Modus aktiv: Die Einstellung wird wirksam, sobald der Online-Modus"

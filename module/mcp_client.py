@@ -37,6 +37,21 @@ class RateLimitError(MCPClientError):
     """Raised when the MCP server reports a rate limiting condition."""
 
 
+DEFAULT_AMBOSS_MCP_URL = "https://content-mcp.de.production.amboss.com/mcp"
+
+
+@dataclass
+class AmbossConfigurationStatus:
+    """Status information about the AMBOSS configuration."""
+
+    available: bool
+    message: Optional[str] = None
+    base_url: Optional[str] = None
+    source: Optional[str] = None
+    token_available: bool = False
+    details: Optional[str] = None
+
+
 def _get_secret(key: str) -> Optional[str]:
     try:
         value = st.secrets[key]
@@ -181,16 +196,19 @@ def _load_amboss_extra_headers() -> Dict[str, str]:
     return _load_extra_headers(os.getenv("AMBOSS_MCP_EXTRA_HEADERS"))
 
 
-def _determine_amboss_base_url() -> Optional[str]:
-    base_url = (
-        os.getenv("AMBOSS_MCP_URL")
-        or os.getenv("AMBOSS_MCP_ENDPOINT")
-        or _get_secret("Amboss_Url")
-    )
-    if base_url:
-        return str(base_url)
-    return os.getenv("MCP_SERVER_URL")
+def _determine_amboss_base_url() -> tuple[Optional[str], Optional[str]]:
+    """Return the configured AMBOSS base URL and its source label."""
 
+    candidates = [
+        ("env:AMBOSS_MCP_URL", os.getenv("AMBOSS_MCP_URL")),
+        ("env:AMBOSS_MCP_ENDPOINT", os.getenv("AMBOSS_MCP_ENDPOINT")),
+        ("secret:Amboss_Url", _get_secret("Amboss_Url")),
+        ("env:MCP_SERVER_URL", os.getenv("MCP_SERVER_URL")),
+    ]
+    for source, value in candidates:
+        if value:
+            return str(value), source
+    return DEFAULT_AMBOSS_MCP_URL, "default"
 
 def _determine_amboss_token() -> str:
     token = _get_secret("Amboss_Token")
@@ -202,10 +220,10 @@ def _determine_amboss_token() -> str:
 
 
 def create_amboss_tool_client() -> AmbossToolClient:
-    base_url = _determine_amboss_base_url()
+    base_url, _ = _determine_amboss_base_url()
     if not base_url:
         raise ConfigurationError(
-            "AMBOSS MCP URL is not configured. Set AMBOSS_MCP_URL or Amboss_Url in the secrets."
+            "AMBOSS MCP URL ist nicht konfiguriert. Setze AMBOSS_MCP_URL oder Amboss_Url in den Secrets."
         )
     api_key = _determine_amboss_token()
     timeout = float(os.getenv("AMBOSS_MCP_TIMEOUT", os.getenv("MCP_TIMEOUT", "60")))
@@ -215,6 +233,43 @@ def create_amboss_tool_client() -> AmbossToolClient:
         api_key=api_key,
         timeout=timeout,
         extra_headers=extra_headers,
+    )
+
+
+def get_amboss_configuration_status() -> AmbossConfigurationStatus:
+    """Return whether AMBOSS is configured and include diagnostic info."""
+
+    try:
+        _determine_amboss_token()
+    except ConfigurationError as exc:
+        return AmbossConfigurationStatus(False, str(exc), token_available=False)
+
+    base_url, source = _determine_amboss_base_url()
+    if not base_url:
+        return AmbossConfigurationStatus(
+            False,
+            "AMBOSS MCP URL ist nicht gesetzt. Hinterlege AMBOSS_MCP_URL oder Amboss_Url.",
+            base_url=None,
+            source=source,
+            token_available=True,
+        )
+
+    details = None
+    if source == "default":
+        details = (
+            "AMBOSS-Standardendpunkt wird verwendet: "
+            f"{DEFAULT_AMBOSS_MCP_URL}"
+        )
+    else:
+        details = f"AMBOSS-Endpunkt: {base_url} (Quelle: {source})"
+
+    return AmbossConfigurationStatus(
+        True,
+        None,
+        base_url=base_url,
+        source=source,
+        token_available=True,
+        details=details,
     )
 
 
@@ -558,6 +613,7 @@ __all__ = [
     "AmbossToolClient",
     "ChatCompletionResponse",
     "ConfigurationError",
+    "AmbossConfigurationStatus",
     "fetch_amboss_scenario_knowledge",
     "create_amboss_tool_client",
     "MCPClient",
@@ -567,6 +623,7 @@ __all__ = [
     "create_mcp_client_from_env",
     "create_openai_client_from_env",
     "create_client_for_provider",
+    "get_amboss_configuration_status",
     "has_amboss_configuration",
     "has_mcp_configuration",
     "has_openai_configuration",
