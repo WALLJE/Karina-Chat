@@ -12,11 +12,6 @@ import requests
 
 import streamlit as st
 
-try:  # pragma: no cover - optional runtime exception class
-    from streamlit.errors import StreamlitSecretNotFoundError
-except Exception:  # pragma: no cover - fallback when the error class is unavailable
-    StreamlitSecretNotFoundError = Exception  # type: ignore[assignment]
-
 try:  # pragma: no cover - optional dependency
     from openai import (
         OpenAI,
@@ -58,11 +53,9 @@ class AmbossConfigurationStatus:
 
 
 def _get_secret(key: str) -> Optional[str]:
-    """Liest einen Secret-Wert und liefert ``None`` bei fehlendem Eintrag."""
-
     try:
         value = st.secrets[key]
-    except (KeyError, StreamlitSecretNotFoundError):
+    except KeyError:
         return None
     return str(value) if value is not None else None
 
@@ -217,20 +210,13 @@ def _determine_amboss_base_url() -> tuple[Optional[str], Optional[str]]:
             return str(value), source
     return DEFAULT_AMBOSS_MCP_URL, "default"
 
-
 def _determine_amboss_token() -> str:
-    """Liest den AMBOSS-Token exakt wie in ``mcp_streamable_test.py``."""
-
-    try:
-        # Wir greifen bewusst direkt auf das Secret zu, damit sich der Workflow
-        # identisch zum stabilen Demotool verhält. Fehlende Secrets führen so zu
-        # einer klaren Konfigurationsmeldung statt zu einem versteckten Fallback.
-        token = st.secrets["Amboss_Token"]
-    except (KeyError, StreamlitSecretNotFoundError) as exc:
+    token = _get_secret("Amboss_Token")
+    if not token:
         raise ConfigurationError(
             "AMBOSS MCP Token fehlt. Hinterlege 'Amboss_Token' in den Streamlit Secrets."
-        ) from exc
-    return str(token)
+        )
+    return token
 
 
 def create_amboss_tool_client() -> AmbossToolClient:
@@ -288,7 +274,11 @@ def get_amboss_configuration_status() -> AmbossConfigurationStatus:
 
 
 def has_amboss_configuration() -> bool:
-    return get_amboss_configuration_status().available
+    try:
+        _determine_amboss_token()
+    except ConfigurationError:
+        return False
+    return bool(_determine_amboss_base_url())
 
 
 def fetch_amboss_scenario_knowledge(
