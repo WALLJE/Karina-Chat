@@ -2,21 +2,17 @@ import streamlit as st
 import requests
 import json
 import re
-from typing import Optional
+from typing import Optional, Iterable
 
 # -----------------------------------------------------------
 # Grundkonfiguration
 # -----------------------------------------------------------
-st.set_page_config(page_title="AMBOSS MCP Demo", page_icon="💊")
-st.title("💊 AMBOSS MCP – JSON-RPC Beispiel mit Formatierung + Kopier-Ansicht")
+st.set_page_config(page_title="AMBOSS MCP Demo (kompakt)", page_icon="💊")
+st.title("💊 AMBOSS MCP – Kompakte Version")
 
-# Token aus Streamlit-Secrets laden
 AMBOSS_KEY = st.secrets["Amboss_Token"]
-
-# MCP-Endpunkt (Streamable HTTP)
 AMBOSS_URL = "https://content-mcp.de.production.amboss.com/mcp"
 
-# Liste der verfügbaren Tools
 TOOLS = {
     "Artikelabschnitte suchen": "search_article_sections",
     "Arzneistoff suchen": "search_pharma_substances",
@@ -30,488 +26,190 @@ TOOLS = {
 # Hilfsfunktionen
 # -----------------------------------------------------------
 def fix_mojibake(s: str) -> str:
-    """Repariert typische UTF-8/Latin-1-Mojibake (Ã¼, Ã¤, â€“, Â, …)."""
+    """Repariert typische UTF-8/Latin-1-Mojibake."""
     if not isinstance(s, str):
         return s
     try:
         return s.encode("latin1").decode("utf-8")
     except Exception:
         for a, b in (
-            ("â€“", "–"),
-            ("â€”", "—"),
-            ("â€ž", "„"),
-            ("â€œ", "“"),
-            ("â€˜", "‚"),
-            ("â€™", "’"),
-            ("â€¡", "‡"),
-            ("â€¢", "•"),
-            ("Â", ""),
+            ("â€“", "–"), ("â€”", "—"), ("â€ž", "„"), ("â€œ", "“"),
+            ("â€˜", "‚"), ("â€™", "’"), ("â€¡", "‡"), ("â€¢", "•"), ("Â", "")
         ):
             s = s.replace(a, b)
         return s
 
 def clean_placeholders(text: str, url: Optional[str] = None) -> str:
-    """
-    Wandelt AMBOSS-Platzhalter in nutzbares Markdown/HTML um:
-    - {NewLine} → <br>
-    - {Sub}/{/Sub} → <sub>…</sub>
-    - {Sup}/{/Sup} → <sup>…</sup>
-    - {RefNote:ID} → [†](url)
-    - übrige {Ref…} entfernen
-    """
+    """Bereinigt AMBOSS-spezifische Platzhalter und setzt †-Links."""
     if not isinstance(text, str):
         return text
-
     t = fix_mojibake(text)
     t = t.replace("{Sub}", "<sub>").replace("{/Sub}", "</sub>")
     t = t.replace("{Sup}", "<sup>").replace("{/Sup}", "</sup>")
     t = t.replace("{NewLine}", "<br>")
-
-    # {RefNote:…} → †-Link
-    if url:
-        t = re.sub(r"\{RefNote:[^}]+\}", f"[†]({url})", t)
-    else:
-        t = re.sub(r"\{RefNote:[^}]+\}", "†", t)
-
-    # übrige {Ref…} entfernen
+    t = re.sub(r"\{RefNote:[^}]+\}", f"[†]({url})" if url else "†", t)
     t = re.sub(r"\{Ref[^\}]+\}", "", t)
-
-    # überflüssige Leerzeichen glätten
     t = re.sub(r"[ \t]{2,}", " ", t)
     return t
 
-def try_parse_embedded_json_text(content_item_text: str):
-    """Parst eingebetteten JSON-Text, falls vorhanden."""
-    if not isinstance(content_item_text, str):
-        return None
-    candidate = fix_mojibake(content_item_text)
+def try_parse_json(s: str) -> Optional[dict]:
     try:
-        return json.loads(candidate)
+        return json.loads(s)
     except Exception:
         return None
 
-def truncate(s: str, n: int = 800) -> str:
-    s = s or ""
-    return (s[:n] + " …") if len(s) > n else s
+def try_parse_embedded_json_text(content_item_text: str) -> Optional[dict]:
+    """Parst eingebetteten JSON-String in content[*].text (falls vorhanden)."""
+    if not isinstance(content_item_text, str):
+        return None
+    return try_parse_json(fix_mojibake(content_item_text))
 
-# -----------------------------------------------------------
-# Benutzeroberfläche
-# -----------------------------------------------------------
-tool_label = st.selectbox(
-    "Welches AMBOSS-Tool möchtest du verwenden?",
-    list(TOOLS.keys())
-)
-tool_name = TOOLS[tool_label]
+def parse_mcp_response(resp: requests.Response) -> dict:
+    """Liest JSON direkt oder extrahiert es aus SSE-Frames."""
+    ctype = resp.headers.get("Content-Type", "")
+    if "application/json" in ctype:
+        return resp.json()
+    # SSE: sammle data:-Zeilen
+    payload = "".join(
+        line.strip()[len("data:"):].strip()
+        for line in resp.text.splitlines()
+        if line.strip().startswith("data:")
+    )
+    parsed = try_parse_json(payload)
+    if parsed is None:
+        raise ValueError("Konnte SSE-JSON nicht extrahieren.")
+    return parsed
 
-query = st.text_input(
-    "🔍 Freitext (z. B. 'Mesalazin', 'Ileitis terminalis' oder eine EID/ID)"
-)
-
-# -----------------------------------------------------------
-# Anfrage senden
-# -----------------------------------------------------------
-if st.button("📤 Anfrage an AMBOSS senden"):
-    # Argumente je nach Tooltyp
-    arguments = {"language": "de"}
-
+def build_payload(tool_name: str, query: str) -> dict:
+    """Baut JSON-RPC Payload; mappt Freitext auf passende Argumente je Tool."""
+    args = {"language": "de"}
     if tool_name in ("search_article_sections", "search_pharma_substances", "search_media"):
-        arguments["query"] = query
+        args["query"] = query
     elif tool_name == "get_definition":
-        arguments["term"] = query
+        args["term"] = query
     elif tool_name == "get_drug_monograph":
-        arguments["substance_eid"] = query
+        args["substance_eid"] = query          # in Praxis via search_* ermitteln
     elif tool_name == "get_guidelines":
-        arguments["guideline_ids"] = [query]
-
-    # JSON-RPC-Payload
-    payload = {
+        args["guideline_ids"] = [query]        # erwartet Liste
+    return {
         "jsonrpc": "2.0",
         "id": "1",
         "method": "tools/call",
-        "params": {"name": tool_name, "arguments": arguments},
+        "params": {"name": tool_name, "arguments": args},
     }
 
+def render_items(items: Iterable[dict]) -> list[str]:
+    """Konvertiert Ergebnis-Items (egal ob aus results oder embedded) in Markdown-Blöcke."""
+    blocks = []
+    for it in items:
+        title = it.get("title") or it.get("article_title") or it.get("name") or "–"
+        snippet = it.get("snippet") or it.get("chunk") or ""
+        url = it.get("url")
+        eid = it.get("article_id") or it.get("eid") or it.get("id")
+        pretty = clean_placeholders(snippet, url)
+        block = f"**{fix_mojibake(title)}**\n\n{pretty}"
+        if url:
+            block += f"\n\n🔗 {url}"
+        if eid:
+            block += f"\n\n_EID/ID: {eid}_"
+        blocks.append(block)
+    return blocks
+
+def build_pretty_markdown(data: dict) -> str:
+    """Erzeugt die aufbereitete Markdown-Ausgabe (kompakt, ohne Dopplungen)."""
+    if "error" in data:
+        err = data["error"]
+        msg = err.get("message", "Unbekannter Fehler")
+        code = err.get("code")
+        return f"**Fehler:** {msg}" + (f" (Code {code})" if code is not None else "")
+
+    result = data.get("result", {})
+    md_blocks: list[str] = []
+
+    # 1) Direkte results-Liste
+    if isinstance(result, dict) and "results" in result:
+        items = result.get("results") or []
+        if items:
+            md_blocks.append("### Ergebnisse")
+            md_blocks.extend(render_items(items))
+        return ("\n\n---\n\n").join(md_blocks) if md_blocks else "_Keine Ergebnisse_"
+
+    # 2) content: Segmente oder eingebettetes JSON
+    if isinstance(result, dict) and "content" in result:
+        content = result["content"]
+        # a) Einfacher Text
+        if isinstance(content, str):
+            return "### Inhalt (Text)\n\n" + clean_placeholders(content)
+        # b) Liste mit Textsegmenten / eingebettetem JSON
+        if isinstance(content, list):
+            embedded_blocks, parsed_any = [], False
+            for seg in content:
+                if isinstance(seg, dict) and seg.get("type") == "text" and isinstance(seg.get("text"), str):
+                    embedded = try_parse_embedded_json_text(seg["text"])
+                    if embedded:
+                        parsed_any = True
+                        items = embedded.get("results") or embedded.get("data") or []
+                        if isinstance(items, list) and items:
+                            embedded_blocks.extend(render_items(items))
+                        else:
+                            embedded_blocks.append("```json\n" + json.dumps(embedded, ensure_ascii=False, indent=2) + "\n```")
+            if parsed_any and embedded_blocks:
+                return "### Extrahierte Ergebnisse (eingebettetes JSON)\n\n" + ("\n\n---\n\n").join(embedded_blocks)
+            # Fallback: rohe Segmente bereinigt
+            segment_blocks = []
+            for seg in content:
+                if isinstance(seg, dict) and seg.get("type") == "text":
+                    segment_blocks.append(clean_placeholders(seg.get("text") or ""))
+                else:
+                    segment_blocks.append("```json\n" + json.dumps(seg, ensure_ascii=False, indent=2) + "\n```")
+            return "### Inhalt (Segmente)\n\n" + ("\n\n---\n\n").join(segment_blocks)
+
+        # Unbekanntes content-Format
+        return "Unbekanntes 'content'-Format:\n\n```json\n" + json.dumps(content, ensure_ascii=False, indent=2) + "\n```"
+
+    # 3) Sonst – komplettes result zeigen
+    return "Unbekannter 'result'-Inhalt:\n\n```json\n" + json.dumps(result, ensure_ascii=False, indent=2) + "\n```"
+
+# -----------------------------------------------------------
+# UI
+# -----------------------------------------------------------
+tool_label = st.selectbox("Welches AMBOSS-Tool möchtest du verwenden?", list(TOOLS.keys()))
+tool_name = TOOLS[tool_label]
+query = st.text_input("🔍 Freitext (z. B. 'Mesalazin', 'Ileitis terminalis' oder eine EID/ID)")
+
+if st.button("📤 Anfrage an AMBOSS senden"):
+    payload = build_payload(tool_name, query)
     headers = {
         "Authorization": f"Bearer {AMBOSS_KEY}",
         "Content-Type": "application/json",
         "Accept": "application/json, text/event-stream",
     }
-
     st.write("⏳ Anfrage wird gesendet …")
+    resp = requests.post(AMBOSS_URL, headers=headers, data=json.dumps(payload), timeout=30)
 
-    response = requests.post(
-        AMBOSS_URL,
-        headers=headers,
-        data=json.dumps(payload),
-        timeout=30
-    )
-
-    # -------------------------------------------------------
-    # Antwort parsen: JSON oder SSE
-    # -------------------------------------------------------
-    content_type = response.headers.get("Content-Type", "")
-    body = response.text
-
+    # Rohparsing (JSON oder SSE)
     try:
-        if "application/json" in content_type:
-            data = response.json()
-        else:
-            # Server-Sent-Events: Zeilen nach "data:" extrahieren
-            json_chunks = []
-            for line in body.splitlines():
-                line = line.strip()
-                if line.startswith("data:"):
-                    json_chunks.append(line[len("data:"):].strip())
-            data = json.loads("".join(json_chunks))
+        data = parse_mcp_response(resp)
     except Exception as e:
         st.error(f"Fehler beim Parsen der Antwort: {e}")
-        st.text(body)
+        st.text(resp.text)
         st.stop()
 
-    # -------------------------------------------------------
-    # Rohdaten: copy-friendly + Download
-    # -------------------------------------------------------
+    # Rohdaten – copy-friendly + Download
     st.success("✅ Antwort von AMBOSS erhalten (Rohdaten):")
     raw_str = json.dumps(data, ensure_ascii=False, indent=2)
     st.code(raw_str, language="json")
-    st.download_button(
-        "⬇️ Rohantwort als JSON speichern",
-        data=raw_str.encode("utf-8"),
-        file_name="amboss_mcp_raw.json",
-        mime="application/json"
-    )
+    st.download_button("⬇️ Rohantwort als JSON speichern", data=raw_str.encode("utf-8"),
+                       file_name="amboss_mcp_raw.json", mime="application/json")
 
-    # -------------------------------------------------------
-    # Aufbereitete Darstellung → Markdown sammeln
-    # -------------------------------------------------------
-    pretty_blocks = []
-
-    if "error" in data:
-        msg = data["error"].get("message", "Unbekannter Fehler")
-        code = data["error"].get("code")
-        block = f"**Fehler:** {msg}" + (f" (Code {code})" if code is not None else "")
-        pretty_blocks.append(block)
-    else:
-        result = data.get("result", {})
-
-        # 1) results-Liste (Suchergebnisse u. ä.)
-        if isinstance(result, dict) and "results" in result:
-            items = result["results"] or []
-            if items:
-                pretty_blocks.append("### Ergebnisse")
-            for item in items:
-                title = item.get("title") or item.get("article_title") or item.get("name") or "–"
-                snippet = item.get("snippet") or item.get("chunk") or ""
-                url = item.get("url")
-                article_id = item.get("article_id") or item.get("eid") or item.get("id")
-                pretty = clean_placeholders(snippet, url)
-                block = f"**{fix_mojibake(title)}**\n\n{pretty}"
-                if url:
-                    block += f"\n\n🔗 {url}"
-                if article_id:
-                    block += f"\n\n_EID/ID: {article_id}_"
-                pretty_blocks.append(block)
-
-        # 2) content-Liste (Segmente / eingebettetes JSON)
-        elif isinstance(result, dict) and "content" in result:
-            content = result["content"]
-            if isinstance(content, str):
-                pretty_blocks.append("### Inhalt (Text)")
-                pretty_blocks.append(clean_placeholders(content))
-            elif isinstance(content, list):
-                parsed_any = False
-                embedded_blocks = []
-                for seg in content:
-                    if isinstance(seg, dict) and seg.get("type") == "text" and isinstance(seg.get("text"), str):
-                        embedded = try_parse_embedded_json_text(seg["text"])
-                        if embedded:
-                            parsed_any = True
-                            results = embedded.get("results") or embedded.get("data") or []
-                            if isinstance(results, list) and results:
-                                for item in results:
-                                    title = item.get("title") or item.get("article_title") or "–"
-                                    snippet = item.get("snippet") or item.get("chunk") or ""
-                                    url = item.get("url")
-                                    article_id = item.get("article_id") or item.get("eid") or item.get("id")
-                                    pretty = clean_placeholders(snippet, url)
-                                    block = f"**{fix_mojibake(title)}**\n\n{pretty}"
-                                    if url:
-                                        block += f"\n\n🔗 {url}"
-                                    if article_id:
-                                        block += f"\n\n_EID/ID: {article_id}_"
-                                    embedded_blocks.append(block)
-                            else:
-                                embedded_blocks.append(
-                                    "```json\n" + json.dumps(embedded, ensure_ascii=False, indent=2) + "\n```"
-                                )
-                if parsed_any and embedded_blocks:
-                    pretty_blocks.append("### Extrahierte Ergebnisse (eingebettetes JSON)")
-                    pretty_blocks.extend(embedded_blocks)
-                else:
-                    pretty_blocks.append("### Inhalt (Segmente)")
-                    for seg in content:
-                        if isinstance(seg, dict) and seg.get("type") == "text":
-                            pretty_blocks.append(clean_placeholders(seg.get("text") or ""))
-                        else:
-                            pretty_blocks.append(
-                                "```json\n" + json.dumps(seg, ensure_ascii=False, indent=2) + "\n```"
-                            )
-            else:
-                pretty_blocks.append(
-                    "Unbekanntes 'content'-Format:\n\n```json\n" +
-                    json.dumps(content, ensure_ascii=False, indent=2) +
-                    "\n```"
-                )
-        else:
-            pretty_blocks.append(
-                "Unbekannter 'result'-Inhalt:\n\n```json\n" +
-                json.dumps(result, ensure_ascii=False, indent=2) +
-                "\n```"
-            )
-
-    pretty_md = ("\n\n---\n\n").join(pretty_blocks) if pretty_blocks else "_Keine darstellbaren Inhalte_"
-
+    # Aufbereitete Darstellung – copy-friendly + Download
+    pretty_md = build_pretty_markdown(data)
     st.markdown("---")
     st.subheader("📘 Aufbereitete Antwort (kopierbar)")
     st.code(pretty_md, language="markdown")
-    st.download_button(
-        "⬇️ Aufbereitete Antwort als Markdown speichern",
-        data=pretty_md.encode("utf-8"),
-        file_name="amboss_mcp_pretty.md",
-        mime="text/markdown"
-    )
+    st.download_button("⬇️ Aufbereitete Antwort als Markdown speichern",
+                       data=pretty_md.encode("utf-8"),
+                       file_name="amboss_mcp_pretty.md", mime="text/markdown")
 
     # Ergebnis als Variable verfügbar
-    amboss_result = data    )
-
-    # Ergebnis als Variable verfügbar
-    amboss_result = data    
-    t = t.replace("{Sup}", "<sup>")
-    t = t.replace("{NewLine}", "<br>")
-
-    # {RefNote:...} → †-Link (wenn URL vorhanden)
-    if url:
-        t = re.sub(r"\{RefNote:[^}]+\}", f"[†]({url})", t)
-    else:
-        t = re.sub(r"\{RefNote:[^}]+\}", "†", t)
-
-    # übrige {Ref...} entfernen (stört Tabellen)
-    t = re.sub(r"\{Ref[^\}]+\}", "", t)
-
-    # überflüssige Leerzeichen glätten
-    t = re.sub(r"[ \t]{2,}", " ", t)
-    return t
-
-
-def try_parse_embedded_json_text(content_item_text: str):
-    """
-    Einige Antworten liefern in content[*].text einen JSON-String.
-    Diesen versuchen wir zusätzlich zu parsen.
-    """
-    if not isinstance(content_item_text, str):
-        return None
-    candidate = fix_mojibake(content_item_text)
-    try:
-        return json.loads(candidate)
-    except Exception:
-        return None
-
-
-def truncate(s: str, n: int = 800) -> str:
-    s = s or ""
-    return (s[:n] + " …") if len(s) > n else s
-
-
-# -----------------------------------------------------------
-# Benutzeroberfläche
-# -----------------------------------------------------------
-tool_label = st.selectbox(
-    "Welches AMBOSS-Tool möchtest du verwenden?",
-    list(TOOLS.keys())
-)
-tool_name = TOOLS[tool_label]
-
-query = st.text_input(
-    "🔍 Freitext (z. B. 'Mesalazin', 'Ileitis terminalis' oder eine EID/ID)"
-)
-
-# -----------------------------------------------------------
-# Anfrage senden
-# -----------------------------------------------------------
-if st.button("📤 Anfrage an AMBOSS senden"):
-    # Argumente je nach Tooltyp
-    arguments = {"language": "de"}
-
-    if tool_name in ("search_article_sections", "search_pharma_substances", "search_media"):
-        arguments["query"] = query
-    elif tool_name == "get_definition":
-        arguments["term"] = query
-    elif tool_name == "get_drug_monograph":
-        arguments["substance_eid"] = query  # benötigt EID (i. d. R. zuvor via search_* ermitteln)
-    elif tool_name == "get_guidelines":
-        arguments["guideline_ids"] = [query]  # erwartet Liste
-
-    # JSON-RPC-Payload
-    payload = {
-        "jsonrpc": "2.0",
-        "id": "1",
-        "method": "tools/call",
-        "params": {
-            "name": tool_name,
-            "arguments": arguments
-        }
-    }
-
-    headers = {
-        "Authorization": f"Bearer {AMBOSS_KEY}",
-        "Content-Type": "application/json",
-        "Accept": "application/json, text/event-stream",
-    }
-
-    st.write("⏳ Anfrage wird gesendet ...")
-
-    # HTTP-POST an den MCP-Server
-    response = requests.post(
-        AMBOSS_URL,
-        headers=headers,
-        data=json.dumps(payload),
-        timeout=30
-    )
-
-    # -------------------------------------------------------
-    # Antwort parsen: JSON oder SSE
-    # -------------------------------------------------------
-    content_type = response.headers.get("Content-Type", "")
-    body = response.text
-
-    try:
-        if "application/json" in content_type:
-            data = response.json()
-        else:
-            # Server-Sent-Events: Zeilen nach "data:" extrahieren
-            json_chunks = []
-            for line in body.splitlines():
-                line = line.strip()
-                if line.startswith("data:"):
-                    json_chunks.append(line[len("data:"):].strip())
-            data = json.loads("".join(json_chunks))
-    except Exception as e:
-        st.error(f"Fehler beim Parsen der Antwort: {e}")
-        st.text(body)
-        st.stop()
-
-    # -------------------------------------------------------
-    # Rohdaten: copy-friendly + Download
-    # -------------------------------------------------------
-    st.success("✅ Antwort von AMBOSS erhalten (Rohdaten):")
-    raw_str = json.dumps(data, ensure_ascii=False, indent=2)
-    st.code(raw_str, language="json")
-    st.download_button(
-        "⬇️ Rohantwort als JSON speichern",
-        data=raw_str.encode("utf-8"),
-        file_name="amboss_mcp_raw.json",
-        mime="application/json"
-    )
-
-    # -------------------------------------------------------
-    # Aufbereitete Darstellung → als Markdown sammeln
-    # -------------------------------------------------------
-    pretty_blocks = []
-
-    if "error" in data:
-        msg = data["error"].get("message", "Unbekannter Fehler")
-        code = data["error"].get("code")
-        block = f"**Fehler:** {msg}" + (f" (Code {code})" if code is not None else "")
-        pretty_blocks.append(block)
-    else:
-        result = data.get("result", {})
-
-        # 1) results-Liste (Suchergebnisse u. ä.)
-        if isinstance(result, dict) and "results" in result:
-            items = result["results"] or []
-            if items:
-                pretty_blocks.append("### Ergebnisse")
-            for item in items:
-                title = item.get("title") or item.get("article_title") or item.get("name") or "–"
-                snippet = item.get("snippet") or item.get("chunk") or ""
-                url = item.get("url")
-                article_id = item.get("article_id") or item.get("eid") or item.get("id")
-                pretty = clean_placeholders(snippet, url)
-                block = f"**{fix_mojibake(title)}**\n\n{pretty}"
-                if url:
-                    block += f"\n\n🔗 {url}"
-                if article_id:
-                    block += f"\n\n_EID/ID: {article_id}_"
-                pretty_blocks.append(block)
-
-        # 2) content-Liste (Segmente / eingebettetes JSON)
-        elif isinstance(result, dict) and "content" in result:
-            content = result["content"]
-            if isinstance(content, str):
-                pretty_blocks.append("### Inhalt (Text)")
-                pretty_blocks.append(clean_placeholders(content))
-            elif isinstance(content, list):
-                parsed_any = False
-                embedded_blocks = []
-                for seg in content:
-                    if isinstance(seg, dict) and seg.get("type") == "text" and isinstance(seg.get("text"), str):
-                        embedded = try_parse_embedded_json_text(seg["text"])
-                        if embedded:
-                            parsed_any = True
-                            results = embedded.get("results") or embedded.get("data") or []
-                            if isinstance(results, list) and results:
-                                for item in results:
-                                    title = item.get("title") or item.get("article_title") or "–"
-                                    snippet = item.get("snippet") or item.get("chunk") or ""
-                                    url = item.get("url")
-                                    article_id = item.get("article_id") or item.get("eid") or item.get("id")
-                                    pretty = clean_placeholders(snippet, url)
-                                    block = f"**{fix_mojibake(title)}**\n\n{pretty}"
-                                    if url:
-                                        block += f"\n\n🔗 {url}"
-                                    if article_id:
-                                        block += f"\n\n_EID/ID: {article_id}_"
-                                    embedded_blocks.append(block)
-                            else:
-                                embedded_blocks.append(
-                                    "```json\n" + json.dumps(embedded, ensure_ascii=False, indent=2) + "\n```"
-                                )
-                if parsed_any and embedded_blocks:
-                    pretty_blocks.append("### Extrahierte Ergebnisse (eingebettetes JSON)")
-                    pretty_blocks.extend(embedded_blocks)
-                else:
-                    # Fallback: rohe Segmente, aber bereinigt
-                    pretty_blocks.append("### Inhalt (Segmente)")
-                    for seg in content:
-                        if isinstance(seg, dict) and seg.get("type") == "text":
-                            pretty_blocks.append(clean_placeholders(seg.get("text") or ""))
-                        else:
-                            pretty_blocks.append(
-                                "```json\n" + json.dumps(seg, ensure_ascii=False, indent=2) + "\n```"
-                            )
-            else:
-                pretty_blocks.append(
-                    "Unbekanntes 'content'-Format:\n\n```json\n" +
-                    json.dumps(content, ensure_ascii=False, indent=2) +
-                    "\n```"
-                )
-        else:
-            pretty_blocks.append(
-                "Unbekannter 'result'-Inhalt:\n\n```json\n" +
-                json.dumps(result, ensure_ascii=False, indent=2) +
-                "\n```"
-            )
-
-    pretty_md = ("\n\n---\n\n").join(pretty_blocks) if pretty_blocks else "_Keine darstellbaren Inhalte_"
-
-    st.markdown("---")
-    st.subheader("📘 Aufbereitete Antwort (kopierbar)")
-    st.code(pretty_md, language="markdown")
-    st.download_button(
-        "⬇️ Aufbereitete Antwort als Markdown speichern",
-        data=pretty_md.encode("utf-8"),
-        file_name="amboss_mcp_pretty.md",
-        mime="text/markdown"
-    )
-
-    # Ergebnis als Variable verfügba
+    amboss_result = data
