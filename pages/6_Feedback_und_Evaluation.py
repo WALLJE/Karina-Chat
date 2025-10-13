@@ -15,6 +15,8 @@ from module.llm_state import (
     ensure_llm_client,
     get_provider_label,
 )
+from module.mcp_client import has_amboss_configuration
+
 
 
 show_sidebar()
