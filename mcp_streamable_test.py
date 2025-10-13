@@ -99,16 +99,13 @@ def build_payload(tool_name: str, query: str) -> dict:
     }
 
 def format_markdown_tables(md: str) -> str:
-    """
-    Findet Markdown-Tabellenblöcke (Zeilen, die mit '|' beginnen) und säubert sie:
-    - {NewLine} nur IN ZELLEN -> <br>
-    - {Ref...} in Zellen entfernen
-    - Spaltenanzahl stabilisieren (Padding leerer Zellen)
-    - Separator-Zeile reparieren
-    """
+    """Bereinigt Markdown-Tabellen und verhindert IndexError bei Ein-Zeilen-Tabellen."""
+
     lines = md.splitlines()
-    out, i, n = [], 0, len(lines)
-    table_pat = re.compile(r'^\s*\|.*\|\s*$')
+    out: list[str] = []
+    i = 0
+    n = len(lines)
+    table_pat = re.compile(r"^\s*\|.*\|\s*$")
 
     def clean_cell(cell: str) -> str:
         cell = cell.strip()
@@ -117,39 +114,46 @@ def format_markdown_tables(md: str) -> str:
         return cell.strip()
 
     while i < n:
-        if table_pat.match(lines[i]):
-            block = []
+        line = lines[i]
+        if table_pat.match(line):
+            block: list[str] = []
             while i < n and table_pat.match(lines[i]):
                 block.append(lines[i])
                 i += 1
 
-            rows = []
+            rows: list[list[str]] = []
             max_cols = 0
-            for row in block:
-                parts = [p for p in row.strip().strip('|').split('|')]
-                parts = [clean_cell(p) for p in parts]
-                max_cols = max(max_cols, len(parts))
-                rows.append(parts)
+            for raw_row in block:
+                cells = [clean_cell(part) for part in raw_row.strip().strip("|").split("|")]
+                if cells:
+                    max_cols = max(max_cols, len(cells))
+                rows.append(cells)
 
-            if len(rows) >= 2:
-                # zweite Zeile als Separator sicherstellen
-                def is_sep(c: str) -> bool:
-                    cs = c.strip()
-                    return len(cs) >= 3 and set(cs) <= set("-: ")
-                if not all(is_sep(c) for c in rows[1]):
+            if max_cols == 0:
+                # Degenerierte Tabellen (z. B. nur "||") bleiben unverändert, damit nichts crasht.
+                out.extend(block)
+                continue
+
+            if len(rows) == 1:
+                # Einzeilige Tabellen bekommen eine künstliche Trennzeile, um Indexfehler zu vermeiden.
+                rows.append(["---"] * max_cols)
+            elif len(rows) >= 2:
+                def is_separator(cell: str) -> bool:
+                    cleaned = cell.strip()
+                    return len(cleaned) >= 3 and set(cleaned) <= set("-: ")
+
+                if not all(is_separator(cell) for cell in rows[1]):
                     rows.insert(1, ["---"] * max_cols)
 
-            for r in rows:
-                if len(r) < max_cols:
-                    r += [""] * (max_cols - len(r))
+            for row in rows:
+                if len(row) < max_cols:
+                    row.extend([""] * (max_cols - len(row)))
 
-            out.append("| " + " | ".join(rows[0]) + " |")
-            out.append("| " + " | ".join(rows[1]) + " |")
-            for r in rows[2:]:
-                out.append("| " + " | ".join(r) + " |")
+            for row in rows:
+                out.append("| " + " | ".join(row) + " |")
             continue
 
-        out.append(lines[i])
+        out.append(line)
         i += 1
 
     return "\n".join(out)
@@ -177,7 +181,12 @@ def render_items(items: Iterable[dict]) -> list[str]:
         url = it.get("url")
         eid = it.get("article_id") or it.get("eid") or it.get("id")
         pretty = clean_placeholders(snippet, url)
-        pretty = format_markdown_tables(pretty)
+        try:
+            # Fail-Safe: Tabellenaufbereitung darf das Rendering nicht komplett stoppen.
+            pretty = format_markdown_tables(pretty)
+        except Exception:
+            # Wir behalten den bereinigten Text bei und zeigen keine Fehlermeldung im Nutzerfluss.
+            pretty = pretty
         block = f"**{fix_mojibake(title)}**\n\n{pretty}"
         if url:
             block += f"\n\n🔗 {url}"
