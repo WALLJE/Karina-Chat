@@ -494,9 +494,6 @@ if diagnose_eingegeben and therapie_eingegeben:
                 if msg["role"] == "user"
             ])
             
-            #DEBUG
-            st.write("DEBUG: diagnostik_eingaben =", diagnostik_eingaben)
-          
             feedback = feedback_erzeugen(
                 client,
                 final_diagnose,
@@ -507,7 +504,8 @@ if diagnose_eingegeben and therapie_eingegeben:
                 koerper_befund,
                 user_verlauf,
                 anzahl_termine,
-                diagnose_szenario
+                diagnose_szenario,
+                st.session_state.get("amboss_szenario_wissen_json", ""),
             )
             st.session_state.final_feedback = feedback
             speichere_gpt_feedback_in_supabase()

@@ -1,4 +1,4 @@
-"""Minimal MCP chat client compatible with the app's LLM interface."""
+"""Utility clients to interact with MCP-compatible backends and AMBOSS tools."""
 
 from __future__ import annotations
 
@@ -9,6 +9,11 @@ import json
 import os
 
 import requests
+
+try:  # pragma: no cover - optional dependency for Streamlit secrets
+    import streamlit as _st
+except Exception:  # pragma: no cover - streamlit not available during tests
+    _st = None
 
 try:  # pragma: no cover - optional dependency
     from openai import (
@@ -33,6 +38,206 @@ class ConfigurationError(MCPClientError):
 
 class RateLimitError(MCPClientError):
     """Raised when the MCP server reports a rate limiting condition."""
+
+
+def _get_secret(key: str) -> Optional[str]:
+    if _st is None:  # pragma: no cover - streamlit not available in tests
+        return None
+    try:
+        return _st.secrets[key]
+    except Exception:
+        return None
+
+
+def _load_amboss_headers(api_key: Optional[str]) -> Dict[str, str]:
+    headers = {
+        "Content-Type": "application/json",
+        "Accept": "application/json, text/event-stream",
+    }
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
+    return headers
+
+
+def _try_parse_json(payload: str) -> Optional[Dict[str, Any]]:
+    try:
+        data = json.loads(payload)
+    except json.JSONDecodeError:
+        return None
+    return data if isinstance(data, dict) else None
+
+
+def _parse_streamable_response(response: requests.Response) -> Dict[str, Any]:
+    """Parse JSON or SSE responses from MCP endpoints."""
+
+    content_type = response.headers.get("Content-Type", "")
+    if "application/json" in content_type:
+        parsed = response.json()
+        if not isinstance(parsed, dict):
+            raise MCPClientError("MCP response payload must be a JSON object")
+        return parsed
+
+    payload_lines = []
+    for line in response.text.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("data:"):
+            payload_lines.append(stripped[len("data:"):].strip())
+
+    if not payload_lines:
+        raise MCPClientError("Received an SSE response without any data payload to decode.")
+
+    payload = "".join(payload_lines)
+    parsed = _try_parse_json(payload)
+    if parsed is None:
+        raise MCPClientError("Could not decode MCP SSE payload as JSON.")
+    return parsed
+
+
+def _build_tool_payload(tool_name: str, query: str, *, language: str = "de") -> Dict[str, Any]:
+    arguments: Dict[str, Any] = {"language": language}
+    if tool_name in {"search_article_sections", "search_pharma_substances", "search_media"}:
+        arguments["query"] = query
+    elif tool_name == "get_definition":
+        arguments["term"] = query
+    elif tool_name == "get_drug_monograph":
+        arguments["substance_eid"] = query
+    elif tool_name == "get_guidelines":
+        arguments["guideline_ids"] = [query]
+    else:
+        arguments["query"] = query
+
+    return {
+        "jsonrpc": "2.0",
+        "id": "1",
+        "method": "tools/call",
+        "params": {"name": tool_name, "arguments": arguments},
+    }
+
+
+class AmbossToolClient:
+    """HTTP client that calls AMBOSS MCP tools via a streamable response."""
+
+    def __init__(
+        self,
+        base_url: str,
+        *,
+        api_key: Optional[str] = None,
+        timeout: float = 30.0,
+        extra_headers: Optional[Dict[str, str]] = None,
+    ) -> None:
+        if not base_url:
+            raise ConfigurationError("AMBOSS MCP base URL is missing")
+        self.base_url = base_url.rstrip("/")
+        self.api_key = api_key
+        self.timeout = timeout
+        self.extra_headers = extra_headers or {}
+
+    def call_tool(
+        self,
+        tool_name: str,
+        *,
+        query: str,
+        language: str = "de",
+    ) -> Dict[str, Any]:
+        payload = _build_tool_payload(tool_name, query, language=language)
+        headers = _load_amboss_headers(self.api_key)
+        headers.update(self.extra_headers)
+
+        try:
+            response = requests.post(
+                self.base_url,
+                data=json.dumps(payload),
+                headers=headers,
+                timeout=self.timeout,
+            )
+        except requests.RequestException as exc:  # pragma: no cover - network failure
+            raise MCPClientError(f"AMBOSS MCP request failed: {exc}") from exc
+
+        if response.status_code >= 400:
+            raise MCPClientError(
+                f"AMBOSS MCP request failed with status {response.status_code}: {response.text}"
+            )
+
+        parsed = _parse_streamable_response(response)
+        if "error" in parsed:
+            raise MCPClientError(
+                "AMBOSS MCP server returned an error: "
+                + json.dumps(parsed.get("error"), ensure_ascii=False)
+            )
+        return parsed
+
+
+def _load_extra_headers(raw: Optional[str]) -> Dict[str, str]:
+    if not raw:
+        return {}
+    try:
+        data = json.loads(raw)
+        if not isinstance(data, dict):
+            raise ValueError("extra headers must decode into a dict")
+        return {str(key): str(value) for key, value in data.items()}
+    except (json.JSONDecodeError, ValueError) as exc:
+        raise ConfigurationError(
+            "MCP_EXTRA_HEADERS must be a JSON object with string values"
+        ) from exc
+
+
+def _load_amboss_extra_headers() -> Dict[str, str]:
+    return _load_extra_headers(os.getenv("AMBOSS_MCP_EXTRA_HEADERS"))
+
+
+def _determine_amboss_base_url() -> Optional[str]:
+    base_url = (
+        os.getenv("AMBOSS_MCP_URL")
+        or os.getenv("AMBOSS_MCP_ENDPOINT")
+        or _get_secret("Amboss_Url")
+    )
+    if base_url:
+        return str(base_url)
+    return os.getenv("MCP_SERVER_URL")
+
+
+def _determine_amboss_token() -> Optional[str]:
+    token = (
+        os.getenv("AMBOSS_MCP_TOKEN")
+        or os.getenv("AMBOSS_API_KEY")
+        or _get_secret("Amboss_Token")
+    )
+    if token:
+        return str(token)
+    return os.getenv("MCP_API_KEY")
+
+
+def create_amboss_tool_client() -> AmbossToolClient:
+    base_url = _determine_amboss_base_url()
+    if not base_url:
+        raise ConfigurationError(
+            "AMBOSS MCP URL is not configured. Set AMBOSS_MCP_URL or Amboss_Url in the secrets."
+        )
+    api_key = _determine_amboss_token()
+    timeout = float(os.getenv("AMBOSS_MCP_TIMEOUT", os.getenv("MCP_TIMEOUT", "60")))
+    extra_headers = _load_amboss_extra_headers()
+    return AmbossToolClient(
+        base_url,
+        api_key=api_key,
+        timeout=timeout,
+        extra_headers=extra_headers,
+    )
+
+
+def has_amboss_configuration() -> bool:
+    return bool(_determine_amboss_base_url() and _determine_amboss_token())
+
+
+def fetch_amboss_scenario_knowledge(
+    scenario_term: str,
+    *,
+    tool_name: str = "search_article_sections",
+    language: str = "de",
+) -> Dict[str, Any]:
+    if not scenario_term:
+        raise ValueError("scenario_term must not be empty")
+    client = create_amboss_tool_client()
+    return client.call_tool(tool_name, query=scenario_term, language=language)
 
 
 @dataclass
@@ -267,20 +472,6 @@ class OpenAIChatClient:
         self.chat = _OpenAIChatNamespace(self)
 
 
-def _load_extra_headers(raw: Optional[str]) -> Dict[str, str]:
-    if not raw:
-        return {}
-    try:
-        data = json.loads(raw)
-        if not isinstance(data, dict):
-            raise ValueError("extra headers must decode into a dict")
-        return {str(key): str(value) for key, value in data.items()}
-    except (json.JSONDecodeError, ValueError) as exc:
-        raise ConfigurationError(
-            "MCP_EXTRA_HEADERS must be a JSON object with string values"
-        ) from exc
-
-
 def create_mcp_client_from_env() -> MCPClient:
     """Create an :class:`MCPClient` based on environment variables."""
 
@@ -363,8 +554,11 @@ def create_client_for_provider(provider: str) -> Any:
 
 
 __all__ = [
+    "AmbossToolClient",
     "ChatCompletionResponse",
     "ConfigurationError",
+    "fetch_amboss_scenario_knowledge",
+    "create_amboss_tool_client",
     "MCPClient",
     "MCPClientError",
     "RateLimitError",
@@ -372,6 +566,7 @@ __all__ = [
     "create_mcp_client_from_env",
     "create_openai_client_from_env",
     "create_client_for_provider",
+    "has_amboss_configuration",
     "has_mcp_configuration",
     "has_openai_configuration",
 ]
