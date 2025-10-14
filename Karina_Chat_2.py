@@ -25,7 +25,11 @@ from befundmodul import generiere_befund
 from module.sidebar import show_sidebar
 from module.startinfo import zeige_instruktionen_vor_start
 from module.token_counter import init_token_counters, add_usage
-from module.offline import display_offline_banner, is_offline
+from module.offline import (
+    display_offline_banner,
+    get_offline_patient_reply,
+    is_offline,
+)
 from module.fallverwaltung import (
     DEFAULT_FALLDATEI_URL,
     VERHALTENSOPTIONEN,
@@ -211,23 +215,28 @@ with st.form(key="eingabe_formular", clear_on_submit=True):
 
 if submit_button and user_input:
     st.session_state.messages.append({"role": "user", "content": user_input})
-    with st.spinner(f"{st.session_state.patient_name} antwortet..."):
-        try:
-            init_token_counters()    
-            response = client.chat.completions.create(
-                model="gpt-4",
-                messages=st.session_state.messages,
-                temperature=0.6
-            )
-            add_usage(
-                prompt_tokens=response.usage.prompt_tokens,
-                completion_tokens=response.usage.completion_tokens,
-                total_tokens=response.usage.total_tokens
-            )
-            reply = response.choices[0].message.content
-            st.session_state.messages.append({"role": "assistant", "content": reply})
-        except RateLimitError:
-            st.error("🚫 Die Anfrage konnte nicht verarbeitet werden, da die OpenAI-API derzeit überlastet ist. Bitte versuchen Sie es in einigen Minuten erneut.")
+    if is_offline():
+        # Offline-Modus: Es werden keine API-Anfragen gestellt, sondern eine statische Antwort genutzt.
+        reply = get_offline_patient_reply(st.session_state.get("patient_name", ""))
+        st.session_state.messages.append({"role": "assistant", "content": reply})
+    else:
+        with st.spinner(f"{st.session_state.patient_name} antwortet..."):
+            try:
+                init_token_counters()
+                response = client.chat.completions.create(
+                    model="gpt-4",
+                    messages=st.session_state.messages,
+                    temperature=0.6
+                )
+                add_usage(
+                    prompt_tokens=response.usage.prompt_tokens,
+                    completion_tokens=response.usage.completion_tokens,
+                    total_tokens=response.usage.total_tokens
+                )
+                reply = response.choices[0].message.content
+                st.session_state.messages.append({"role": "assistant", "content": reply})
+            except RateLimitError:
+                st.error("🚫 Die Anfrage konnte nicht verarbeitet werden, da die OpenAI-API derzeit überlastet ist. Bitte versuchen Sie es in einigen Minuten erneut.")
     st.rerun()
 
 
