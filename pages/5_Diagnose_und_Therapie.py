@@ -3,12 +3,6 @@ from module.sidebar import show_sidebar
 from sprachmodul import sprach_check
 from module.footer import copyright_footer
 from module.offline import display_offline_banner, is_offline
-from module.llm_state import (
-    ConfigurationError,
-    MCPClientError,
-    ensure_llm_client,
-    get_provider_label,
-)
 
 show_sidebar()
 display_offline_banner()
@@ -30,27 +24,8 @@ else:
         input_therapie = st.text_area("Ihr Therapiekonzept:")
         submitted_final = st.form_submit_button("✅ Senden")
 
-    if "mcp_client" not in st.session_state and not is_offline():
-        try:
-            ensure_llm_client()
-        except ConfigurationError as exc:
-            st.warning(
-                "⚙️ Die Konfiguration für {provider} ist unvollständig."
-                " Die Seite wechselt in den Offline-Modus.\n\n"
-                f"Details: {exc}".format(provider=get_provider_label())
-            )
-            st.session_state["offline_mode"] = True
-            st.session_state["mcp_client"] = None
-        except MCPClientError as exc:
-            st.error(
-                "❌ Der LLM-Client konnte nicht initialisiert werden. Bitte prüfe die "
-                "aktuellen Zugangsdaten oder die Netzwerkverbindung.\n\n"
-                f"Fehlerdetails: {exc}"
-            )
-            st.stop()
-
     if submitted_final:
-        client = st.session_state.get("mcp_client")
+        client = st.session_state.get("openai_client")
         st.session_state.final_diagnose = sprach_check(input_diag, client)
         st.session_state.therapie_vorschlag = sprach_check(input_therapie, client)
         if is_offline():

@@ -1,33 +1,16 @@
 import streamlit as st
 
-from module.fall_config import get_behavior_fix_state, get_fall_fix_state
-from module.llm_state import get_provider_label
-from module.offline import is_offline
+from module.fall_config import get_fall_fix_state
 
 
 def copyright_footer():
-    fall_fixed, _ = get_fall_fix_state()
-    if fall_fixed:
-        fall_status_text = "Fallmodus: fixiert"
-        fall_status_class = "fixed"
+    fixed, scenario = get_fall_fix_state()
+    if fixed and scenario:
+        status_text = "Fixierter Fall"
+        status_class = "fixed"
     else:
-        fall_status_text = "Fallmodus: zufällig"
-        fall_status_class = "random"
-
-    behavior_fixed, _ = get_behavior_fix_state()
-    if behavior_fixed:
-        behavior_status_text = "Verhalten: fixiert"
-        behavior_status_class = "fixed"
-    else:
-        behavior_status_text = "Verhalten: zufällig"
-        behavior_status_class = "random"
-
-    if is_offline():
-        llm_status_text = "Offline-Modus (kein LLM)"
-        llm_status_class = "offline"
-    else:
-        llm_status_text = f"LLM-Client: {get_provider_label()}"
-        llm_status_class = "provider"
+        status_text = "Zufälliger Fall"
+        status_class = "random"
 
     st.markdown(
         f"""
@@ -45,34 +28,19 @@ def copyright_footer():
             border-top: 1px solid #ddd;
             z-index: 100;
         }}
-        .footer .status-container {{
-            display: flex;
-            flex-wrap: wrap;
-            gap: 12px 18px;
-            justify-content: center;
-            margin-top: 6px;
-        }}
-        .footer .status-badge {{
+        .footer .fall-status {{
+            display: block;
+            margin-top: 4px;
             font-weight: 600;
             color: #c0392b;
         }}
-        .footer .status-badge.random {{
+        .footer .fall-status.random {{
             color: #666;
-        }}
-        .footer .status-badge.provider {{
-            color: #2c3e50;
-        }}
-        .footer .status-badge.offline {{
-            color: #8e44ad;
         }}
         </style>
         <div class="footer">
             &copy; 2025 – Diese Simulation dient ausschließlich zu Lehrzwecken.
-            <div class="status-container">
-                <span class="status-badge {fall_status_class}">{fall_status_text}</span>
-                <span class="status-badge {behavior_status_class}">{behavior_status_text}</span>
-                <span class="status-badge {llm_status_class}">{llm_status_text}</span>
-            </div>
+            <span class="fall-status {status_class}">{status_text}</span>
         </div>
         """,
         unsafe_allow_html=True,

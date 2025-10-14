@@ -11,6 +11,8 @@
 #
 
 import streamlit as st
+from openai import OpenAI, RateLimitError
+import os
 
 from datetime import datetime
 
@@ -23,27 +25,14 @@ from befundmodul import generiere_befund
 from module.sidebar import show_sidebar
 from module.startinfo import zeige_instruktionen_vor_start
 from module.token_counter import init_token_counters, add_usage
-from module.offline import display_offline_banner, is_offline, get_offline_patient_reply
-from module.llm_state import (
-    ConfigurationError,
-    MCPClientError,
-    RateLimitError,
-    ensure_llm_client,
-    get_provider_label,
-)
+from module.offline import display_offline_banner, is_offline
 from module.fallverwaltung import (
     DEFAULT_FALLDATEI_URL,
-    VERHALTENSOPTIONEN,
     fallauswahl_prompt,
     lade_fallbeispiele,
     prepare_fall_session_state,
 )
-from module.fall_config import (
-    clear_fixed_behavior,
-    clear_fixed_scenario,
-    get_behavior_fix_state,
-    get_fall_fix_state,
-)
+from module.fall_config import clear_fixed_scenario, get_fall_fix_state
 from module.footer import copyright_footer
 
 # Für Einbinden Supabase Tabellen
@@ -54,35 +43,9 @@ supabase_url = st.secrets["supabase"]["url"]
 supabase_key = st.secrets["supabase"]["key"]
 supabase: Client = create_client(supabase_url, supabase_key)
 
-# LLM-Client initialisieren
-st.session_state.setdefault("offline_mode", False)
-
-client = None
-if not is_offline():
-    try:
-        client = ensure_llm_client()
-    except ConfigurationError as exc:
-        st.session_state["offline_mode"] = True
-        st.session_state["mcp_client"] = None
-        st.warning(
-            "⚙️ Die Konfiguration für {provider} ist unvollständig."
-            " Die Anwendung wechselt in den Offline-Modus.\n\n"
-            f"Details: {exc}".format(provider=get_provider_label())
-        )
-    except MCPClientError as exc:
-        st.error(
-            "❌ Der LLM-Client konnte nicht initialisiert werden. Bitte prüfe die "
-            "aktuelle Verbindung oder Zugangsdaten.\n\n"
-            f"Fehlerdetails: {exc}"
-        )
-        st.stop()
-else:
-    st.session_state["mcp_client"] = None
-
-if client is None and not is_offline():
-    st.info(
-        "ℹ️ Es konnte kein LLM-Client geladen werden. Die Anwendung nutzt vorübergehend den Offline-Modus."
-    )
+# Open AI API-Key setzen
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+st.session_state["openai_client"] = client
 
 # Zugriff via Streamlit Secrets
 # nextcloud_url = st.secrets["nextcloud"]["url"]
@@ -143,7 +106,6 @@ initialisiere_session_state()
 
 szenario_df = lade_fallbeispiele(url=DEFAULT_FALLDATEI_URL)
 fixed, fixed_szenario = get_fall_fix_state()
-behavior_fixed, fixed_behavior = get_behavior_fix_state()
 
 if not szenario_df.empty:
     admin_szenario = st.session_state.pop("admin_selected_szenario", None)
@@ -168,20 +130,6 @@ if not szenario_df.empty:
             fallauswahl_prompt(szenario_df)
     elif "diagnose_szenario" not in st.session_state:
         fallauswahl_prompt(szenario_df)
-
-admin_behavior = st.session_state.pop("admin_selected_behavior", None)
-if admin_behavior:
-    st.session_state["patient_verhalten_memo"] = admin_behavior
-
-if behavior_fixed and fixed_behavior:
-    if fixed_behavior in VERHALTENSOPTIONEN:
-        st.session_state["patient_verhalten_memo"] = fixed_behavior
-    else:
-        st.warning(
-            f"Die fixierte Verhaltensoption '{fixed_behavior}' ist nicht verfügbar. "
-            "Die Fixierung wurde aufgehoben."
-        )
-        clear_fixed_behavior()
 
 if st.session_state.get("diagnose_szenario"):
     prepare_fall_session_state()
@@ -242,30 +190,23 @@ with st.form(key="eingabe_formular", clear_on_submit=True):
 
 if submit_button and user_input:
     st.session_state.messages.append({"role": "user", "content": user_input})
-    if is_offline() or client is None:
-        reply = get_offline_patient_reply(st.session_state.get("patient_name", ""))
-        st.session_state.messages.append({"role": "assistant", "content": reply})
-    else:
-        with st.spinner(f"{st.session_state.patient_name} antwortet..."):
-            try:
-                init_token_counters()
-                response = client.chat.completions.create(
-                    model="gpt-4",
-                    messages=st.session_state.messages,
-                    temperature=0.6
-                )
-                add_usage(
-                    prompt_tokens=response.usage.prompt_tokens,
-                    completion_tokens=response.usage.completion_tokens,
-                    total_tokens=response.usage.total_tokens
-                )
-                reply = response.choices[0].message.content
-                st.session_state.messages.append({"role": "assistant", "content": reply})
-            except RateLimitError:
-                st.error(
-                    "🚫 Die Anfrage konnte nicht verarbeitet werden, weil der LLM-Dienst aktuell ausgelastet ist."
-                    " Bitte versuche es in einigen Minuten erneut."
-                )
+    with st.spinner(f"{st.session_state.patient_name} antwortet..."):
+        try:
+            init_token_counters()    
+            response = client.chat.completions.create(
+                model="gpt-4",
+                messages=st.session_state.messages,
+                temperature=0.6
+            )
+            add_usage(
+                prompt_tokens=response.usage.prompt_tokens,
+                completion_tokens=response.usage.completion_tokens,
+                total_tokens=response.usage.total_tokens
+            )
+            reply = response.choices[0].message.content
+            st.session_state.messages.append({"role": "assistant", "content": reply})
+        except RateLimitError:
+            st.error("🚫 Die Anfrage konnte nicht verarbeitet werden, da die OpenAI-API derzeit überlastet ist. Bitte versuchen Sie es in einigen Minuten erneut.")
     st.rerun()
 
 
@@ -296,9 +237,7 @@ if anzahl_fragen > 0:
                     st.session_state.koerper_befund = koerper_befund
                     st.rerun()
                 except RateLimitError:
-                    st.error(
-                        "🚫 Die Untersuchung konnte nicht erstellt werden. Der ausgewählte LLM-Dienst ist aktuell ausgelastet."
-                    )
+                    st.error("🚫 Die Untersuchung konnte nicht erstellt werden. Die OpenAI-API ist derzeit überlastet.")
            
 else:
     st.subheader("Körperliche Untersuchung")
@@ -361,9 +300,7 @@ if (
                 st.rerun()
 
             except RateLimitError:
-                st.error(
-                    "🚫 Befunde konnten nicht generiert werden, weil der LLM-Dienst derzeit überlastet ist."
-                )
+                st.error("🚫 Befunde konnten nicht generiert werden. Die OpenAI-API ist aktuell überlastet.")
             except Exception as e:
                 st.error(f"❌ Fehler bei der Befundgenerierung: {e}")
 
@@ -494,6 +431,9 @@ if diagnose_eingegeben and therapie_eingegeben:
                 if msg["role"] == "user"
             ])
             
+            #DEBUG
+            st.write("DEBUG: diagnostik_eingaben =", diagnostik_eingaben)
+          
             feedback = feedback_erzeugen(
                 client,
                 final_diagnose,
@@ -504,8 +444,7 @@ if diagnose_eingegeben and therapie_eingegeben:
                 koerper_befund,
                 user_verlauf,
                 anzahl_termine,
-                diagnose_szenario,
-                st.session_state.get("amboss_szenario_wissen_json", ""),
+                diagnose_szenario
             )
             st.session_state.final_feedback = feedback
             speichere_gpt_feedback_in_supabase()

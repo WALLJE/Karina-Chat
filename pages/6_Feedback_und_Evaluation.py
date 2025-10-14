@@ -1,5 +1,3 @@
-import random
-
 import streamlit as st
 from feedbackmodul import feedback_erzeugen
 from module.feedback_ui import student_feedback
@@ -8,22 +6,10 @@ from module.footer import copyright_footer
 from module.gpt_feedback import speichere_gpt_feedback_in_supabase
 from diagnostikmodul import aktualisiere_diagnostik_zusammenfassung
 from module.offline import display_offline_banner, is_offline
-from module.mcp_client import has_amboss_configuration
-from module.llm_state import (
-    ConfigurationError,
-    MCPClientError,
-    ensure_llm_client,
-    get_provider_label,
-)
-from module.mcp_client import has_amboss_configuration
-
 
 show_sidebar()
 copyright_footer()
 display_offline_banner()
-
-if "use_amboss_feedback" not in st.session_state:
-    st.session_state["use_amboss_feedback"] = has_amboss_configuration()
 
 # Voraussetzungen prüfen
 if "SYSTEM_PROMPT" not in st.session_state or "patient_name" not in st.session_state:
@@ -56,35 +42,9 @@ if not feedback_text:
     ])
     anzahl_termine = st.session_state.get("diagnostik_runden_gesamt", 1)
 
-    if "mcp_client" not in st.session_state and not is_offline():
-        try:
-            ensure_llm_client()
-        except ConfigurationError as exc:
-            st.warning(
-                "⚙️ Die Konfiguration für {provider} ist unvollständig."
-                " Die Seite wechselt in den Offline-Modus.\n\n"
-                f"Details: {exc}".format(provider=get_provider_label())
-            )
-            st.session_state["offline_mode"] = True
-            st.session_state["mcp_client"] = None
-        except MCPClientError as exc:
-            st.error(
-                "❌ Der LLM-Client konnte nicht initialisiert werden. Bitte prüfe die "
-                "aktuellen Zugangsdaten oder die Netzwerkverbindung.\n\n"
-                f"Fehlerdetails: {exc}"
-            )
-            st.stop()
-
-    amboss_payload = st.session_state.get("amboss_szenario_wissen_json", "")
-    should_use_amboss = (
-        bool(st.session_state.get("use_amboss_feedback", False))
-        and has_amboss_configuration()
-        and not is_offline()
-    )
-
     if is_offline():
-        feedback_chatgpt = feedback_erzeugen(
-            st.session_state.get("mcp_client"),
+        feedback = feedback_erzeugen(
+            st.session_state.get("openai_client"),
             final_diagnose,
             therapie_vorschlag,
             user_ddx2,
@@ -93,15 +53,12 @@ if not feedback_text:
             koerper_befund,
             user_verlauf,
             anzahl_termine,
-            diagnose_szenario,
-            amboss_payload,
-            use_amboss=False,
+            diagnose_szenario
         )
-        feedback_amboss = ""
     else:
         with st.spinner("⏳ Abschluss-Feedback wird erstellt..."):
-            feedback_chatgpt = feedback_erzeugen(
-                st.session_state["mcp_client"],
+            feedback = feedback_erzeugen(
+                st.session_state["openai_client"],
                 final_diagnose,
                 therapie_vorschlag,
                 user_ddx2,
@@ -110,47 +67,13 @@ if not feedback_text:
                 koerper_befund,
                 user_verlauf,
                 anzahl_termine,
-                diagnose_szenario,
-                amboss_payload,
-                use_amboss=False,
+                diagnose_szenario
             )
-            feedback_amboss = ""
-            if should_use_amboss:
-                feedback_amboss = feedback_erzeugen(
-                    st.session_state["mcp_client"],
-                    final_diagnose,
-                    therapie_vorschlag,
-                    user_ddx2,
-                    diagnostik_eingaben,
-                    gpt_befunde,
-                    koerper_befund,
-                    user_verlauf,
-                    anzahl_termine,
-                    diagnose_szenario,
-                    amboss_payload,
-                    use_amboss=True,
-                )
 
-    st.session_state["gpt_feedback"] = feedback_chatgpt
-    st.session_state["gpt_amboss_feedback"] = feedback_amboss
-
-    if feedback_amboss:
-        variant = random.choice(["chatgpt", "chatgpt_amboss"])
-    else:
-        variant = "chatgpt"
-
-    if variant == "chatgpt_amboss":
-        final_feedback = feedback_amboss
-        client_label = "Chat_GPT_Amboss"
-    else:
-        final_feedback = feedback_chatgpt
-        client_label = "Chat_GPT"
-
-    st.session_state.final_feedback = final_feedback
-    st.session_state["feedback_client_label"] = client_label
+    st.session_state.final_feedback = feedback
     st.session_state["student_evaluation_done"] = False
     st.session_state.pop("feedback_row_id", None)
-    feedback_text = final_feedback
+    feedback_text = feedback
     st.success("✅ Evaluation erstellt")
     if is_offline():
         st.info("🔌 Offline-Modus: Es wurde ein statisches Feedback verwendet.")

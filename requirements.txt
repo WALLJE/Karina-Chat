@@ -1,6 +1,5 @@
 streamlit
-requests
+openai
 openpyxl
 supabase
 cryptography
-openai

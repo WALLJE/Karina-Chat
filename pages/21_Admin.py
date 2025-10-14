@@ -4,9 +4,7 @@ from module.admin_data import FeedbackExportError, build_feedback_export
 from module.sidebar import show_sidebar
 from module.footer import copyright_footer
 from module.offline import display_offline_banner, is_offline
-from module.mcp_client import get_amboss_configuration_status
 from module.fallverwaltung import (
-    VERHALTENSOPTIONEN,
     fallauswahl_prompt,
     lade_fallbeispiele,
     prepare_fall_session_state,
@@ -14,11 +12,8 @@ from module.fallverwaltung import (
     speichere_fallbeispiel,
 )
 from module.fall_config import (
-    clear_fixed_behavior,
     clear_fixed_scenario,
-    get_behavior_fix_state,
     get_fall_fix_state,
-    set_fixed_behavior,
     set_fixed_scenario,
 )
 
@@ -53,8 +48,8 @@ offline_toggle = st.toggle(
     "Offline-Modus aktivieren",
     value=current_offline,
     help=(
-        "Im Offline-Modus werden statische Platzhalter statt KI-Antworten verwendet. "
-        "Es werden keine externen LLM-Schnittstellen angesprochen."
+        "Im Offline-Modus werden statische Platzhalter statt GPT-Antworten verwendet. "
+        "Die OpenAI-API wird dabei nicht angesprochen."
     ),
     key="admin_offline_toggle",
 )
@@ -66,51 +61,6 @@ if offline_toggle != current_offline:
     else:
         st.info("Online-Modus reaktiviert. Die Anwendung wird neu gestartet.")
         _restart_application_after_offline()
-
-st.subheader("Feedback-Modus")
-amboss_status = get_amboss_configuration_status()
-amboss_available = amboss_status.available
-current_setting = st.session_state.get("use_amboss_feedback")
-if current_setting is None:
-    current_setting = amboss_available
-
-amboss_toggle = st.toggle(
-    "AMBOSS-Wissen in das Abschlussfeedback einbeziehen",
-    value=current_setting,
-    key="admin_amboss_feedback_toggle",
-    disabled=is_offline() or not amboss_available,
-    help=(
-        "Aktiviere diese Option, um neben dem reinen ChatGPT-Feedback zusätzlich"
-        " AMBOSS-Wissensdaten in die Bewertung einfließen zu lassen."
-    ),
-)
-
-st.session_state["use_amboss_feedback"] = amboss_toggle
-
-if amboss_status.details:
-    st.caption(amboss_status.details)
-
-if not amboss_available:
-    warning = (
-        amboss_status.message
-        or "AMBOSS ist nicht konfiguriert. Hinterlege Zugangsdaten, um das kombinierte Feedback zu nutzen."
-    )
-    st.warning(warning)
-elif is_offline():
-    st.info(
-        "Offline-Modus aktiv: Die Einstellung wird wirksam, sobald der Online-Modus"
-        " reaktiviert ist."
-    )
-elif amboss_toggle:
-    st.success("✅ Feedback-Modus: ChatGPT + AmbossMCP")
-else:
-    st.info("ℹ️ Feedback-Modus: Nur ChatGPT")
-
-st.caption(
-    "Aktuelle Einstellung: {label}.".format(
-        label="ChatGPT + AmbossMCP" if st.session_state.get("use_amboss_feedback") else "Nur ChatGPT"
-    )
-)
 
 st.subheader("Adminmodus")
 st.write("Der Adminmodus ist aktiv. Bei Bedarf kannst du ihn hier wieder deaktivieren.")
@@ -211,52 +161,6 @@ else:
                 st.switch_page("pages/1_Anamnese.py")
             except Exception:
                 st.rerun()
-
-    st.subheader("Verhaltensoptionen")
-    verhaltensoption_keys = list(VERHALTENSOPTIONEN.keys())
-    behavior_fixed, aktuelles_verhalten = get_behavior_fix_state()
-
-    vorauswahl_verhalten = st.session_state.get("patient_verhalten_memo") or aktuelles_verhalten
-    if vorauswahl_verhalten in verhaltensoption_keys:
-        verhalten_index = verhaltensoption_keys.index(vorauswahl_verhalten)
-    else:
-        verhalten_index = 0
-
-    with st.form("admin_verhaltensoptionen"):
-        ausgewaehltes_verhalten = st.selectbox(
-            "Verhaltensoption auswählen",
-            verhaltensoption_keys,
-            index=verhalten_index,
-            format_func=lambda key: f"{key} – {VERHALTENSOPTIONEN[key]}",
-            help=(
-                "Wähle, wie sich die Patient*innen in der Konversation verhalten sollen. "
-                "Ohne Fixierung erfolgt weiterhin eine zufällige Auswahl."
-            ),
-        )
-        verhalten_fix_toggle = st.toggle(
-            "Verhalten fixieren",
-            value=behavior_fixed,
-            help=(
-                "Aktiviere die Fixierung, um künftige Sitzungen mit dieser Verhaltensoption zu starten. "
-                "Fixierungen laufen nach vier Stunden automatisch aus."
-            ),
-        )
-        verhalten_bestaetigt = st.form_submit_button("Verhalten übernehmen", type="primary")
-
-    if verhalten_bestaetigt:
-        st.session_state["patient_verhalten_memo"] = ausgewaehltes_verhalten
-        st.session_state["patient_verhalten"] = VERHALTENSOPTIONEN[ausgewaehltes_verhalten]
-        if verhalten_fix_toggle:
-            set_fixed_behavior(ausgewaehltes_verhalten)
-            st.session_state["admin_selected_behavior"] = ausgewaehltes_verhalten
-        else:
-            clear_fixed_behavior()
-            st.session_state.pop("admin_selected_behavior", None)
-        prepare_fall_session_state()
-        try:
-            st.switch_page("pages/1_Anamnese.py")
-        except Exception:
-            st.rerun()
 
     st.divider()
     st.subheader("Neues Fallbeispiel")
@@ -438,4 +342,3 @@ else:
 
 if st.session_state.get("feedback_export_error"):
     st.error(st.session_state["feedback_export_error"])
-
