@@ -1,17 +1,22 @@
-"""
-Simplified AMBOSS MCP client for Karina (no UI).
+"""Vereinfachter AMBOSS-MCP-Client für Karina ohne eigene UI-Komponenten.
 
-Purpose
--------
-- Call only the AMBOSS MCP tool `search_article_sections` via JSON-RPC.
-- Return the raw JSON payload (no text rendering).
-- Store both input payload and result in `st.session_state`.
-
-Usage
+Zweck
 -----
-from mcp_amboss_module_for_karina import call_amboss_search
+- Ruft ausschließlich das AMBOSS-MCP-Tool ``search_article_sections`` per JSON-RPC auf.
+- Gibt das unveränderte JSON-Ergebnis zurück, damit andere Module flexibel darauf
+  zugreifen können.
+- Hinterlegt sowohl die Anfrage als auch das Ergebnis im ``st.session_state``.
+
+Anwendung
+---------
+from module.MCP_Amboss import call_amboss_search
 
 data = call_amboss_search(query="Ileitis terminalis")
+
+Alle Kommentare in diesem Modul sind bewusst ausführlich gehalten, damit das Verhalten
+auch für spätere Anpassungen nachvollziehbar bleibt. Für detailliertes Debugging können
+zusätzliche ``st.write``-Ausgaben aktiviert werden, die aktuell aus Gründen der
+Übersichtlichkeit auskommentiert bleiben.
 """
 
 from __future__ import annotations
@@ -24,6 +29,7 @@ AMBOSS_URL: str = "https://content-mcp.de.production.amboss.com/mcp"
 
 
 def _build_payload(query: str, *, language: str = "de") -> Dict[str, Any]:
+    """Erstellt die JSON-RPC-Nutzlast für den MCP-Endpunkt von AMBOSS."""
     return {
         "jsonrpc": "2.0",
         "id": "1",
@@ -36,6 +42,7 @@ def _build_payload(query: str, *, language: str = "de") -> Dict[str, Any]:
 
 
 def _try_parse_json(s: str) -> Optional[dict]:
+    """Hilfsfunktion, um JSON robust zu parsen und Fehler still zu ignorieren."""
     try:
         return json.loads(s)
     except Exception:
@@ -43,11 +50,16 @@ def _try_parse_json(s: str) -> Optional[dict]:
 
 
 def _parse_response(resp: requests.Response) -> dict:
+    """Wertet die Antwort des MCP aus und verarbeitet klassische JSON- sowie SSE-Antworten."""
     ctype = resp.headers.get("Content-Type", "")
     if "application/json" in ctype:
         return resp.json()
 
-    # Handle SSE (Server-Sent Events)
+    # Verarbeitung von Server-Sent Events (SSE): AMBOSS liefert die JSON-Antwort
+    # dabei zeilenweise und prefixiert jede Datenzeile mit "data:". Die folgende
+    # Schleife entfernt diesen Prefix und setzt die JSON-Segmente wieder korrekt
+    # zusammen. Sollte der Dienst in Zukunft ein anderes Format liefern, kann hier
+    # das Debugging über auskommentierte ``st.write``-Anweisungen erfolgen.
     payload = "".join(
         line.strip()[len("data:"):].strip()
         for line in resp.text.splitlines()
@@ -68,10 +80,11 @@ def call_amboss_search(
     language: str = "de",
     extra_headers: Optional[Dict[str, str]] = None,
 ) -> dict:
-    """Call AMBOSS MCP `search_article_sections` and return raw JSON result.
+    """Ruft ``search_article_sections`` auf und legt das Roh-JSON im Session State ab.
 
-    Automatically loads the token from `st.secrets["AMBOSS_TOKEN"]` if not provided.
-    Stores the request payload in `st.session_state["amboss_input_mcp"]`.
+    Falls kein Token übergeben wird, wird automatisch ``st.secrets["AMBOSS_TOKEN"]``
+    verwendet. Sowohl die Nutzlast als auch das Ergebnis werden im ``st.session_state``
+    gespeichert, damit andere Module direkt darauf zugreifen können.
     """
     token = token or st.secrets.get("AMBOSS_TOKEN")
     if not token:
@@ -88,6 +101,8 @@ def call_amboss_search(
     if extra_headers:
         headers.update(extra_headers)
 
+    # Debug-Hinweis: Bei Bedarf kann hier ``st.write(headers, payload)`` aktiviert werden,
+    # um die Anfrage im Detail zu inspizieren.
     resp = requests.post(url, headers=headers, data=json.dumps(payload), timeout=timeout)
     resp.raise_for_status()
     result = _parse_response(resp)
