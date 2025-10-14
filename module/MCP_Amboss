@@ -73,7 +73,7 @@ def call_amboss_search(
 
     Automatically loads the token from `st.secrets["Amboss_Token"]` if not provided.
     """
-    token = token or st.secrets.get("AMBOSS_TOKEN")
+    token = token or st.secrets.get("Amboss_Token")
     if not token:
         raise ValueError("AMBOSS_TOKEN not found. Please set in st.secrets or pass as argument.")
 
@@ -104,7 +104,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Call AMBOSS MCP search_article_sections.")
     parser.add_argument("query", help="Search query.")
-    parser.add_argument("--token", default=os.environ.get("AMBOSS_TOKEN"), help="AMBOSS Bearer token")
+    parser.add_argument("--token", default=os.environ.get("Amboss_Token"), help="AMBOSS Bearer token")
     parser.add_argument("--language", default="de", help="Language parameter for MCP")
     args = parser.parse_args()
 
