@@ -157,11 +157,11 @@ def fallauswahl_prompt(df: pd.DataFrame, szenario: str | None = None) -> None:
             call_amboss_search(query=st.session_state.diagnose_szenario)
         except Exception as exc:  # pragma: no cover - reine Laufzeitfehlerbehandlung
             st.error(f"❌ Abruf des AMBOSS-Inhalts zum Szenario fehlgeschlagen: {exc}")
-        else:
-            st.info(
-                "ℹ️ AMBOSS hat das Szenario verarbeitet. Die Ergebnisse liegen in "
-                "`st.session_state['amboss_result']` bereit."
-            )
+    #   else:
+    #       st.info(
+    #           "ℹ️ AMBOSS hat das Szenario verarbeitet. Die Ergebnisse liegen in "
+    #           "`st.session_state['amboss_result']` bereit."
+    #       )
 
     alter_roh = fall.get("Alter")
     try:
