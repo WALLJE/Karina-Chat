@@ -5,14 +5,13 @@ Purpose
 -------
 - Call only the AMBOSS MCP tool `search_article_sections` via JSON-RPC.
 - Return the raw JSON payload (no text rendering).
-- Optional helper for storing the result in `st.session_state`.
+- Store both input payload and result in `st.session_state`.
 
 Usage
 -----
-from mcp_amboss_module_for_karina import call_amboss_search, set_result_in_session
+from mcp_amboss_module_for_karina import call_amboss_search
 
 data = call_amboss_search(query="Ileitis terminalis")
-set_result_in_session(data, key="amboss_result")
 """
 
 from __future__ import annotations
@@ -71,13 +70,16 @@ def call_amboss_search(
 ) -> dict:
     """Call AMBOSS MCP `search_article_sections` and return raw JSON result.
 
-    Automatically loads the token from `st.secrets["Amboss_Token"]` if not provided.
+    Automatically loads the token from `st.secrets["AMBOSS_TOKEN"]` if not provided.
+    Stores the request payload in `st.session_state["amboss_input_mcp"]`.
     """
-    token = token or st.secrets.get("Amboss_Token")
+    token = token or st.secrets.get("AMBOSS_TOKEN")
     if not token:
         raise ValueError("AMBOSS_TOKEN not found. Please set in st.secrets or pass as argument.")
 
     payload = _build_payload(query, language=language)
+    st.session_state["amboss_input_mcp"] = payload
+
     headers = {
         "Authorization": f"Bearer {token}",
         "Content-Type": "application/json",
@@ -88,15 +90,10 @@ def call_amboss_search(
 
     resp = requests.post(url, headers=headers, data=json.dumps(payload), timeout=timeout)
     resp.raise_for_status()
-    return _parse_response(resp)
+    result = _parse_response(resp)
 
-
-def set_result_in_session(result: dict, *, key: str = "amboss_result") -> None:
-    """If Streamlit is available, store the result in `st.session_state`."""
-    try:
-        st.session_state[key] = result
-    except Exception:
-        pass
+    st.session_state["amboss_result"] = result
+    return result
 
 
 if __name__ == "__main__":
@@ -104,7 +101,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Call AMBOSS MCP search_article_sections.")
     parser.add_argument("query", help="Search query.")
-    parser.add_argument("--token", default=os.environ.get("Amboss_Token"), help="AMBOSS Bearer token")
+    parser.add_argument("--token", default=os.environ.get("AMBOSS_TOKEN"), help="AMBOSS Bearer token")
     parser.add_argument("--language", default="de", help="Language parameter for MCP")
     args = parser.parse_args()
 
