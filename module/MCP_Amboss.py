@@ -82,13 +82,13 @@ def call_amboss_search(
 ) -> dict:
     """Ruft ``search_article_sections`` auf und legt das Roh-JSON im Session State ab.
 
-    Falls kein Token übergeben wird, wird automatisch ``st.secrets["AMBOSS_TOKEN"]``
+    Falls kein Token übergeben wird, wird automatisch ``st.secrets["Amboss_Token"]``
     verwendet. Sowohl die Nutzlast als auch das Ergebnis werden im ``st.session_state``
     gespeichert, damit andere Module direkt darauf zugreifen können.
     """
-    token = token or st.secrets.get("AMBOSS_TOKEN")
+    token = token or st.secrets.get("Amboss_Token")
     if not token:
-        raise ValueError("AMBOSS_TOKEN not found. Please set in st.secrets or pass as argument.")
+        raise ValueError("Amboss_Token not found. Please set in st.secrets or pass as argument.")
 
     payload = _build_payload(query, language=language)
     st.session_state["amboss_input_mcp"] = payload
@@ -116,7 +116,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Call AMBOSS MCP search_article_sections.")
     parser.add_argument("query", help="Search query.")
-    parser.add_argument("--token", default=os.environ.get("AMBOSS_TOKEN"), help="AMBOSS Bearer token")
+    parser.add_argument("--token", default=os.environ.get("Amboss_Token"), help="AMBOSS Bearer token")
     parser.add_argument("--language", default="de", help="Language parameter for MCP")
     args = parser.parse_args()
 
