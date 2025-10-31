@@ -5,7 +5,7 @@ from __future__ import annotations
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 import json
-from typing import Dict, Iterable, List, Optional, Tuple
+from typing import Dict, Iterable, List, Optional, Tuple, Union
 
 import streamlit as st
 
@@ -28,6 +28,7 @@ class FeedbackContext:
     therapie_vorschlag: str
     patient_forms_dativ: str
     patient_forms_genitiv: str
+    patient_alter: Union[int, str, None] = None
     amboss_zusammenfassung: str = ""
 
     def build_context_block(self) -> str:
@@ -36,13 +37,16 @@ class FeedbackContext:
         teile: List[str] = []
         # Kontextblöcke werden als Markdown-Abschnitte formatiert, damit das
         # Modell beim Lesen sofort erkennt, welche Informationen zusammengehören.
-        teile.append(
-            "### Szenario\n"
-            f"{self.diagnose_szenario or 'Kein Szenario hinterlegt.'}\n"
-            "\n"
-            "### Anzahl der Termine\n"
-            f"{self.anzahl_termine} Termin(e) wurden dokumentiert."
-        )
+        szenariozeilen: List[str] = [
+            "### Szenario",
+            self.diagnose_szenario or "Kein Szenario hinterlegt.",
+        ]
+        if self.patient_alter not in (None, ""):
+            szenariozeilen.append(f"Alter der simulierten Person: {self.patient_alter} Jahre")
+        szenariozeilen.append("")
+        szenariozeilen.append("### Anzahl der Termine")
+        szenariozeilen.append(f"{self.anzahl_termine} Termin(e) wurden dokumentiert.")
+        teile.append("\n".join(szenariozeilen))
         teile.append(
             "### Gesprächsverlauf des Studierenden\n"
             f"{self.user_verlauf or 'Keine Fragen dokumentiert.'}"
@@ -194,6 +198,7 @@ def preprocess_amboss_payload(
     client,
     payload: Optional[Dict],
     diagnose_szenario: str,
+    patient_alter: Union[int, str, None] = None,
 ) -> str:
     """Fasst das AMBOSS-Payload mit gpt-4o-mini kompakt zusammen."""
 
@@ -204,15 +209,21 @@ def preprocess_amboss_payload(
     # um den Rohinhalt zu inspizieren: ``st.write(payload)``.
 
     try:
+        patient_alter_text = "unbekannt"
+        if patient_alter not in (None, ""):
+            patient_alter_text = str(patient_alter)
+
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
                 {
                     "role": "system",
                     "content": (
-                        "Du extrahierst die wichtigsten Fakten aus einem AMBOSS-JSON. "
-                        "Fasse prägnant zusammen, was für die Bewertung der studentischen "
-                        "Entscheidungen wichtig ist."
+                        "Du extrahierst als medizinische:r Fachexpert:in die wichtigsten Fakten aus "
+                        "einem AMBOSS-JSON. Konzentriere dich auf anamnestische, diagnostische und "
+                        "therapeutische Kernaussagen. Ergänze besonders relevante "
+                        "Differentialdiagnosen und erkläre kurz, wie sie sich von der Hauptdiagnose "
+                        "abgrenzen lassen."
                     ),
                 },
                 {
@@ -220,6 +231,14 @@ def preprocess_amboss_payload(
                     "content": (
                         "Szenario: "
                         f"{diagnose_szenario or 'unbekannt'}\n"
+                        "Alter der simulierten Person: "
+                        f"{patient_alter_text}\n"
+                        "Bitte fasse folgende Aspekte strukturiert zusammen:\n"
+                        "1. Wichtigste anamnestische Hinweise.\n"
+                        "2. Diagnostische Schlüsselbefunde und geplante Schritte.\n"
+                        "3. Kernaussagen zur Therapie oder empfohlenen Maßnahmen.\n"
+                        "4. Entscheidende Differentialdiagnosen mit kurzer Abgrenzung.\n"
+                        "Nutze Stichpunkte oder kurze Absätze und verzichte auf Floskeln.\n\n"
                         "JSON-Inhalt:\n"
                         f"{json.dumps(payload, ensure_ascii=False)}"
                     ),

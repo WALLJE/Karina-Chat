@@ -15,6 +15,7 @@ except Exception:  # pragma: no cover - fallback when requests is unavailable
 
 from module.patient_language import get_patient_forms
 from module.MCP_Amboss import call_amboss_search
+from module.amboss_summary import loesche_zusammenfassung
 
 
 DEFAULT_FALLDATEI = "fallbeispiele.xlsx"
@@ -56,6 +57,7 @@ _FALL_SESSION_KEYS: set[str] = {
     "feedback_row_id",
     "student_evaluation_done",
     "token_sums",
+    "amboss_summary",
 }
 
 _FALL_SESSION_PREFIXES: tuple[str, ...] = (
@@ -153,6 +155,9 @@ def fallauswahl_prompt(df: pd.DataFrame, szenario: str | None = None) -> None:
     # Feedback-Modul zur Verfügung. Bei Bedarf kann hier für das Debugging ein
     # zusätzliches Logging ergänzt werden (z. B. mittels `st.write`).
     if st.session_state.diagnose_szenario:
+        # Sobald ein neues Szenario geladen wird, ist eine vorherige
+        # AMBOSS-Zusammenfassung obsolet.
+        loesche_zusammenfassung()
         try:
             call_amboss_search(query=st.session_state.diagnose_szenario)
         except Exception as exc:  # pragma: no cover - reine Laufzeitfehlerbehandlung
