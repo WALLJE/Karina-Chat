@@ -1,6 +1,15 @@
-from module.token_counter import init_token_counters, add_usage
+"""High-Level-Funktion zum Erzeugen des Feedbacks für die Studierenden."""
+
 from module.patient_language import get_patient_forms
 from module.offline import get_offline_feedback, is_offline
+from module.feedback_pipeline import (
+    FeedbackContext,
+    combine_sections,
+    preprocess_amboss_payload,
+    run_feedback_pipeline,
+)
+from module.feedback_tasks import get_default_feedback_tasks
+
 
 def feedback_erzeugen(
     client,
@@ -12,68 +21,47 @@ def feedback_erzeugen(
     koerper_befund,
     user_verlauf,
     anzahl_termine,
-    diagnose_szenario
+    diagnose_szenario,
+    amboss_payload=None,
 ):
+    """Erzeugt das Abschlussfeedback und kombiniert Teilabschnitte."""
+
     if is_offline():
         return get_offline_feedback(diagnose_szenario)
 
     patient_forms = get_patient_forms()
 
-    prompt = f"""
-Ein Medizinstudierender hat eine vollständige virtuelle Fallbesprechung mit {patient_forms.phrase("dat", article="indefinite")} durchgeführt. Du bist ein erfahrener medizinischer Prüfer.
-
-Beurteile ausschließlich die Eingaben und Entscheidungen des Studierenden – NICHT die Antworten {patient_forms.phrase("gen")} oder automatisch generierte Inhalte.
-
-Die zugrunde liegende Erkrankung im Szenario lautet: **{diagnose_szenario}**.
-
-Hier ist der Gesprächsverlauf mit den Fragen und Aussagen des Nutzers:
-{user_verlauf}
-
-GPT-generierte Befunde (nur als Hintergrund, bitte nicht bewerten):
-{koerper_befund}
-{gpt_befunde}
-
-Erhobene Differentialdiagnosen (Nutzerangaben):
-{user_ddx2}
-
-Geplante diagnostische Maßnahmen (Nutzerangaben):
-{diagnostik_eingaben}
-
-Finale Diagnose (Nutzereingabe):
-{final_diagnose}
-
-Therapiekonzept (Nutzereingabe):
-{therapie_vorschlag}
-
-Die Fallbearbeitung umfasste {anzahl_termine} Diagnostik-Termine.
-
-Strukturiere dein Feedback klar, hilfreich und differenziert – wie ein persönlicher Kommentar bei einer mündlichen Prüfung, schreibe in der zweiten Person.
-
-Nenne vorab das zugrunde liegende Szennario. Gib an, ob die Diagnose richtig gestellt wurde. Gib an, wieviele Termine für die Diagnostik benötigt wurden.
-
-1. Wurden im Gespräch alle relevanten anamnestischen Informationen erhoben?
-2. War die gewählte Diagnostik nachvollziehbar, vollständig und passend zur Szenariodiagnose **{diagnose_szenario}**?
-3. War die gewählte Diagnostik nachvollziehbar, vollständig und passend zu den Differentialdiagnosen **{user_ddx2}**?
-4. Beurteile, ob die diagnostische Strategie sinnvoll aufgebaut war, beachte dabei die Zahl der notwendigen UNtersuchungstermine. Gab es unnötige Doppeluntersuchungen, sinnvolle Eskalation, fehlende Folgeuntersuchungen? Beziehe dich ausdrücklich auf die Reihenfolge und den Inhalt der Runden.
-5. Ist die finale Diagnose nachvollziehbar, insbesondere im Hinblick auf Differenzierung zu anderen Möglichkeiten?
-6. Ist das Therapiekonzept leitliniengerecht, plausibel und auf die Diagnose abgestimmt?
-
-**Berücksichtige und kommentiere zusätzlich**:
-- ökologische Aspekte (z. B. überflüssige Diagnostik, zuviele Anforderungen, zuviele Termine, CO₂-Bilanz, Strahlenbelastung bei CT oder Röntgen, Ressourcenverbrauch).  
-- ökonomische Sinnhaftigkeit (Kosten-Nutzen-Verhältnis)
-- Beachte und begründe auch, warum zuwenig Diagnostik unwirtschaftlich und nicht nachhaltig sein kann.
-"""
-    init_token_counters()
-    response = client.chat.completions.create(
-        model="gpt-4",
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0.4
+    # Falls der AMBOSS-Modus aktiv ist, wird der Rohinhalt zuerst kompakt
+    # zusammengefasst, damit die späteren Teilmodelle weniger Kontext verarbeiten
+    # müssen.
+    amboss_zusammenfassung = preprocess_amboss_payload(
+        client,
+        amboss_payload,
+        diagnose_szenario,
     )
-    # prompt token: Einagbe an GPT
-    # completion toke: Ausgabe von GPT
-    add_usage(
-        prompt_tokens=response.usage.prompt_tokens,
-        completion_tokens=response.usage.completion_tokens,
-        total_tokens=response.usage.total_tokens
+
+    kontext = FeedbackContext(
+        diagnose_szenario=diagnose_szenario,
+        anzahl_termine=anzahl_termine,
+        user_verlauf=user_verlauf,
+        diagnostik_eingaben=diagnostik_eingaben,
+        gpt_befunde=gpt_befunde,
+        koerper_befund=koerper_befund,
+        user_ddx2=user_ddx2,
+        final_diagnose=final_diagnose,
+        therapie_vorschlag=therapie_vorschlag,
+        patient_forms_dativ=patient_forms.phrase("dat", article="indefinite"),
+        patient_forms_genitiv=patient_forms.phrase("gen"),
+        amboss_zusammenfassung=amboss_zusammenfassung,
     )
-    return response.choices[0].message.content
+
+    # Alle Abschnitte werden parallel erzeugt, bleiben aber dank der Taskliste
+    # in ihrer ursprünglichen Reihenfolge.
+    abschnitte = run_feedback_pipeline(
+        client,
+        kontext,
+        tasks=get_default_feedback_tasks(),
+        temperature=0.4,
+    )
+
+    return combine_sections(abschnitte)
