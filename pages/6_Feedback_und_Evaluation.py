@@ -6,6 +6,7 @@ from module.footer import copyright_footer
 from module.gpt_feedback import speichere_gpt_feedback_in_supabase
 from diagnostikmodul import aktualisiere_diagnostik_zusammenfassung
 from module.offline import display_offline_banner, is_offline
+from module.amboss_config import sync_chatgpt_amboss_session_state
 
 show_sidebar()
 copyright_footer()
@@ -22,13 +23,14 @@ if "SYSTEM_PROMPT" not in st.session_state or "patient_name" not in st.session_s
 #    st.stop()
 
 aktualisiere_diagnostik_zusammenfassung()
+chatgpt_amboss_aktiv = sync_chatgpt_amboss_session_state()
 
 if "student_evaluation_done" not in st.session_state:
     st.session_state["student_evaluation_done"] = False
 
 feedback_text = st.session_state.get("final_feedback", "").strip()
 
-if st.session_state.get("is_admin") and st.session_state.get("amboss_result"):
+if chatgpt_amboss_aktiv and st.session_state.get("is_admin") and st.session_state.get("amboss_result"):
     with st.expander("AMBOSS JSON-Datei", expanded=False):
         st.json(st.session_state.get("amboss_result"))
     amboss_summary_text = st.session_state.get("amboss_summary")
@@ -37,6 +39,11 @@ if st.session_state.get("is_admin") and st.session_state.get("amboss_result"):
             st.markdown(amboss_summary_text)
     else:
         st.info("ℹ️ Noch keine GPT-Zusammenfassung des AMBOSS-Payloads verfügbar.")
+elif st.session_state.get("is_admin") and not chatgpt_amboss_aktiv:
+    st.info(
+        "ℹ️ Die ChatGPT+AMBOSS-Funktion ist aktuell deaktiviert. "
+        "Aktiviere sie im Adminbereich, um die MCP-Daten einzusehen."
+    )
 
 if not feedback_text:
     diagnostik_eingaben = st.session_state.get("diagnostik_eingaben_kumuliert", "")

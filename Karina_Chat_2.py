@@ -34,6 +34,7 @@ from module.fallverwaltung import (
 )
 from module.fall_config import clear_fixed_scenario, get_fall_fix_state
 from module.footer import copyright_footer
+from module.amboss_config import sync_chatgpt_amboss_session_state
 
 # Für Einbinden Supabase Tabellen
 
@@ -95,6 +96,7 @@ def speichere_gpt_feedback_in_supabase():
 
 #---------------- Routinen Ende -------------------
 initialisiere_session_state()
+sync_chatgpt_amboss_session_state()
 
 #####
 # Testlauf
