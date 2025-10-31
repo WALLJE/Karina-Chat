@@ -16,6 +16,10 @@ except Exception:  # pragma: no cover - fallback when requests is unavailable
 from module.patient_language import get_patient_forms
 from module.MCP_Amboss import call_amboss_search
 from module.amboss_summary import loesche_zusammenfassung
+from module.amboss_config import (
+    SESSION_STATE_KEY as CHATGPT_AMBOSS_FLAG,
+    sync_chatgpt_amboss_session_state,
+)
 
 
 DEFAULT_FALLDATEI = "fallbeispiele.xlsx"
@@ -150,23 +154,22 @@ def fallauswahl_prompt(df: pd.DataFrame, szenario: str | None = None) -> None:
     st.session_state.diagnose_features = fall.get("Beschreibung", "")
     st.session_state.koerper_befund_tip = fall.get("Körperliche Untersuchung", "")
 
-    # Sobald das Szenario feststeht, wird es direkt an den MCP-Client von AMBOSS
-    # übergeben. Dadurch steht das Ergebnis im Session State für das spätere
-    # Feedback-Modul zur Verfügung. Bei Bedarf kann hier für das Debugging ein
-    # zusätzliches Logging ergänzt werden (z. B. mittels `st.write`).
+    chatgpt_amboss_aktiv = sync_chatgpt_amboss_session_state()
+    st.session_state.setdefault(CHATGPT_AMBOSS_FLAG, chatgpt_amboss_aktiv)
+
+    # Sobald das Szenario feststeht, wird – abhängig vom Status der
+    # ChatGPT+AMBOSS-Funktion – der MCP-Client abgefragt. Debug-Hinweise können
+    # bei Bedarf über `st.write` ergänzt werden.
     if st.session_state.diagnose_szenario:
-        # Sobald ein neues Szenario geladen wird, ist eine vorherige
-        # AMBOSS-Zusammenfassung obsolet.
         loesche_zusammenfassung()
-        try:
-            call_amboss_search(query=st.session_state.diagnose_szenario)
-        except Exception as exc:  # pragma: no cover - reine Laufzeitfehlerbehandlung
-            st.error(f"❌ Abruf des AMBOSS-Inhalts zum Szenario fehlgeschlagen: {exc}")
-    #   else:
-    #       st.info(
-    #           "ℹ️ AMBOSS hat das Szenario verarbeitet. Die Ergebnisse liegen in "
-    #           "`st.session_state['amboss_result']` bereit."
-    #       )
+        if chatgpt_amboss_aktiv:
+            try:
+                call_amboss_search(query=st.session_state.diagnose_szenario)
+            except Exception as exc:  # pragma: no cover - reine Laufzeitfehlerbehandlung
+                st.error(f"❌ Abruf des AMBOSS-Inhalts zum Szenario fehlgeschlagen: {exc}")
+        else:
+            st.session_state.pop("amboss_result", None)
+            st.session_state.pop("amboss_input_mcp", None)
 
     alter_roh = fall.get("Alter")
     try:

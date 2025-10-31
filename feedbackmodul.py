@@ -18,6 +18,7 @@ from module.amboss_summary import (
     loesche_zusammenfassung,
     speichere_zusammenfassung,
 )
+from module.amboss_config import sync_chatgpt_amboss_session_state
 
 
 StatusUpdater = Callable[[str, str], None]
@@ -51,6 +52,7 @@ def feedback_erzeugen(
         return get_offline_feedback(diagnose_szenario)
 
     patient_forms = get_patient_forms()
+    chatgpt_amboss_aktiv = sync_chatgpt_amboss_session_state()
 
     # Hinweis: Der Parameter ``amboss_payload`` wird weiterhin akzeptiert,
     # damit bestehende Funktionsaufrufe unverändert bleiben. Die Verarbeitung
@@ -60,7 +62,7 @@ def feedback_erzeugen(
     # Für jedes Feedback wird das MCP erneut befragt, damit keine veralteten
     # Zwischenergebnisse aus vorherigen Fällen übernommen werden.
     amboss_payload_live = None
-    if diagnose_szenario:
+    if diagnose_szenario and chatgpt_amboss_aktiv:
         if status_updater:
             status_updater(
                 "AMBOSS-MCP wird mit dem aktuellen Szenario abgefragt…",
@@ -119,10 +121,16 @@ def feedback_erzeugen(
     else:
         loesche_zusammenfassung()
         if status_updater:
-            status_updater(
-                "Keine AMBOSS-Daten verfügbar – es wird ohne Zusammenfassung fortgefahren.",
-                "warning",
-            )
+            if chatgpt_amboss_aktiv:
+                status_updater(
+                    "Keine AMBOSS-Daten verfügbar – es wird ohne Zusammenfassung fortgefahren.",
+                    "warning",
+                )
+            else:
+                status_updater(
+                    "ChatGPT+AMBOSS ist deaktiviert – es wird ohne MCP-Anteil fortgefahren.",
+                    "info",
+                )
 
     kontext = FeedbackContext(
         diagnose_szenario=diagnose_szenario,

@@ -16,6 +16,13 @@ from module.fall_config import (
     get_fall_fix_state,
     set_fixed_scenario,
 )
+from module.amboss_config import (
+    PERSISTENCE_DURATION,
+    activate_chatgpt_amboss,
+    deactivate_chatgpt_amboss,
+    get_chatgpt_amboss_state,
+    sync_chatgpt_amboss_session_state,
+)
 
 
 copyright_footer()
@@ -62,6 +69,48 @@ if offline_toggle != current_offline:
         st.info("Online-Modus reaktiviert. Die Anwendung wird neu gestartet.")
         _restart_application_after_offline()
 
+st.subheader("ChatGPT+AMBOSS-Funktion")
+chatgpt_amboss_aktiv = sync_chatgpt_amboss_session_state()
+_, chatgpt_amboss_zeitpunkt = get_chatgpt_amboss_state()
+dauer_stunden = int(PERSISTENCE_DURATION.total_seconds() // 3600)
+if dauer_stunden % 24 == 0:
+    dauer_text = f"{dauer_stunden // 24} Tage"
+else:
+    dauer_text = f"{dauer_stunden} Stunden"
+
+if chatgpt_amboss_zeitpunkt:
+    aktiv_bis = chatgpt_amboss_zeitpunkt + PERSISTENCE_DURATION
+    st.caption(
+        "Aktiviert am "
+        f"{chatgpt_amboss_zeitpunkt.astimezone().strftime('%d.%m.%Y %H:%M Uhr')} – "
+        f"voraussichtlich gültig bis {aktiv_bis.astimezone().strftime('%d.%m.%Y %H:%M Uhr')}"
+    )
+
+helptext_chatgpt_amboss = (
+    "Nach dem Einschalten bleibt die Funktion ohne erneute Freischaltung "
+    f"{dauer_text} aktiv."
+)
+
+refresh_amboss_after_toggle = False
+toggle_chatgpt_amboss = st.toggle(
+    "ChatGPT+AMBOSS aktivieren",
+    value=chatgpt_amboss_aktiv,
+    help=helptext_chatgpt_amboss,
+    key="admin_chatgpt_amboss_toggle",
+)
+
+if toggle_chatgpt_amboss != chatgpt_amboss_aktiv:
+    if toggle_chatgpt_amboss:
+        activate_chatgpt_amboss()
+        st.success(
+            "✅ ChatGPT+AMBOSS wurde eingeschaltet. Die Aktivierung bleibt automatisch bestehen."
+        )
+        refresh_amboss_after_toggle = True
+    else:
+        deactivate_chatgpt_amboss()
+        st.info("ℹ️ ChatGPT+AMBOSS wurde deaktiviert. Vorherige MCP-Daten wurden entfernt.")
+    chatgpt_amboss_aktiv = sync_chatgpt_amboss_session_state()
+
 st.subheader("Adminmodus")
 st.write("Der Adminmodus ist aktiv. Bei Bedarf kannst du ihn hier wieder deaktivieren.")
 
@@ -76,6 +125,18 @@ if st.button("Adminmodus beenden", type="primary"):
 st.subheader("Fallverwaltung")
 
 fall_df = lade_fallbeispiele(pfad="fallbeispiele.xlsx")
+
+if refresh_amboss_after_toggle and toggle_chatgpt_amboss and not fall_df.empty:
+    aktuelles_szenario = st.session_state.get("diagnose_szenario")
+    if aktuelles_szenario:
+        try:
+            fallauswahl_prompt(fall_df, aktuelles_szenario)
+        except Exception as exc:
+            st.warning(
+                "⚠️ AMBOSS-Daten konnten nicht sofort neu geladen werden. "
+                "Bei Bedarf kann über zusätzliche Debug-Ausgaben (z. B. `st.write`) "
+                f"nachverfolgt werden, was schiefgelaufen ist: {exc}"
+            )
 
 if fall_df.empty:
     st.info("Die Fallliste konnte nicht geladen werden. Bitte prüfe die Datei 'fallbeispiele.xlsx'.")
