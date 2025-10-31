@@ -444,7 +444,9 @@ if diagnose_eingegeben and therapie_eingegeben:
                 koerper_befund,
                 user_verlauf,
                 anzahl_termine,
-                diagnose_szenario
+                diagnose_szenario,
+                st.session_state.get("amboss_result"),
+                patient_alter=st.session_state.get("patient_age"),
             )
             st.session_state.final_feedback = feedback
             speichere_gpt_feedback_in_supabase()
