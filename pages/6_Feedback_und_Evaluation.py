@@ -53,7 +53,8 @@ if not feedback_text:
             koerper_befund,
             user_verlauf,
             anzahl_termine,
-            diagnose_szenario
+            diagnose_szenario,
+            st.session_state.get("amboss_result"),
         )
     else:
         with st.spinner("⏳ Abschluss-Feedback wird erstellt..."):
@@ -67,7 +68,8 @@ if not feedback_text:
                 koerper_befund,
                 user_verlauf,
                 anzahl_termine,
-                diagnose_szenario
+                diagnose_szenario,
+                st.session_state.get("amboss_result"),
             )
 
     st.session_state.final_feedback = feedback
