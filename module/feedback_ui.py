@@ -45,7 +45,7 @@ def student_feedback():
         )
 
     if st.session_state.get("student_evaluation_done"):
-        st.success("✅ Vielen Dank! Ihr Feedback wurde bereits gespeichert.")
+        st.success("✅ Vielen Dank! Ihr Feedback wurde gespeichert.")
         return
 
     jetzt = datetime.now()
