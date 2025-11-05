@@ -58,7 +58,7 @@ st.session_state["openai_client"] = client
 
 def initialisiere_session_state():
     st.session_state.setdefault("final_feedback", "") #test
-    st.session_state.setdefault("feedback_prompt_final", "") #test
+    # st.session_state.setdefault("feedback_prompt_final", "") # variable entfernt
     st.session_state.setdefault("final_diagnose", "") #test
     st.session_state.setdefault("offline_mode", False)
 
