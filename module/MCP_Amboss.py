@@ -104,6 +104,20 @@ def _peel_json(obj_or_str: Any, *, max_depth: int = 4) -> Tuple[Any, int]:
     return current, depth
 
 
+def _normalise_endpoint_url(url: str) -> str:
+    """Sorgt für eine eindeutige Schreibweise des Endpunkts ohne Redirect-Ping-Pong."""
+
+    # Einige Installationen liefern bei ``/mcp`` einen 308-Redirect auf ``/mcp/`` –
+    # und umgekehrt. Indem wir die URL konsequent auf genau einen abschließenden
+    # Slash normalisieren, verhindern wir eine Endlosschleife, bevor ``requests``
+    # nach 30 Weiterleitungen abbricht. Sollte zukünftig ein alternatives Routing
+    # notwendig sein, lässt sich dieser Schritt schnell anpassen.
+    cleaned = (url or "").strip()
+    if not cleaned:
+        return cleaned
+    return cleaned.rstrip("/") + "/"
+
+
 def _parse_response(resp: requests.Response) -> dict:
     """Wertet die Antwort des MCP aus und verarbeitet klassische JSON- sowie SSE-Antworten.
 
@@ -305,16 +319,41 @@ def call_amboss_search(
     # erfolgreichen Durchlauf wird der Eintrag entfernt.
     last_error_info: Optional[Dict[str, Any]] = None
 
+    request_url = _normalise_endpoint_url(url)
+
+    # Wir merken uns die abgerufene URL zusätzlich im Session State. So lässt sich im
+    # Adminbereich nachvollziehen, ob eine Normalisierung stattgefunden hat und wohin
+    # eine eventuell auftretende Weiterleitung ursprünglich führen wollte.
+    st.session_state["amboss_aufgerufener_endpunkt"] = {
+        "original": url,
+        "verwendet": request_url,
+    }
+
     for attempt_index in range(1, attempts_total + 1):
         try:
             resp = requests.post(
-                url,
+                request_url,
                 headers=headers,
                 data=json.dumps(payload),
                 timeout=timeout,
             )
             resp.raise_for_status()
             result = _parse_response(resp)
+        except requests.TooManyRedirects as exc:
+            # Dieser Sonderfall tritt auf, wenn der Server wiederholt zwischen zwei
+            # Varianten derselben URL pendelt. Wir geben eine verständliche Meldung
+            # zurück und halten im Session State fest, welche URL betroffen war.
+            st.session_state["amboss_letzter_fehlversuch"] = {
+                "versuch": attempt_index,
+                "max_versuche": attempts_total,
+                "fehlertyp": type(exc).__name__,
+                "fehlermeldung": str(exc),
+                "hinweis": "Mögliche Weiterleitungsschleife – kontrolliere den MCP-Endpunkt (z. B. fehlender oder doppelter Slash).",
+                "endpunkt": request_url,
+            }
+            raise ValueError(
+                "AMBOSS-Abruf scheiterte an einer Redirect-Schleife. Bitte kontrolliere den MCP-Endpunkt im Adminbereich."
+            ) from exc
         except (requests.RequestException, ValueError) as exc:
             # Fehlerfall: Wir notieren Versuchszähler und Fehlertyp für spätere Analyse.
             last_error_info = {
