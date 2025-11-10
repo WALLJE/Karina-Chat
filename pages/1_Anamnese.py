@@ -3,12 +3,15 @@ from openai import OpenAI, RateLimitError
 import os
 from datetime import datetime
 from module.sidebar import show_sidebar
+from module.navigation import redirect_to_start_page
 from module.footer import copyright_footer
 from module.offline import (
     display_offline_banner,
     get_offline_patient_reply,
     is_offline,
 )
+from module.loading_indicator import task_spinner
+from module.token_counter import init_token_counters, add_usage
 
 copyright_footer()
 show_sidebar()
@@ -16,9 +19,7 @@ display_offline_banner()
 
 # Voraussetzungen prüfen
 if "SYSTEM_PROMPT" not in st.session_state or "patient_name" not in st.session_state:
-    st.warning("⚠️ Der Fall ist noch nicht geladen. Bitte beginne über die Startseite.")
-    st.page_link("Karina_Chat_2.py", label="⬅ Zur Startseite")
-    st.stop()
+    redirect_to_start_page("⚠️ Der Fall ist noch nicht geladen. Bitte beginne über die Startseite.")
 
 # OpenAI-Client initialisieren (nur wenn nicht bereits vorhanden)
 if "openai_client" not in st.session_state:
@@ -57,15 +58,36 @@ if submit_button and user_input:
         reply = get_offline_patient_reply(st.session_state.get("patient_name", ""))
         st.session_state.messages.append({"role": "assistant", "content": reply})
     else:
-        with st.spinner(f"{st.session_state.patient_name} antwortet..."):
+        ladeaufgaben = [
+            "Übermittle Frage an das Sprachmodell",
+            "Warte auf Antwortgenerierung",
+            "Bereite Antwort für die Anzeige auf",
+        ]
+        with task_spinner(f"{st.session_state.patient_name} antwortet...", ladeaufgaben) as indikator:
             try:
+                indikator.advance(1)
+                # Vor jedem API-Kontakt stellen wir sicher, dass die Zähler existieren,
+                # damit mehrere Chatsitzungen sauber kumuliert werden können.
+                init_token_counters()
                 response = client.chat.completions.create(
                     model="gpt-4",
                     messages=st.session_state.messages,
                     temperature=0.6
                 )
+                # Die zurückgelieferten Token-Werte werden unmittelbar in die Session-Summen
+                # übernommen. "total_tokens" enthält zwar bereits die Summe des aktuellen Calls,
+                # dennoch addieren wir explizit, um über mehrere Gesprächsrunden hinweg eine
+                # kumulierte Statistik führen zu können. Für Debugging kann hier bei Bedarf ein
+                # st.write(...) aktiviert werden.
+                add_usage(
+                    prompt_tokens=response.usage.prompt_tokens,
+                    completion_tokens=response.usage.completion_tokens,
+                    total_tokens=response.usage.total_tokens,
+                )
+                indikator.advance(1)
                 reply = response.choices[0].message.content
                 st.session_state.messages.append({"role": "assistant", "content": reply})
+                indikator.advance(1)
             except RateLimitError:
                 st.error("🚫 Die Anfrage konnte nicht verarbeitet werden, da die OpenAI-API derzeit überlastet ist. Bitte versuchen Sie es in einigen Minuten erneut.")
     st.rerun()

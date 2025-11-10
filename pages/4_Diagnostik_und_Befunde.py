@@ -1,12 +1,91 @@
 import streamlit as st
 from module.sidebar import show_sidebar
+from module.navigation import redirect_to_start_page
 from module.footer import copyright_footer
 from diagnostikmodul import diagnostik_und_befunde_routine
 from befundmodul import generiere_befund
 from module.offline import display_offline_banner, is_offline
+from module.loading_indicator import task_spinner
 
 show_sidebar()
 display_offline_banner()
+
+# Sollte jemand diese Seite ohne vorbereiteten Fall aufrufen, leiten wir automatisch
+# zurück zur Startseite. Dadurch bleibt der Ablauf konsistent und fehlende
+# Session-State-Einträge führen nicht mehr zu schwer nachvollziehbaren Fehlern.
+if "SYSTEM_PROMPT" not in st.session_state or "patient_name" not in st.session_state:
+    redirect_to_start_page(
+        "⚠️ Der Fall ist noch nicht geladen. Bitte beginne über die Startseite."
+    )
+
+st.session_state.setdefault("befund_generating", False)
+st.session_state.setdefault("befund_generierung_gescheitert", False)
+
+
+def aktualisiere_kumulative_befunde_page(neuer_befund: str) -> None:
+    """Pflegt den Primärbefund und die kumulativen Texte für Export/Feedback ein."""
+
+    st.session_state["befunde"] = neuer_befund
+
+    passagen = [f"### Termin 1\n{neuer_befund}".strip()]
+    gesamt = st.session_state.get("diagnostik_runden_gesamt", 1)
+    for termin in range(2, gesamt + 1):
+        key = f"befunde_runde_{termin}"
+        text = st.session_state.get(key, "").strip()
+        if text:
+            passagen.append(f"### Termin {termin}\n{text}")
+
+    st.session_state["gpt_befunde"] = neuer_befund
+    st.session_state["gpt_befunde_kumuliert"] = "\n---\n".join(passagen).strip()
+
+
+def starte_automatische_befundgenerierung_page(client) -> None:
+    """Startet ohne Nutzereingriff die Befundgenerierung, sobald alle Daten vorliegen."""
+
+    if st.session_state.get("befund_generating", False):
+        return
+    if st.session_state.get("befunde"):
+        return
+    if st.session_state.get("befund_generierung_gescheitert", False):
+        return
+    if client is None:
+        return  # Sicherheitsnetz, falls der Client nicht initialisiert wurde.
+
+    diagnostik_text = st.session_state.get("user_diagnostics", "").strip()
+    ddx_text = st.session_state.get("user_ddx2", "").strip()
+    if not diagnostik_text or not ddx_text:
+        return
+
+    st.session_state["befund_generating"] = True
+    st.session_state.pop("befund_generierungsfehler", None)
+
+    try:
+        szenario = st.session_state.get("diagnose_szenario", "")
+        if is_offline():
+            befund = generiere_befund(client, szenario, diagnostik_text)
+            aktualisiere_kumulative_befunde_page(befund)
+        else:
+            ladeaufgaben = [
+                "Lese Falldaten ein",
+                "Analysiere diagnostische Eingaben",
+                "Erstelle strukturierten Befund",
+            ]
+            with task_spinner("Befunde werden automatisch generiert...", ladeaufgaben) as indikator:
+                indikator.advance(1)
+                befund = generiere_befund(client, szenario, diagnostik_text)
+                indikator.advance(1)
+                aktualisiere_kumulative_befunde_page(befund)
+                indikator.advance(1)
+    except Exception as error:
+        st.session_state["befund_generierung_gescheitert"] = True
+        st.session_state["befund_generierungsfehler"] = str(error)
+    else:
+        st.session_state["befund_generierung_gescheitert"] = False
+    finally:
+        st.session_state["befund_generating"] = False
+
+    if not st.session_state.get("befund_generierung_gescheitert", False):
+        st.rerun()
 
 # st.subheader("Diagnostik und Befunde")
 
@@ -23,11 +102,13 @@ if "koerper_befund" in st.session_state:
                     client = st.session_state.get("openai_client")
                     st.session_state.user_ddx2 = sprach_check(ddx_input2, client)
                     st.session_state.user_diagnostics = sprach_check(diag_input2, client)
-                    st.rerun()
+                    starte_automatische_befundgenerierung_page(client)
 
         else:
                 st.markdown(f"**Differentialdiagnosen:**  \n{st.session_state.user_ddx2}")
                 st.markdown(f"**Diagnostische Maßnahmen:**  \n{st.session_state.user_diagnostics}")
+
+        starte_automatische_befundgenerierung_page(st.session_state.get("openai_client"))
 else:
     st.subheader("Diagnostik und Befunde")
     st.button("Untersuchung durchführen", disabled=True)
@@ -45,31 +126,63 @@ if (
 
     if "befunde" in st.session_state:
         st.markdown(st.session_state.befunde)
+        if st.session_state.get("befund_generierungsfehler"):
+            st.info(
+                "ℹ️ Der automatische Lauf meldete zuvor einen Fehler. Der Hinweis verbleibt zur Transparenz."
+            )
     else:
-        if st.button("🧪 Befunde generieren lassen"):
-            try:
-                diagnostik_eingabe = st.session_state.user_diagnostics
-                diagnose_szenario = st.session_state.diagnose_szenario
-                client = st.session_state.get("openai_client")
+        if st.session_state.get("befund_generierungsfehler"):
+            st.error(
+                "❌ Automatische Befundgenerierung fehlgeschlagen: "
+                f"{st.session_state['befund_generierungsfehler']}"
+            )
+        if st.session_state.get("befund_generierung_gescheitert", False):
+            client = st.session_state.get("openai_client")
+            if st.button("🧪 Befunde generieren lassen"):
+                try:
+                    st.session_state["befund_generating"] = True
+                    diagnostik_eingabe = st.session_state.user_diagnostics
+                    diagnose_szenario = st.session_state.diagnose_szenario
 
-                if is_offline():
-                    befund = generiere_befund(client, diagnose_szenario, diagnostik_eingabe)
-                else:
-                    with st.spinner("Befunde werden generiert..."):
+                    if is_offline():
                         befund = generiere_befund(client, diagnose_szenario, diagnostik_eingabe)
+                        aktualisiere_kumulative_befunde_page(befund)
+                    else:
+                        ladeaufgaben = [
+                            "Bereite diagnostische Eingaben auf",
+                            "Führe erneute Analyse durch",
+                            "Formuliere aktualisierten Befund",
+                        ]
+                        with task_spinner("Befunde werden erneut generiert...", ladeaufgaben) as indikator:
+                            indikator.advance(1)
+                            befund = generiere_befund(client, diagnose_szenario, diagnostik_eingabe)
+                            indikator.advance(1)
+                            aktualisiere_kumulative_befunde_page(befund)
+                            indikator.advance(1)
+                    st.session_state["befund_generierung_gescheitert"] = False
+                    st.session_state.pop("befund_generierungsfehler", None)
+                    st.session_state["befund_generating"] = False
+                    if is_offline():
+                        st.info("🔌 Offline-Befund gespeichert. Für erneute KI-Ergebnisse kann der Online-Modus genutzt werden.")
+                    st.success("✅ Befunde generiert")
+                    st.rerun()
 
-                st.session_state.befunde = befund
-                if is_offline():
-                    st.info("🔌 Offline-Befund gespeichert. Sobald der Online-Modus aktiv ist, kannst du neue KI-Befunde abrufen.")
-                st.success("✅ Befunde generiert")
-                st.rerun()
-
-            except Exception as e:
-                st.error(f"❌ Fehler bei der Befundgenerierung: {e}")
+                except Exception as error:
+                    st.session_state["befund_generating"] = False
+                    st.error(f"❌ Manueller Fallback fehlgeschlagen: {error}")
+                    # Hinweis: Zusätzliche Debug-Ausgaben können hier bei Bedarf ergänzt werden.
 else:
-    st.subheader("📄 Befunde")
-    st.button("🧪 Befunde generieren lassen", disabled=True)
-    st.info("❗Bitte fordern Sie zunächst Untersuchungen an.")
+    # Hinweis für Entwickler*innen: In dieser Verzweigung liegen noch keine Diagnostik-
+    # Eingaben vor. Früher haben wir hier die Überschrift "Befunde" sowie einen
+    # deaktivierten Button und einen erklärenden Hinweis ausgegeben. Dieses Layout hat bei
+    # Nutzer*innen den Eindruck erweckt, dass ein Bedienfehler vorliegt. Um eine klare und
+    # reduzierte Oberfläche zu gewährleisten, lassen wir den Bereich nun bewusst leer.
+    # Für Debugging-Zwecke können die alten Elemente über die auskommentierten Zeilen
+    # reaktiviert werden.
+    # st.subheader("📄 Befunde")
+    # st.button("🧪 Befunde generieren lassen", disabled=True)
+    # st.info("❗Bitte fordern Sie zunächst Untersuchungen an.")
+    pass  # Bewusst keine Ausgabe: Kommentare oben erläutern die Hintergründe für Debugging-Zwecke.
 
 # Weitere Diagnostik-Termine
 if not st.session_state.get("final_diagnose", "").strip():
@@ -123,10 +236,19 @@ if (
         client = st.session_state.get("openai_client")
         if is_offline():
             befund = generiere_befund(client, szenario, neue_diagnostik)
+            st.session_state[f"befunde_runde_{neuer_termin}"] = befund
         else:
-            with st.spinner("GPT erstellt Befunde..."):
+            ladeaufgaben = [
+                "Übertrage neue Diagnostik an das Modell",
+                "Stimme Ergebnisse mit bisherigen Befunden ab",
+                "Bereite Rückmeldung für die Anzeige auf",
+            ]
+            with task_spinner("GPT erstellt Befunde...", ladeaufgaben) as indikator:
+                indikator.advance(1)
                 befund = generiere_befund(client, szenario, neue_diagnostik)
-        st.session_state[f"befunde_runde_{neuer_termin}"] = befund
+                indikator.advance(1)
+                st.session_state[f"befunde_runde_{neuer_termin}"] = befund
+                indikator.advance(1)
         st.session_state["diagnostik_runden_gesamt"] = neuer_termin
         st.session_state["diagnostik_aktiv"] = False
         if is_offline():
@@ -153,9 +275,6 @@ st.page_link(
     icon="💊",
     disabled="befunde" not in st.session_state
 )
-
-if "befunde" not in st.session_state:
-    st.info(":grey[Dieser Schritt wird verfügbar, sobald Diagnostik erfolgt ist.]", icon="🔒")
 
 copyright_footer()
 

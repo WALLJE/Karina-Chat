@@ -65,11 +65,27 @@ def show_sidebar():
             ):
                 st.session_state.patient_logo = random.choice(valid_images)
 
+        # Ein leerer Platzhalter sorgt dafür, dass die Sidebar nicht springt, wenn noch kein Bild gesetzt ist.
+        bildplatzhalter = st.empty()
 
-        try:
-            st.image(st.session_state.patient_logo, width=160)
-        except Exception as e:
-            st.warning(f"⚠️ Bild konnte nicht geladen werden: {e}")
+        patientenbild = st.session_state.get("patient_logo")
+
+        if patientenbild:
+            try:
+                # Hinweis für Debugging: Bei Bedarf kann die folgende Zeile aktiviert werden,
+                # um den aktuell verwendeten Bildpfad in der Sidebar auszugeben.
+                # st.sidebar.write("🧪 DEBUG: Verwendeter Bildpfad:", patientenbild)
+                bildplatzhalter.image(patientenbild, width=160)
+            except Exception as e:
+                st.warning(f"⚠️ Bild konnte nicht geladen werden: {e}")
+        else:
+            # Sichtbarer, aber neutraler Platzhalter, damit die Bildfläche reserviert bleibt.
+            bildplatzhalter.markdown(
+                """
+                <div style="width: 160px; height: 160px; border-radius: 12px; background-color: rgba(0, 0, 0, 0.05);"></div>
+                """,
+                unsafe_allow_html=True,
+            )
 
         if all(k in st.session_state for k in ["patient_name", "patient_age"]):
             patient_text = f"**{st.session_state.patient_name} ({st.session_state.patient_age})**"
@@ -100,22 +116,15 @@ def show_sidebar():
             "final_diagnose" in st.session_state and
             "therapie_vorschlag" in st.session_state
         ):
-            st.page_link("pages/6_Feedback_und_Evaluation.py", label="📝 Feedback & Download")
+            st.page_link("pages/6_Feedback.py", label="📝 Feedback")
+
+        if st.session_state.get("final_feedback"):
+            st.page_link("pages/7_Evaluation_und_Download.py", label="📊 Evaluation")
 
         st.page_link("pages/20_Impressum.py", label="Impressum und Hinweise", icon="📰")
 
         if st.session_state.get("is_admin"):
             st.page_link("pages/21_Admin.py", label="🔑 Adminbereich")
 
-            # Kurzer Hinweis ausschließlich für Admins: Zeigt an, ob bereits ein
-            # AMBOSS-Ergebnis im Session State hinterlegt ist. Für detailliertes
-            # Debugging kann hier bei Bedarf eine Ausgabe der Schlüssel aktiviert
-            # werden (z. B. über `st.write(st.session_state.get("amboss_result"))`).
-            if "amboss_result" in st.session_state:
-                st.caption("ℹ️ AMBOSS-Ergebnis wurde geladen und steht für das Feedback bereit.")
-            else:
-                st.caption("ℹ️ Noch kein AMBOSS-Ergebnis im aktuellen Verlauf gespeichert.")
-
         st.markdown("---")
-        st.caption("🔒 Weitere Seiten erscheinen automatisch, sobald diagnostische Schritte abgeschlossen wurden.")
 

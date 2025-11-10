@@ -1,5 +1,6 @@
 import streamlit as st
 from module.sidebar import show_sidebar
+from module.navigation import redirect_to_start_page
 from sprachmodul import sprach_check
 from module.footer import copyright_footer
 from module.offline import display_offline_banner, is_offline
@@ -11,8 +12,9 @@ st.subheader("Diagnose und Therapie")
 
 # Voraussetzung: Befunde vorhanden
 if "befunde" not in st.session_state:
-    st.error("❗Bitte führen Sie zuerst die Diagnostik durch.")
-    st.stop()
+    redirect_to_start_page(
+        "⚠️ Bitte führe zuerst die Diagnostik durch und kehre anschließend hierher zurück."
+    )
 
 # Abschnitt: Diagnose und Therapie-Eingabe
 if st.session_state.get("final_diagnose", "").strip() and st.session_state.get("therapie_vorschlag", "").strip():
@@ -38,20 +40,14 @@ else:
 
 # Weiter-Link zum Feedback
 st.page_link(
-    "pages/6_Feedback_und_Evaluation.py",
-    label="Weiter zur Auswertung & Feedback",
+    "pages/6_Feedback.py",
+    label="Weiter zum Feedback",
     icon="📝",
     disabled=not (
         st.session_state.get("final_diagnose", "").strip() and
         st.session_state.get("therapie_vorschlag", "").strip()
     )
 )
-
-if not (
-    st.session_state.get("final_diagnose", "").strip() and
-    st.session_state.get("therapie_vorschlag", "").strip()
-):
-    st.info(":grey[Dieser Schritt wird verfügbar, sobald Diagnose und Therapiekonzept eingegeben wurden.]", icon="🔒")
 
 
 copyright_footer()

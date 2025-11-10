@@ -1,3 +1,5 @@
+from datetime import timezone
+
 import streamlit as st
 
 from module.admin_data import FeedbackExportError, build_feedback_export
@@ -6,23 +8,41 @@ from module.footer import copyright_footer
 from module.offline import display_offline_banner, is_offline
 from module.fallverwaltung import (
     fallauswahl_prompt,
+    get_verhaltensoptionen,
     lade_fallbeispiele,
     prepare_fall_session_state,
     reset_fall_session_state,
     speichere_fallbeispiel,
 )
 from module.fall_config import (
+    AMBOSS_FETCH_ALWAYS,
+    AMBOSS_FETCH_IF_EMPTY,
+    AMBOSS_FETCH_RANDOM,
+    clear_feedback_mode_fix,
+    clear_fixed_behavior,
     clear_fixed_scenario,
+    get_all_persisted_parameters,
+    get_amboss_fetch_preferences,
+    get_behavior_fix_state,
     get_fall_fix_state,
+    get_feedback_mode_fix_info,
+    set_amboss_fetch_mode,
+    set_amboss_random_probability,
+    set_feedback_mode_fix,
+    set_fixed_behavior,
     set_fixed_scenario,
 )
-from module.amboss_config import (
-    PERSISTENCE_DURATION,
-    activate_chatgpt_amboss,
-    deactivate_chatgpt_amboss,
-    get_chatgpt_amboss_state,
-    sync_chatgpt_amboss_session_state,
+from module.mcp_client import get_amboss_configuration_status
+from module.amboss_render import render_markdown_for_display
+from module.feedback_mode import (
+    FEEDBACK_MODE_AMBOSS_CHATGPT,
+    FEEDBACK_MODE_CHATGPT,
+    SESSION_KEY_EFFECTIVE_MODE,
+    reset_random_mode,
+    set_mode_override,
 )
+from module.amboss_preprocessing import get_cached_summary
+from module.loading_indicator import task_spinner
 
 
 copyright_footer()
@@ -49,6 +69,137 @@ if not st.session_state.get("is_admin"):
 
 st.title("Adminbereich")
 
+# Der Statusüberblick ersetzt die Hinweise aus der Seitenleiste und bietet nun
+# zentral sichtbar an, ob AMBOSS korrekt angebunden ist. Die Supabase-Parameter
+# werden ergänzend weiter unten ausgegeben. Für Debugging kann der Abschnitt bei
+# Bedarf erweitert werden (z. B. durch Ausgabe zusätzlicher Details).
+st.subheader("Statusübersicht")
+
+amboss_status = get_amboss_configuration_status()
+if amboss_status.available:
+    amboss_details = amboss_status.details or "AMBOSS MCP ist konfiguriert."
+    st.success(f"✅ AMBOSS MCP bereit: {amboss_details}")
+else:
+    amboss_message = amboss_status.message or "AMBOSS MCP ist nicht konfiguriert."
+    st.error(f"⚠️ AMBOSS MCP Problem: {amboss_message}")
+
+# Zusätzlich zeigen wir an, ob bereits eine Antwort des MCP-Clients im
+# Session State liegt. Das hilft beim Prüfen, ob ein Szenario bereits
+# verarbeitet wurde.
+if "amboss_result" in st.session_state:
+    st.info("AMBOSS-Ergebnis geladen: Die Rückgabe steht für das Feedback bereit.")
+
+    with st.expander("🧾 AMBOSS-MCP-Antwort einblenden"):
+        # Der Expander zeigt die formatierte Markdown-Version der MCP-Antwort – exakt so,
+        # wie sie im Testskript ``mcp_streamable_test`` dargestellt wird. Für
+        # weiterführendes Debugging kann innerhalb des Try-Blocks eine zusätzliche
+        # ``st.write``-Ausgabe aktiviert werden, um das Roh-JSON zu inspizieren.
+        amboss_data = st.session_state.get("amboss_result")
+        if amboss_data:
+            try:
+                pretty_md = render_markdown_for_display(amboss_data)
+            except Exception as err:
+                st.error(
+                    "Die AMBOSS-Antwort konnte nicht formatiert werden. Bitte siehe die Kommentare"
+                    " im Code für Debug-Hinweise (Details: {err}).".format(err=err)
+                )
+                # Debug-Hinweis: Bei Bedarf ``st.write(amboss_data)`` aktivieren, um das Rohobjekt
+                # anzuzeigen und Formatprobleme zu identifizieren.
+            else:
+                st.code(pretty_md, language="markdown")
+        else:
+            st.caption("Im Session State liegt derzeit keine verwertbare AMBOSS-Antwort vor.")
+
+    summary = get_cached_summary()
+    with st.expander("🧠 GPT-Zusammenfassung der AMBOSS-Daten"):
+        if summary:
+            st.markdown(summary)
+        else:
+            st.caption(
+                "Es wurde noch keine GPT-Zusammenfassung erzeugt. Sie entsteht automatisch, "
+                "sobald das Feedback im kombinierten Modus generiert wird."
+            )
+else:
+    st.info("Noch kein AMBOSS-Ergebnis im aktuellen Verlauf gespeichert.")
+
+# Ergänzende Statusinformation zur Supabase-Persistierung – so lässt sich nachvollziehen,
+# ob eine neue Zusammenfassung geschrieben, übernommen oder aufgrund einer Einstellung
+# übersprungen wurde. Die Informationen werden im Ladeprozess zentral gepflegt und
+# hier lediglich ausgegeben.
+persist_info = st.session_state.get("amboss_persist_info")
+if persist_info:
+    status_label = persist_info.get("status", "unbekannt")
+    hinweistext = persist_info.get("hinweis", "Keine Detailbeschreibung verfügbar.")
+    quelle = persist_info.get("quelle", "unbekannt")
+    st.info(
+        "📘 Status AMBOSS-Zusammenfassung: {status} – {hinweis} (Quelle: {quelle}).".format(
+            status=status_label,
+            hinweis=hinweistext,
+            quelle=quelle,
+        )
+    )
+else:
+    st.info(
+        "📘 Status AMBOSS-Zusammenfassung: Noch keine Aktion durchgeführt (z. B. weil kein Fall geladen wurde)."
+    )
+
+# Wenn lediglich ein fragmentarisches Ergebnis vorliegt, wird dieses klar
+# gekennzeichnet. Administrator*innen sehen zusätzlich das konservierte
+# Teilfragment, um bei Bedarf eigenständig zu prüfen, ob daraus weiterer
+# Nutzen gezogen werden kann.
+if st.session_state.get("amboss_result_unvollstaendig"):
+    sicherungshinweis = st.session_state.get(
+        "amboss_result_sicherung",
+        {"hinweis": "Fragmentierte Antwort erkannt."},
+    )
+    st.warning(
+        "⚠️ AMBOSS-Ergebnis unvollständig: {msg}".format(
+            msg=sicherungshinweis.get(
+                "hinweis",
+                "Teilantwort gesichert, siehe Details unten.",
+            )
+        )
+    )
+
+    with st.expander("🧩 Gesicherte Teilantwort"):
+        st.json(sicherungshinweis)
+
+# Unabhängig vom Parsing-Erfolg kann hier ein Rohdatenschnappschuss aus dem MCP landen.
+# Der separate Expander ermöglicht Administrator*innen, problematische Antworten
+# komfortabel zu inspizieren und für die Fehlersuche zu kopieren. Die Daten stammen
+# direkt aus dem Session State und werden nur angezeigt, wenn zuvor ein Fehler
+# beim Parsing protokolliert wurde.
+raw_debug_data = st.session_state.get("amboss_result_raw")
+if raw_debug_data:
+    with st.expander("🪵 AMBOSS-Rohdaten (Debug)"):
+        if isinstance(raw_debug_data, dict):
+            st.json(raw_debug_data)
+        else:
+            # Sollte der Eintrag ausnahmsweise kein Dictionary sein, zeigen wir ihn
+            # als Klartext an. Damit bleibt die Darstellung robust, auch falls
+            # künftig andere Module den Debug-Eintrag erweitern.
+            st.code(str(raw_debug_data), language="json")
+
+try:
+    persisted_overview = get_all_persisted_parameters()
+except RuntimeError as exc:
+    st.error(
+        "🗄️ Supabase-Persistenz: {hinweis}".format(hinweis=exc)
+    )
+    st.caption(
+        "Debug-Tipp: Prüfe die Supabase-Secrets in Streamlit und vergleiche sie mit den Kommentaren in 'module/fall_config.py'."
+    )
+else:
+    with st.expander("🗄️ Aktuelle Supabase-Parameter einblenden"):
+        if not persisted_overview:
+            st.caption(
+                "Die Tabelle 'fall_persistenzen' enthält noch keine Einträge. Einstellungen werden automatisch angelegt, sobald sie im Adminbereich gespeichert werden."
+            )
+        else:
+            for fix_key, details in sorted(persisted_overview.items()):
+                st.markdown(f"**{fix_key}**")
+                st.json(details)
+
 st.subheader("Verbindungsmodus")
 current_offline = is_offline()
 offline_toggle = st.toggle(
@@ -69,47 +220,149 @@ if offline_toggle != current_offline:
         st.info("Online-Modus reaktiviert. Die Anwendung wird neu gestartet.")
         _restart_application_after_offline()
 
-st.subheader("ChatGPT+AMBOSS-Funktion")
-chatgpt_amboss_aktiv = sync_chatgpt_amboss_session_state()
-_, chatgpt_amboss_zeitpunkt = get_chatgpt_amboss_state()
-dauer_stunden = int(PERSISTENCE_DURATION.total_seconds() // 3600)
-if dauer_stunden % 24 == 0:
-    dauer_text = f"{dauer_stunden // 24} Tage"
-else:
-    dauer_text = f"{dauer_stunden} Stunden"
-
-if chatgpt_amboss_zeitpunkt:
-    aktiv_bis = chatgpt_amboss_zeitpunkt + PERSISTENCE_DURATION
-    st.caption(
-        "Aktiviert am "
-        f"{chatgpt_amboss_zeitpunkt.astimezone().strftime('%d.%m.%Y %H:%M Uhr')} – "
-        f"voraussichtlich gültig bis {aktiv_bis.astimezone().strftime('%d.%m.%Y %H:%M Uhr')}"
-    )
-
-helptext_chatgpt_amboss = (
-    "Nach dem Einschalten bleibt die Funktion ohne erneute Freischaltung "
-    f"{dauer_text} aktiv."
+st.subheader("Feedback-Modus")
+st.write(
+    "Wähle hier, ob das Feedback zufällig oder gezielt mit AMBOSS-Bezug erstellt wird."
 )
 
-refresh_amboss_after_toggle = False
-toggle_chatgpt_amboss = st.toggle(
-    "ChatGPT+AMBOSS aktivieren",
-    value=chatgpt_amboss_aktiv,
-    help=helptext_chatgpt_amboss,
-    key="admin_chatgpt_amboss_toggle",
+mode_options = {
+    "🎲 Zufällige Auswahl (Standard)": None,
+    "💬 Nur ChatGPT": FEEDBACK_MODE_CHATGPT,
+    "🧠 ChatGPT + AMBOSS": FEEDBACK_MODE_AMBOSS_CHATGPT,
+}
+
+current_override = st.session_state.get("feedback_mode_override")
+if current_override not in mode_options.values():
+    current_override = None
+
+labels = list(mode_options.keys())
+default_index = labels.index(next(
+    label for label, value in mode_options.items() if value == current_override
+))
+
+selected_label = st.radio(
+    "Modus für künftige Feedback-Berechnungen",
+    labels,
+    index=default_index,
+    help=(
+        "Die Einstellung wirkt sich auf alle weiteren Feedback-Anfragen dieser Sitzung aus."
+        " Bei Auswahl der Zufallsvariante wird der Modus bei der nächsten Generierung neu gelost."
+    ),
 )
 
-if toggle_chatgpt_amboss != chatgpt_amboss_aktiv:
-    if toggle_chatgpt_amboss:
-        activate_chatgpt_amboss()
-        st.success(
-            "✅ ChatGPT+AMBOSS wurde eingeschaltet. Die Aktivierung bleibt automatisch bestehen."
-        )
-        refresh_amboss_after_toggle = True
+selected_mode = mode_options[selected_label]
+if selected_mode != current_override:
+    if selected_mode is None:
+        set_mode_override(None)
+        reset_random_mode()
+        clear_feedback_mode_fix()
+        st.success("Zufällige Auswahl reaktiviert. Der Modus wird beim nächsten Feedback neu bestimmt.")
     else:
-        deactivate_chatgpt_amboss()
-        st.info("ℹ️ ChatGPT+AMBOSS wurde deaktiviert. Vorherige MCP-Daten wurden entfernt.")
-    chatgpt_amboss_aktiv = sync_chatgpt_amboss_session_state()
+        set_mode_override(selected_mode)
+        if selected_mode == FEEDBACK_MODE_AMBOSS_CHATGPT:
+            set_feedback_mode_fix(selected_mode)
+            st.success(
+                "Übersteuerung aktiv: ChatGPT + AMBOSS wird verwendet und bleibt solange aktiv, bis die Fixierung wieder aufgehoben wird."
+            )
+        else:
+            clear_feedback_mode_fix()
+            st.success(f"Übersteuerung aktiv: {selected_mode} wird verwendet.")
+
+effective_mode = st.session_state.get(SESSION_KEY_EFFECTIVE_MODE)
+if effective_mode:
+    st.caption(f"Aktuell gesetzter Modus für diese Sitzung: **{effective_mode}**")
+else:
+    st.caption("Noch kein Feedback erzeugt – der Modus wird beim ersten Aufruf festgelegt.")
+
+persisted_active, persisted_value, persisted_timestamp = get_feedback_mode_fix_info()
+if persisted_active:
+    if persisted_timestamp:
+        timestamp_text = (
+            persisted_timestamp.astimezone(timezone.utc).strftime("%d.%m.%Y %H:%M UTC")
+        )
+        st.caption(
+            f"Persistente Einstellung aktiv: **{persisted_value}** (gesetzt am {timestamp_text})."
+        )
+    else:
+        st.caption(
+            f"Persistente Einstellung aktiv: **{persisted_value}** (Zeitpunkt konnte nicht ermittelt werden)."
+        )
+else:
+    st.caption("Keine persistente ChatGPT+AMBOSS-Voreinstellung aktiv.")
+
+st.subheader("AMBOSS-Abrufsteuerung")
+st.write(
+    "Lege fest, ob der AMBOSS-MCP bei jedem Fall neu kontaktiert wird oder ob die"
+    " gespeicherten Zusammenfassungen aus der Supabase-Tabelle genutzt werden."
+)
+
+amboss_mode, amboss_probability = get_amboss_fetch_preferences()
+amboss_mode_options = {
+    "🔁 Immer MCP abrufen": AMBOSS_FETCH_ALWAYS,
+    "📄 Nur abrufen, wenn das Tabellenfeld leer ist": AMBOSS_FETCH_IF_EMPTY,
+    "🎲 Zufällig abrufen (mit Wahrscheinlichkeit)": AMBOSS_FETCH_RANDOM,
+}
+
+if amboss_mode not in amboss_mode_options.values():
+    amboss_mode = AMBOSS_FETCH_RANDOM
+
+amboss_labels = list(amboss_mode_options.keys())
+amboss_default_index = amboss_labels.index(
+    next(label for label, value in amboss_mode_options.items() if value == amboss_mode)
+)
+
+selected_amboss_label = st.radio(
+    "Strategie für AMBOSS-Aufrufe",
+    amboss_labels,
+    index=amboss_default_index,
+    key="admin_amboss_mode",
+    help=(
+        "Bei deaktiviertem Abruf wird ausschließlich die Spalte 'Amboss_Input' genutzt."
+        " Die Einstellung wirkt sich dauerhaft auf neue Sitzungen aus."
+    ),
+)
+
+selected_amboss_mode = amboss_mode_options[selected_amboss_label]
+if selected_amboss_mode != amboss_mode:
+    set_amboss_fetch_mode(selected_amboss_mode)
+    amboss_mode = selected_amboss_mode
+    if amboss_mode == AMBOSS_FETCH_ALWAYS:
+        st.success("Persistente Einstellung: AMBOSS wird für jedes Szenario neu geladen.")
+    elif amboss_mode == AMBOSS_FETCH_IF_EMPTY:
+        st.success("Persistente Einstellung: AMBOSS wird nur bei leeren Tabellenfeldern abgerufen.")
+    else:
+        st.success("Persistente Einstellung: Zufallsabruf ist aktiv.")
+
+if amboss_mode == AMBOSS_FETCH_RANDOM:
+    probability_slider = st.slider(
+        "Wahrscheinlichkeit für den zufälligen Abruf",
+        min_value=0.0,
+        max_value=1.0,
+        value=float(round(amboss_probability, 2)),
+        step=0.05,
+        help=(
+            "Beispiel: 0.20 entspricht einer 20%-Chance (ca. 1 von 5 Fällen)."
+            " Der Wert gilt für künftige Sitzungen im Zufallsmodus."
+        ),
+        key="admin_amboss_probability",
+    )
+    if abs(probability_slider - amboss_probability) > 0.0001:
+        set_amboss_random_probability(probability_slider)
+        amboss_probability = probability_slider
+        st.success(
+            "Zufallswahrscheinlichkeit aktualisiert: {wert:.0%}.".format(wert=amboss_probability)
+        )
+    st.caption(
+        "Aktuelle Einstellung: Der MCP wird mit einer Wahrscheinlichkeit von {wert:.0%} neu aufgerufen.".format(
+            wert=amboss_probability
+        )
+    )
+else:
+    st.caption(
+        "Zufallsmodus inaktiv. Hinterlegte Wahrscheinlichkeit: {wert:.0%} (wird wieder genutzt, sobald der Zufallsmodus aktiviert wird).".format(
+            wert=amboss_probability
+        )
+    )
 
 st.subheader("Adminmodus")
 st.write("Der Adminmodus ist aktiv. Bei Bedarf kannst du ihn hier wieder deaktivieren.")
@@ -124,22 +377,10 @@ if st.button("Adminmodus beenden", type="primary"):
 
 st.subheader("Fallverwaltung")
 
-fall_df = lade_fallbeispiele(pfad="fallbeispiele.xlsx")
-
-if refresh_amboss_after_toggle and toggle_chatgpt_amboss and not fall_df.empty:
-    aktuelles_szenario = st.session_state.get("diagnose_szenario")
-    if aktuelles_szenario:
-        try:
-            fallauswahl_prompt(fall_df, aktuelles_szenario)
-        except Exception as exc:
-            st.warning(
-                "⚠️ AMBOSS-Daten konnten nicht sofort neu geladen werden. "
-                "Bei Bedarf kann über zusätzliche Debug-Ausgaben (z. B. `st.write`) "
-                f"nachverfolgt werden, was schiefgelaufen ist: {exc}"
-            )
+fall_df = lade_fallbeispiele()
 
 if fall_df.empty:
-    st.info("Die Fallliste konnte nicht geladen werden. Bitte prüfe die Datei 'fallbeispiele.xlsx'.")
+    st.info("Die Fallliste konnte nicht geladen werden. Bitte prüfe die Supabase-Verbindung und Tabellenrechte.")
 elif "Szenario" not in fall_df.columns:
     st.error("Die Fallliste enthält keine Spalte 'Szenario'.")
 else:
@@ -150,12 +391,17 @@ else:
     if not szenario_options:
         st.info("In der Datei wurden keine Szenarien gefunden.")
     else:
+        # Wir lesen den aktuellen Status der Fixierungen aus, um Anzeige und Formular passend vorzubelegen.
         fixed, fixed_szenario = get_fall_fix_state()
+        behavior_fixed, fixed_behavior_key = get_behavior_fix_state()
         aktuelles_szenario = st.session_state.get("diagnose_szenario") or st.session_state.get(
             "admin_selected_szenario"
         )
         aktuelles_verhalten_kurz = st.session_state.get("patient_verhalten_memo")
         aktuelles_verhalten_lang = st.session_state.get("patient_verhalten")
+        # Die Verhaltensoptionen dienen als Auswahlgrundlage für das Admin-Formular.
+        verhaltensoptionen = get_verhaltensoptionen()
+        verhalten_option_keys = sorted(verhaltensoptionen.keys())
 
         szenario_text = (
             f"**Aktuelles Szenario:** {aktuelles_szenario}"
@@ -171,6 +417,15 @@ else:
         else:
             modus_text = "**Modus:** Zufälliger Fall – neue Sitzungen erhalten ein zufälliges Szenario."
 
+        if behavior_fixed and fixed_behavior_key in verhaltensoptionen:
+            verhaltensmodus_text = (
+                "**Verhaltensmodus:** Fixiert – alle Sitzungen nutzen aktuell das vorgegebene Verhalten."
+            )
+        else:
+            verhaltensmodus_text = (
+                "**Verhaltensmodus:** Zufällig – das Verhalten wird bei jeder Sitzung neu bestimmt."
+            )
+
         if aktuelles_verhalten_kurz and aktuelles_verhalten_lang:
             verhalten_text = (
                 "**Patient*innenverhalten:** "
@@ -181,7 +436,9 @@ else:
         else:
             verhalten_text = "Für das aktuelle Szenario ist kein Verhalten gesetzt."
 
-        st.info(f"{szenario_text}\n\n{modus_text}\n\n{verhalten_text}")
+        st.info(
+            f"{szenario_text}\n\n{modus_text}\n\n{verhaltensmodus_text}\n\n{verhalten_text}"
+        )
 
         with st.form("admin_fallauswahl"):
             if fixed and fixed_szenario in szenario_options:
@@ -205,7 +462,33 @@ else:
                     "Wird die Fixierung aufgehoben, wählen nachfolgende Sitzungen wieder zufällig."
                 ),
             )
-            bestaetigt = st.form_submit_button("Szenario übernehmen", type="primary")
+
+            if behavior_fixed and fixed_behavior_key in verhalten_option_keys:
+                default_behavior_index = verhalten_option_keys.index(fixed_behavior_key)
+            elif aktuelles_verhalten_kurz in verhalten_option_keys:
+                default_behavior_index = verhalten_option_keys.index(aktuelles_verhalten_kurz)
+            else:
+                default_behavior_index = 0
+
+            ausgewaehltes_verhalten = st.selectbox(
+                "Patient*innenverhalten auswählen",
+                verhalten_option_keys,
+                index=default_behavior_index,
+                help=(
+                    "Lege das gewünschte Verhalten fest. Über den Fixierschalter kannst du bestimmen, ob es für alle "
+                    "Sitzungen gilt oder weiterhin zufällig gewählt wird."
+                ),
+                format_func=lambda key: f"{key.capitalize()} – {verhaltensoptionen[key]}",
+            )
+            verhalten_fix_toggle = st.toggle(
+                "Patient*innenverhalten fixieren",
+                value=behavior_fixed and fixed_behavior_key in verhalten_option_keys,
+                help=(
+                    "Aktiviere diese Option, damit alle künftigen Sitzungen dieses Verhalten nutzen. "
+                    "Ohne Fixierung wird pro Sitzung zufällig ausgewählt."
+                ),
+            )
+            bestaetigt = st.form_submit_button("Auswahl übernehmen", type="primary")
 
         if bestaetigt and ausgewaehltes_szenario:
             reset_fall_session_state()
@@ -217,6 +500,12 @@ else:
                 clear_fixed_scenario()
                 st.session_state.pop("admin_selected_szenario", None)
                 fallauswahl_prompt(fall_df)
+
+            if verhalten_fix_toggle and ausgewaehltes_verhalten:
+                set_fixed_behavior(ausgewaehltes_verhalten)
+            else:
+                clear_fixed_behavior()
+
             prepare_fall_session_state()
             try:
                 st.switch_page("pages/1_Anamnese.py")
@@ -227,6 +516,28 @@ else:
     st.subheader("Neues Fallbeispiel")
 
     formular_state_key = "admin_fallformular_offen"
+    reset_flag_key = "admin_fallformular_reset_noetig"
+    rueckmeldung_key = "admin_fallformular_rueckmeldung"
+
+    if st.session_state.pop(reset_flag_key, False):
+        # Damit Streamlit nicht versucht, bereits erzeugte Widgets mit denselben
+        # Session-State-Schlüsseln weiter zu betreiben, entfernen wir die Werte
+        # komplett aus ``st.session_state``. Dieser Schritt findet bewusst vor
+        # der erneuten Formularerstellung statt, sodass keine Streamlit-Ausnahme
+        # ausgelöst wird. Für Debugging lässt sich der Block temporär deaktivieren,
+        # um den Formularzustand zu inspizieren.
+        zu_loeschende_keys = [
+            key for key in st.session_state.keys() if key.startswith("admin_neuer_fall_")
+        ]
+        for key in zu_loeschende_keys:
+            st.session_state.pop(key, None)
+
+    if rueckmeldung_key in st.session_state:
+        # Nach erfolgreichem Speichern zeigen wir die Statusmeldung genau einmal an
+        # und löschen sie anschließend wieder, damit sie beim nächsten Aufruf nicht
+        # erneut erscheint.
+        st.success(st.session_state.pop(rueckmeldung_key))
+
     if formular_state_key not in st.session_state:
         st.session_state[formular_state_key] = False
 
@@ -236,22 +547,89 @@ else:
     if st.session_state.get(formular_state_key):
         if st.button("Abbrechen", type="secondary"):
             st.session_state[formular_state_key] = False
-            for key in list(st.session_state.keys()):
-                if key.startswith("admin_neuer_fall_"):
-                    st.session_state[key] = ""
+            st.session_state[reset_flag_key] = True
             st.rerun()
 
+        # Die folgenden Felder sind für das Speichern eines neuen Falls zwingend nötig.
+        # Die Nutzer*innen sollen sofort erkennen, welche Angaben obligatorisch sind –
+        # insbesondere das "Szenario", das im Alltag als Name des Falls verstanden wird.
         erforderliche_spalten = [
             "Szenario",
             "Beschreibung",
-            "Körperliche Untersuchung",
             "Alter",
             "Geschlecht",
         ]
 
+        # Für die Formularbeschriftung nutzen wir erklärende Zusatztexte, damit klar ist,
+        # ob Angaben Pflicht oder freiwillig sind. Ergänzend hinterlegen wir passende
+        # Tooltip-Hinweise, die bei Mouse-Over erscheinen.
+        def _erstelle_label(spaltenname: str, ist_pflichtfeld: bool) -> str:
+            """Erzeugt eine verständliche Feldbeschriftung mit Pflicht-Hinweis."""
+
+            if ist_pflichtfeld:
+                if spaltenname == "Szenario":
+                    return "Szenario (Pflichtfeld – entspricht dem Fallnamen)"
+                return f"{spaltenname} (Pflichtfeld)"
+            return f"{spaltenname} (optional)"
+
+        def _erstelle_helptext(spaltenname: str, ist_pflichtfeld: bool) -> str:
+            """Liefert erläuternde Tooltip-Texte für das Admin-Formular."""
+
+            if ist_pflichtfeld:
+                if spaltenname == "Geschlecht":
+                    return (
+                        "Pflichtfeld: Bitte Kodierung verwenden – m = männlich, w = weiblich, "
+                        "d = divers, n = keine Angabe."
+                    )
+                if spaltenname == "Alter":
+                    return (
+                        "Pflichtfeld: Alter in Jahren angeben. Es werden ausschließlich ganze Zahlen gespeichert."
+                    )
+                if spaltenname == "Beschreibung":
+                    return (
+                        "Pflichtfeld: Kurzbeschreibung des Falls. Dieser Text erscheint in der Übersicht."
+                    )
+                return "Pflichtfeld: Ohne diese Angabe kann der Fall nicht gespeichert werden."
+            if spaltenname == "Körperliche Untersuchung":
+                return (
+                    "Optional: Detailbeschreibung der körperlichen Untersuchung. Kann später ergänzt werden."
+                )
+            if spaltenname == "Besonderheit":
+                return (
+                    "Optional: Zusätzliche Besonderheiten oder Kontextinformationen zum Fall."
+                )
+            if spaltenname == "Amboss_Input":
+                return (
+                    "Optional: Vorgefertigter AMBOSS-Input. Wenn leer, kann der Text später automatisch generiert werden."
+                )
+            return "Optional: Dieses Feld kann leer bleiben."
+
         vorhandene_spalten = list(fall_df.columns) if not fall_df.empty else []
+
+        # Die körperliche Untersuchung wird bewusst nicht mehr als Pflichtfeld geführt.
+        # Administrator*innen können dadurch neue Fälle mit unvollständigen Angaben
+        # speichern und die Untersuchung bei Bedarf nachpflegen. Damit das Feld in der
+        # Oberfläche dennoch sichtbar bleibt, ergänzen wir es – falls nötig – manuell.
+        if "Körperliche Untersuchung" not in vorhandene_spalten:
+            vorhandene_spalten.append("Körperliche Untersuchung")
         optionale_spalten = [
             spalte for spalte in vorhandene_spalten if spalte not in erforderliche_spalten
+        ]
+
+        # Die Primärschlüsselspalte ``id`` darf bei Neueinträgen nicht bearbeitet werden,
+        # weil Supabase diesen Wert automatisch vergibt. Gleiches gilt für die
+        # Zeitstempelspalten ``created_at`` und ``updated_at``: Sie werden durch
+        # Datenbank-Trigger gesetzt und dürfen daher nicht als leere Werte übertragen,
+        # sonst landen ``NULL``-Einträge im Insert-Payload und Supabase lehnt das
+        # Speichern ab. Wir nehmen diese Felder deshalb vollständig aus dem Formular
+        # heraus. Für weiterführendes Debugging kann bei Bedarf manuell ein separates
+        # Eingabefeld ergänzt werden, indem das Set ``geschuetzte_spalten`` angepasst
+        # wird.
+        geschuetzte_spalten = {"id", "created_at", "updated_at"}
+        optionale_spalten = [
+            spalte
+            for spalte in optionale_spalten
+            if spalte.lower() not in geschuetzte_spalten
         ]
 
         for spalte in erforderliche_spalten:
@@ -266,16 +644,41 @@ else:
         with st.form("admin_neues_fallbeispiel"):
             formularwerte: dict[str, str] = {}
 
+            textbereiche = {"Beschreibung", "Körperliche Untersuchung"}
+
             for spalte in erforderliche_spalten:
                 widget_key = f"admin_neuer_fall_{spalte}"
-                if spalte in {"Beschreibung", "Körperliche Untersuchung"}:
-                    formularwerte[spalte] = st.text_area(spalte, key=widget_key)
+                label = _erstelle_label(spalte, True)
+                hilfetext = _erstelle_helptext(spalte, True)
+                if spalte in textbereiche:
+                    formularwerte[spalte] = st.text_area(
+                        label,
+                        key=widget_key,
+                        help=hilfetext,
+                    )
                 else:
-                    formularwerte[spalte] = st.text_input(spalte, key=widget_key)
+                    formularwerte[spalte] = st.text_input(
+                        label,
+                        key=widget_key,
+                        help=hilfetext,
+                    )
 
             for spalte in optionale_spalten:
                 widget_key = f"admin_neuer_fall_{spalte}"
-                formularwerte[spalte] = st.text_input(spalte, key=widget_key)
+                label = _erstelle_label(spalte, False)
+                hilfetext = _erstelle_helptext(spalte, False)
+                if spalte in textbereiche:
+                    formularwerte[spalte] = st.text_area(
+                        label,
+                        key=widget_key,
+                        help=hilfetext,
+                    )
+                else:
+                    formularwerte[spalte] = st.text_input(
+                        label,
+                        key=widget_key,
+                        help=hilfetext,
+                    )
 
             abgesendet = st.form_submit_button("Fallbeispiel speichern", type="primary")
 
@@ -291,8 +694,12 @@ else:
                     neuer_fall[spalte] = str(wert).strip()
 
             for spalte in optionale_spalten:
-                optional_wert = str(formularwerte.get(spalte, "")).strip()
-                neuer_fall[spalte] = optional_wert if optional_wert else None
+                # Optionale Felder bleiben bewusst Strings. ``speichere_fallbeispiel``
+                # entscheidet anschließend, ob daraus ein leerer Text oder ``NULL``
+                # wird. So lassen sich NOT-NULL-Vorgaben einhalten, ohne dass hier
+                # Spezialfälle gepflegt werden müssen.
+                optional_wert = str(formularwerte.get(spalte, "") or "").strip()
+                neuer_fall[spalte] = optional_wert
 
             alter_wert = str(neuer_fall.get("Alter", "")).strip()
             if alter_wert:
@@ -305,7 +712,7 @@ else:
                 st.error("\n".join(fehlermeldungen))
             else:
                 aktualisiert, fehler = speichere_fallbeispiel(
-                    neuer_fall, pfad="fallbeispiele.xlsx"
+                    neuer_fall
                 )
                 if fehler:
                     st.error(f"Speichern fehlgeschlagen: {fehler}")
@@ -313,11 +720,12 @@ else:
                     st.error("Speichern fehlgeschlagen: Unerwarteter Fehler.")
                 else:
                     fall_df = aktualisiert
-                    st.success("Fallbeispiel wurde erfolgreich gespeichert.")
+                    st.session_state[rueckmeldung_key] = (
+                        "Fallbeispiel wurde erfolgreich gespeichert."
+                    )
                     st.session_state[formular_state_key] = False
-                    for key in list(st.session_state.keys()):
-                        if key.startswith("admin_neuer_fall_"):
-                            st.session_state[key] = ""
+                    st.session_state[reset_flag_key] = True
+                    st.rerun()
 
 st.subheader("Feedback-Export")
 
@@ -334,9 +742,16 @@ def _prepare_feedback_export() -> None:
     """Build the feedback export and keep the UI state in sync."""
 
     st.session_state["feedback_export_error"] = ""
-    with st.spinner("Supabase-Daten werden geladen..."):
+    ladeaufgaben = [
+        "Verbinde mit Supabase",
+        "Lade aktuelle Feedback-Datensätze",
+        "Bereite Exportdatei auf",
+    ]
+    with task_spinner("Supabase-Daten werden geladen...", ladeaufgaben) as indikator:
         try:
+            indikator.advance(1)
             export_bytes, export_filename = build_feedback_export()
+            indikator.advance(1)
         except FeedbackExportError as exc:
             _reset_feedback_export_state()
             st.session_state["feedback_export_error"] = f"Export nicht möglich: {exc}"
@@ -355,6 +770,7 @@ def _prepare_feedback_export() -> None:
                     export_filename or DEFAULT_EXPORT_FILENAME
                 )
                 st.session_state["feedback_export_revision"] += 1
+                indikator.advance(1)
 
 
 if "feedback_export_bytes" not in st.session_state:

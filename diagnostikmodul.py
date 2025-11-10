@@ -6,6 +6,7 @@ from openai import OpenAI
 from sprachmodul import sprach_check
 from befundmodul import generiere_befund
 from module.offline import is_offline
+from module.loading_indicator import task_spinner
 
 def aktualisiere_diagnostik_zusammenfassung(start_runde=2):
     """Erstellt die kumulative Zusammenfassung aller Diagnostik- und Befund-Runden und speichert sie im SessionState."""
@@ -28,6 +29,31 @@ def aktualisiere_diagnostik_zusammenfassung(start_runde=2):
             diagnostik_eingaben += f"\n---\n### Termin {i}\n{diag}\n"
         if bef:
             gpt_befunde += f"\n---\n### Termin {i}\n{bef}\n"
+
+    # Der unveränderte Text dient als Basis für spätere Kombinationen mit
+    # gesondert angeforderten Untersuchungen und kann bei Bedarf separat
+    # exportiert werden.
+    basistext = diagnostik_eingaben.strip()
+    st.session_state["diagnostik_eingaben_basis"] = basistext
+
+    sonder_text = st.session_state.get("sonderdiagnostik_text", "").strip()
+    if sonder_text and basistext:
+        diagnostik_eingaben = f"{basistext}\n\n{sonder_text}"
+    elif sonder_text:
+        diagnostik_eingaben = sonder_text
+    else:
+        diagnostik_eingaben = basistext
+
+    # Die zusätzlichen körperlichen Untersuchungen liefern eigene Befundfragmente,
+    # die im Supabase-Export unter "Befunde" auftauchen sollen. Wir hängen sie
+    # daher getrennt vom Basistext an und behalten so die ursprüngliche Termin-
+    # Struktur bei.
+    sonder_befund_text = st.session_state.get("sonderdiagnostik_befund_text", "").strip()
+    if sonder_befund_text:
+        if gpt_befunde:
+            gpt_befunde = f"{gpt_befunde}\n\n{sonder_befund_text}"
+        else:
+            gpt_befunde = sonder_befund_text
 
     st.session_state["diagnostik_eingaben_kumuliert"] = diagnostik_eingaben.strip()
     st.session_state["gpt_befunde_kumuliert"] = gpt_befunde.strip()
@@ -73,11 +99,20 @@ def diagnostik_und_befunde_routine(client: OpenAI, start_runde=2, weitere_diagno
 
                 if is_offline():
                     befund = generiere_befund(client, szenario, neue_diagnostik)
+                    st.session_state[befund_key] = befund
                 else:
-                    with st.spinner("GPT erstellt Befunde..."):
+                    ladeaufgaben = [
+                        "Übermittle neue Diagnostik",
+                        "Analysiere Fallkontext",
+                        "Erstelle ergänzenden Befund",
+                    ]
+                    with task_spinner("GPT erstellt Befunde...", ladeaufgaben) as indikator:
+                        indikator.advance(1)
                         befund = generiere_befund(client, szenario, neue_diagnostik)
+                        indikator.advance(1)
+                        st.session_state[befund_key] = befund
+                        indikator.advance(1)
 
-                st.session_state[befund_key] = befund
                 st.session_state["diagnostik_runden_gesamt"] = runde
                 st.session_state["diagnostik_aktiv"] = False  # zurücksetzen
                 st.rerun()

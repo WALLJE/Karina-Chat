@@ -1,28 +1,68 @@
-"""High-Level-Funktion zum Erzeugen des Feedbacks für die Studierenden."""
+"""Erstellt das Abschlussfeedback in einem einzigen, vollständig koordinierten Prompt."""
 
-from typing import Callable, Optional
+from __future__ import annotations
+
+import json
+from typing import Any
 
 import streamlit as st
 
-from module.MCP_Amboss import call_amboss_search
+from module.token_counter import init_token_counters, add_usage
 from module.patient_language import get_patient_forms
 from module.offline import get_offline_feedback, is_offline
-from module.feedback_pipeline import (
-    FeedbackContext,
-    combine_sections,
-    preprocess_amboss_payload,
-    run_feedback_pipeline,
+from module.feedback_mode import (
+    FEEDBACK_MODE_AMBOSS_CHATGPT,
+    determine_feedback_mode,
 )
-from module.feedback_tasks import get_default_feedback_tasks
-from module.amboss_summary import (
-    loesche_zusammenfassung,
-    speichere_zusammenfassung,
-)
-from module.amboss_config import sync_chatgpt_amboss_session_state
+
+# Mindestlänge in Zeichen, damit eine AMBOSS-Zusammenfassung als belastbar gilt.
+_MIN_AMBOSS_SUMMARY_CHARS = 200
+
+# Maximale Länge eines Debug-Auszugs aus dem Roh-Payload, damit der Prompt klein bleibt.
+_MAX_AMBOSS_RAW_SNIPPET = 2000
 
 
-StatusUpdater = Callable[[str, str], None]
-"""Typalias für optionale Statusmeldungen (Text, Status-Level)."""
+def _build_amboss_context() -> str:
+    """Gibt den AMBOSS-Kontext für den Feedback-Prompt zurück."""
+
+    # Zuerst nutzen wir konsequent die vorberechnete Zusammenfassung, die im
+    # Vorlauf von `ensure_amboss_summary` erzeugt wurde.
+    summary = st.session_state.get("amboss_payload_summary")
+    if isinstance(summary, str):
+        summary_clean = summary.strip()
+        if len(summary_clean) >= _MIN_AMBOSS_SUMMARY_CHARS:
+            return summary_clean
+        if summary_clean:
+            # Auch sehr kurze Inhalte werden weitergegeben, allerdings mit einem
+            # Hinweis, damit klar bleibt, dass hier eventuell nachgearbeitet
+            # werden muss. Durch die kurze Nachricht bleibt der Prompt schlank.
+            return (
+                "Hinweis: Die AMBOSS-Zusammenfassung ist unerwartet kurz. "
+                "Inhalt: "
+                f"{summary_clean}"
+            )
+
+    # Debug-Hinweis: Wer temporär den vollständigen Roh-Payload inspizieren
+    # möchte, kann testweise `return json.dumps(st.session_state.get("amboss_result"),
+    # ensure_ascii=False, indent=2)` aktivieren. Bitte anschließend wieder
+    # entfernen, damit der Prompt kompakt bleibt und keine sensiblen Daten
+    # versehentlich geteilt werden.
+
+    raw_payload: Any = st.session_state.get("amboss_result")
+    if raw_payload:
+        raw_excerpt = json.dumps(raw_payload, ensure_ascii=False)[:_MAX_AMBOSS_RAW_SNIPPET]
+        return (
+            "Hinweis: Keine AMBOSS-Zusammenfassung verfügbar. "
+            "Kurz-Auszug aus dem Payload zur Orientierung: "
+            f"{raw_excerpt}"
+        )
+
+    # Falls weder Zusammenfassung noch Rohdaten vorliegen, bleibt die
+    # Rückmeldung sehr kurz, um das Kontextlimit zuverlässig einzuhalten.
+    return (
+        "Hinweis: Für dieses Feedback liegt aktuell keine AMBOSS-Zusammenfassung vor. "
+        "Bitte prüfen Sie den Vorlauf bei Bedarf."
+    )
 
 
 def feedback_erzeugen(
@@ -36,130 +76,106 @@ def feedback_erzeugen(
     user_verlauf,
     anzahl_termine,
     diagnose_szenario,
-    amboss_payload=None,
-    *,
-    patient_alter=None,
-    status_updater: Optional[StatusUpdater] = None,
 ):
-    """Erzeugt das Abschlussfeedback und kombiniert Teilabschnitte."""
+    """Generiert das Abschlussfeedback anhand eines einzigen konsistenten Prompts."""
 
+    # Der Modus entscheidet, ob zusätzlich AMBOSS-Ergebnisse in die Bewertung
+    # einbezogen werden dürfen. Bei Bedarf kann hier zur Fehlersuche der Modus
+    # geloggt werden.
+    feedback_mode = determine_feedback_mode()
+
+    # Im Offline-Modus wird eine vorbereitete Rückfallantwort genutzt. Weitere
+    # Fallbacks sind bewusst nicht vorhanden, um das Verhalten transparent zu
+    # halten.
     if is_offline():
-        if status_updater:
-            status_updater(
-                "Offline-Modus aktiv – es wird ein statisches Feedback geladen.",
-                "warning",
-            )
         return get_offline_feedback(diagnose_szenario)
 
     patient_forms = get_patient_forms()
-    chatgpt_amboss_aktiv = sync_chatgpt_amboss_session_state()
 
-    # Hinweis: Der Parameter ``amboss_payload`` wird weiterhin akzeptiert,
-    # damit bestehende Funktionsaufrufe unverändert bleiben. Die Verarbeitung
-    # erfolgt jedoch immer mit der frisch abgerufenen MCP-Antwort, damit keine
-    # Zwischenergebnisse zwischengespeichert werden.
+    # Tokenzähler initialisieren, damit sowohl der Prompt als auch die Antwort
+    # konsistent dokumentiert werden. Für Debugging lässt sich hier ein
+    # zusätzlicher Logeintrag ergänzen.
+    init_token_counters()
 
-    # Für jedes Feedback wird das MCP erneut befragt, damit keine veralteten
-    # Zwischenergebnisse aus vorherigen Fällen übernommen werden.
-    amboss_payload_live = None
-    if diagnose_szenario and chatgpt_amboss_aktiv:
-        if status_updater:
-            status_updater(
-                "AMBOSS-MCP wird mit dem aktuellen Szenario abgefragt…",
-                "info",
-            )
-        try:
-            amboss_payload_live = call_amboss_search(query=diagnose_szenario)
-            if status_updater:
-                status_updater(
-                    "AMBOSS-MCP hat Daten geliefert.",
-                    "success",
-                )
-        except Exception as exc:  # pragma: no cover - reine Laufzeitfehler
-            st.warning(
-                "⚠️ Die AMBOSS-Schnittstelle konnte nicht abgefragt werden. "
-                "Details können bei Bedarf über zusätzliche Debug-Ausgaben "
-                "untersucht werden."
-            )
-            if status_updater:
-                status_updater(
-                    "AMBOSS-MCP konnte nicht erreicht werden.",
-                    "warning",
-                )
-            # Debug-Hinweis: Für eine detaillierte Analyse kann
-            # ``st.write('AMBOSS-Fehler:', exc)`` aktiviert werden.
-    else:
-        loesche_zusammenfassung()
+    # Optionaler AMBOSS-Kontext wird nur im entsprechenden Modus geladen.
+    amboss_context = ""
+    if feedback_mode == FEEDBACK_MODE_AMBOSS_CHATGPT:
+        # Die hier genutzte Zusammenfassung wurde im Vorfeld erzeugt und hält den
+        # Prompt bewusst klein. Debug-Hinweise dazu finden sich in
+        # `_build_amboss_context`.
+        amboss_context = _build_amboss_context()
 
-    amboss_zusammenfassung = ""
-    if amboss_payload_live:
-        if status_updater:
-            status_updater(
-                "AMBOSS-Payload wird mit gpt-4o-mini zusammengefasst…",
-                "info",
-            )
-        amboss_zusammenfassung = preprocess_amboss_payload(
-            client,
-            amboss_payload_live,
-            diagnose_szenario,
-            patient_alter,
-        )
-        if amboss_zusammenfassung:
-            speichere_zusammenfassung(amboss_zusammenfassung)
-            if status_updater:
-                status_updater(
-                    "AMBOSS-Zusammenfassung wurde erzeugt und gespeichert.",
-                    "success",
-                )
-        else:
-            loesche_zusammenfassung()
-            if status_updater:
-                status_updater(
-                    "AMBOSS-Zusammenfassung blieb leer.",
-                    "warning",
-                )
-    else:
-        loesche_zusammenfassung()
-        if status_updater:
-            if chatgpt_amboss_aktiv:
-                status_updater(
-                    "Keine AMBOSS-Daten verfügbar – es wird ohne Zusammenfassung fortgefahren.",
-                    "warning",
-                )
-            else:
-                status_updater(
-                    "ChatGPT+AMBOSS ist deaktiviert – es wird ohne MCP-Anteil fortgefahren.",
-                    "info",
-                )
+    # Der Prompt wird komplett in einem String aufgebaut, sodass das Modell das
+    # Feedback in einem Schritt erzeugt. Dadurch vermeiden wir divergierende
+    # Teilantworten und gewährleisten eine konsistente Tonalität.
+    prompt = f"""
+Ein Medizinstudierender hat eine vollständige virtuelle Fallbesprechung mit {patient_forms.phrase("dat", article="indefinite")} durchgeführt. Du bist ein erfahrener medizinischer Prüfer.
 
-    kontext = FeedbackContext(
-        diagnose_szenario=diagnose_szenario,
-        anzahl_termine=anzahl_termine,
-        user_verlauf=user_verlauf,
-        diagnostik_eingaben=diagnostik_eingaben,
-        gpt_befunde=gpt_befunde,
-        koerper_befund=koerper_befund,
-        user_ddx2=user_ddx2,
-        final_diagnose=final_diagnose,
-        therapie_vorschlag=therapie_vorschlag,
-        patient_forms_dativ=patient_forms.phrase("dat", article="indefinite"),
-        patient_forms_genitiv=patient_forms.phrase("gen"),
-        patient_alter=patient_alter,
-        amboss_zusammenfassung=amboss_zusammenfassung,
-    )
+Beurteile ausschließlich die Eingaben und Entscheidungen des Studierenden – NICHT die Antworten {patient_forms.phrase("gen")} oder automatisch generierte Inhalte.
 
-    # Alle Abschnitte werden parallel erzeugt, bleiben aber dank der Taskliste
-    # in ihrer ursprünglichen Reihenfolge.
-    if status_updater:
-        status_updater("Parallele GPT-Feedbackaufträge werden gestartet…", "info")
-    abschnitte = run_feedback_pipeline(
-        client,
-        kontext,
-        tasks=get_default_feedback_tasks(),
+Die zugrunde liegende Erkrankung im Szenario lautet: **{diagnose_szenario}**.
+
+Hier ist der Gesprächsverlauf mit den Fragen und Aussagen des Nutzers:
+{user_verlauf}
+
+GPT-generierte Befunde (nur als Hintergrund, bitte nicht bewerten):
+{koerper_befund}
+{gpt_befunde}
+
+Erhobene Differentialdiagnosen (Nutzerangaben):
+{user_ddx2}
+
+Geplante diagnostische Maßnahmen (Nutzerangaben):
+{diagnostik_eingaben}
+
+Finale Diagnose (Nutzereingabe):
+{final_diagnose}
+
+Therapiekonzept (Nutzereingabe):
+{therapie_vorschlag}
+
+Die Fallbearbeitung umfasste {anzahl_termine} Diagnostik-Termine.
+
+Strukturiere dein Feedback klar, hilfreich und differenziert – wie ein persönlicher Kommentar bei einer mündlichen Prüfung, schreibe in der zweiten Person.
+
+Nenne vorab das zugrunde liegende Szenario. Gib an, ob die Diagnose richtig gestellt wurde. Gib an, wieviele Termine für die Diagnostik benötigt wurden.
+
+1. Wurden im Gespräch alle relevanten anamnestischen Informationen erhoben?
+2. War die gewählte Diagnostik nachvollziehbar, vollständig und passend zur Szenariodiagnose **{diagnose_szenario}**?
+3. War die gewählte Diagnostik nachvollziehbar, vollständig und passend zu den Differentialdiagnosen **{user_ddx2}**?
+4. Beurteile, ob die diagnostische Strategie sinnvoll aufgebaut war, beachte dabei die Zahl der notwendigen Untersuchungstermine. Gab es unnötige Doppeluntersuchungen, sinnvolle Eskalation, fehlende Folgeuntersuchungen? Beziehe dich ausdrücklich auf die Reihenfolge und den Inhalt der Runden.
+5. Ist die finale Diagnose nachvollziehbar, insbesondere im Hinblick auf Differenzierung zu anderen Möglichkeiten?
+6. Ist das Therapiekonzept leitliniengerecht, plausibel und auf die Diagnose abgestimmt?
+
+**Berücksichtige und kommentiere zusätzlich**:
+- ökologische Aspekte (z. B. überflüssige Diagnostik, zuviele Anforderungen, zuviele Termine, CO₂-Bilanz, Strahlenbelastung bei CT oder Röntgen, Ressourcenverbrauch).
+- ökonomische Sinnhaftigkeit (Kosten-Nutzen-Verhältnis)
+- Beachte und begründe auch, warum zuwenig Diagnostik unwirtschaftlich und nicht nachhaltig sein kann.
+"""
+
+    if amboss_context:
+        prompt += f"""
+
+Zusätzliche Fachinformationen (AMBOSS):
+{amboss_context}
+"""
+
+    # Der Aufruf erfolgt bewusst sequentiell mit einem einzelnen Prompt. Bei
+    # Fehlermeldungen kann der Prompt-Inhalt beispielsweise über `st.write` zur
+    # Analyse ausgegeben werden.
+    response = client.chat.completions.create(
+        model="gpt-4",
+        messages=[{"role": "user", "content": prompt}],
         temperature=0.4,
     )
 
-    if status_updater:
-        status_updater("Alle Teilabschnitte wurden erfolgreich erzeugt.", "success")
+    # Tokenverbrauch erfassen, um die Nutzung nachvollziehen zu können. Für
+    # Debugging kann bei Bedarf zusätzlich `response` inspiziert werden.
+    add_usage(
+        prompt_tokens=response.usage.prompt_tokens,
+        completion_tokens=response.usage.completion_tokens,
+        total_tokens=response.usage.total_tokens,
+    )
 
-    return combine_sections(abschnitte)
+    return response.choices[0].message.content
+
