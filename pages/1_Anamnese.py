@@ -36,10 +36,17 @@ if "startzeit" not in st.session_state:
 
 # Nachrichtenverlauf initialisieren (außer system-Prompt)
 if "messages" not in st.session_state:
-    start_text = "Guten Tag, ich bin froh, dass ich mich heute bei Ihnen vorstellen kann."
+    start_text = str(st.session_state.get("patient_begruessung", "")).strip()
+    if not start_text:
+        st.error("❌ Es ist kein Begrüßungssatz für das aktuelle Verhalten hinterlegt.")
+        st.info(
+            "Debug-Tipp: Bitte prüfe in Supabase, ob für das gewählte Verhalten ein Text in der Spalte 'verhalten_begrussung' eingetragen ist."
+        )
+        st.stop()
+
     st.session_state.messages = [
         {"role": "system", "content": st.session_state.SYSTEM_PROMPT},
-        {"role": "assistant", "content": start_text}
+        {"role": "assistant", "content": start_text},
     ]
 
 # Nachrichtenverlauf anzeigen (ohne System-Prompt)

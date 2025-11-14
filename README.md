@@ -126,6 +126,32 @@ $$ language plpgsql;
 - **Statuskontrolle:** Während der Fallvorbereitung zeigt der Spinner explizit an, dass der AMBOSS-Text geprüft und bei Bedarf gespeichert wird. Im Adminbereich erscheint anschließend eine Statusmeldung, ob das Supabase-Feld aktualisiert wurde oder aus welchen Gründen der Schritt übersprungen wurde (z. B. Zufallsmodus, Override, Fehler).
 - **Persistente Admin-Einstellungen:** Fixierungen für Szenario, Verhalten sowie der bevorzugte AMBOSS-Abrufmodus werden dauerhaft in der Supabase-Tabelle `fall_persistenzen` gespeichert. Der Adminbereich stellt die jeweils aktiven Werte in einem ausklappbaren Abschnitt dar.
 
+### Patient*innenverhalten (Prompt & Begrüßung)
+- **Zentrale Tabelle:** Verhaltensbeschreibung und Begrüßungssatz werden gemeinsam in der Supabase-Tabelle `patientenverhalten` gepflegt. Jede Zeile repräsentiert genau ein Verhalten.
+- **SQL-Vorlage:** Die folgende Definition erzeugt die Tabelle und ergänzt automatisch gepflegte Zeitstempel. Vorher sollte – falls noch nicht geschehen – die Erweiterung `pgcrypto` aktiviert werden (`create extension if not exists pgcrypto;`).
+
+```sql
+create table if not exists public.patientenverhalten (
+    id uuid primary key default gen_random_uuid(),
+    verhalten_titel text not null unique,
+    verhalten_prompt text not null,
+    verhalten_begrussung text not null,
+    kommentar text,
+    is_active boolean not null default true,
+    created_at timestamptz not null default timezone('utc', now()),
+    updated_at timestamptz not null default timezone('utc', now())
+);
+
+create trigger set_patientenverhalten_updated_at
+    before update on public.patientenverhalten
+    for each row
+    execute function public.set_updated_at();
+```
+
+- **Pflicht-Einträge:** Für den Regelbetrieb müssen die Verhaltensvarianten `ängstlich`, `redselig` und `verharmlosend` (weitere Optionen können ergänzt werden) jeweils mit einem Prompt (`verhalten_prompt`) und einem Begrüßungssatz (`verhalten_begrussung`) hinterlegt werden. Die Spalte `verhalten_titel` dient zugleich als Schlüssel und wird automatisch in Kleinbuchstaben umgewandelt.
+- **Pflege:** Änderungen an Texten erfolgen direkt in Supabase. Nach Anpassungen lässt sich der Cache bei Bedarf per `module.supabase_content.clear_cached_content()` leeren (z. B. in einer Streamlit-Konsole), damit neue Werte sofort übernommen werden.
+- **Fehlersuche:** Wenn die Anwendung meldet, dass kein Verhalten geladen werden konnte, prüfe bitte zuerst, ob `is_active = true` gesetzt ist und ob sowohl Prompt als auch Begrüßung gefüllt wurden. Über kommentierte `st.write`-Ausgaben in `module/supabase_content.py` lassen sich die Rohdaten analysieren.
+
 ### Feedback- und Befundmodule
 - **Konfiguration:** Administratorinnen und Administratoren können Feedbackregeln anpassen und neue Befundvorlagen hinzufügen.
 - **Überwachung:** Es gibt Einsicht in Bewertungsverläufe, sodass Ausbildungsfortschritte nachvollzogen werden können.

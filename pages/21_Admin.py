@@ -394,13 +394,17 @@ else:
         # Wir lesen den aktuellen Status der Fixierungen aus, um Anzeige und Formular passend vorzubelegen.
         fixed, fixed_szenario = get_fall_fix_state()
         behavior_fixed, fixed_behavior_key = get_behavior_fix_state()
+        fixed_behavior_key = fixed_behavior_key.strip().lower()
         aktuelles_szenario = st.session_state.get("diagnose_szenario") or st.session_state.get(
             "admin_selected_szenario"
         )
         aktuelles_verhalten_kurz = st.session_state.get("patient_verhalten_memo")
         aktuelles_verhalten_lang = st.session_state.get("patient_verhalten")
+        aktuelles_verhalten_titel = st.session_state.get("patient_verhalten_titel")
         # Die Verhaltensoptionen dienen als Auswahlgrundlage für das Admin-Formular.
         verhaltensoptionen = get_verhaltensoptionen()
+        if not verhaltensoptionen:
+            st.stop()
         verhalten_option_keys = sorted(verhaltensoptionen.keys())
 
         szenario_text = (
@@ -426,10 +430,19 @@ else:
                 "**Verhaltensmodus:** Zufällig – das Verhalten wird bei jeder Sitzung neu bestimmt."
             )
 
-        if aktuelles_verhalten_kurz and aktuelles_verhalten_lang:
+        if (
+            aktuelles_verhalten_kurz
+            and aktuelles_verhalten_kurz in verhaltensoptionen
+        ):
+            eintrag = verhaltensoptionen[aktuelles_verhalten_kurz]
             verhalten_text = (
                 "**Patient*innenverhalten:** "
-                f"{aktuelles_verhalten_kurz.capitalize()} – {aktuelles_verhalten_lang}"
+                f"{eintrag.title} – {eintrag.prompt}"
+            )
+        elif aktuelles_verhalten_titel and aktuelles_verhalten_lang:
+            verhalten_text = (
+                "**Patient*innenverhalten:** "
+                f"{aktuelles_verhalten_titel} – {aktuelles_verhalten_lang}"
             )
         elif aktuelles_verhalten_lang:
             verhalten_text = f"**Patient*innenverhalten:** {aktuelles_verhalten_lang}"
@@ -478,7 +491,9 @@ else:
                     "Lege das gewünschte Verhalten fest. Über den Fixierschalter kannst du bestimmen, ob es für alle "
                     "Sitzungen gilt oder weiterhin zufällig gewählt wird."
                 ),
-                format_func=lambda key: f"{key.capitalize()} – {verhaltensoptionen[key]}",
+                format_func=lambda key: (
+                    f"{verhaltensoptionen[key].title} – {verhaltensoptionen[key].prompt}"
+                ),
             )
             verhalten_fix_toggle = st.toggle(
                 "Patient*innenverhalten fixieren",
