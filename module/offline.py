@@ -63,10 +63,10 @@ def get_offline_sonderuntersuchung(wunsch_text: str) -> str:
     # bei Bedarf ein detaillierterer Text gewählt werden.
     wunsch = wunsch_text.strip() or "(kein Wunschtext eingegeben)"
     return (
-        "Offline-Modus – ergänzter Untersuchungsblock"
-        "\n\n"
-        f"Anforderung: {wunsch}"
-        "\nErgebnis: Zurzeit stehen keine dynamischen Detailbefunde zur Verfügung."
+        "Offline-Modus – Zusatzuntersuchung"
+        "\n"
+        f"Angeforderte Maßnahme: {wunsch}"
+        "\nZusatzbefund: Keine dynamischen Details verfügbar – bitte händisch ergänzen."
     )
 
 
