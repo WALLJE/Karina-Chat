@@ -11,6 +11,7 @@ from module.offline import (
     is_offline,
 )
 from module.loading_indicator import task_spinner
+from module.supabase_content import SupabaseContentError, get_special_hint
 from module.token_counter import init_token_counters, add_usage
 
 copyright_footer()
