@@ -126,6 +126,34 @@ $$ language plpgsql;
 - **Statuskontrolle:** Während der Fallvorbereitung zeigt der Spinner explizit an, dass der AMBOSS-Text geprüft und bei Bedarf gespeichert wird. Im Adminbereich erscheint anschließend eine Statusmeldung, ob das Supabase-Feld aktualisiert wurde oder aus welchen Gründen der Schritt übersprungen wurde (z. B. Zufallsmodus, Override, Fehler).
 - **Persistente Admin-Einstellungen:** Fixierungen für Szenario, Verhalten sowie der bevorzugte AMBOSS-Abrufmodus werden dauerhaft in der Supabase-Tabelle `fall_persistenzen` gespeichert. Der Adminbereich stellt die jeweils aktiven Werte in einem ausklappbaren Abschnitt dar.
 
+### Kommunikationshinweise (Verhalten & Begrüßung)
+- **Zentrale Tabelle:** Alle Verhaltensoptionen sowie besondere Hinweis-Texte (z. B. der Begrüßungssatz zum Chatstart) werden in der neuen Supabase-Tabelle `kommunikationshinweise` verwaltet.
+- **SQL-Vorlage:** Die folgende Definition legt die Tabelle an und sorgt für automatische Zeitstempel. Vor der Ausführung muss einmalig die Supabase-Erweiterung `pgcrypto` aktiviert sein (`create extension if not exists pgcrypto;`).
+
+```sql
+create table if not exists public.kommunikationshinweise (
+    id uuid primary key default gen_random_uuid(),
+    slug text not null unique,
+    category text not null check (category in ('behavior_option', 'special_hint')),
+    label text,
+    content text not null,
+    is_active boolean not null default true,
+    created_at timestamptz not null default timezone('utc', now()),
+    updated_at timestamptz not null default timezone('utc', now())
+);
+
+create trigger set_kommunikationshinweise_updated_at
+    before update on public.kommunikationshinweise
+    for each row
+    execute function public.set_updated_at();
+```
+
+- **Pflicht-Einträge:** Für den Produktivbetrieb werden mindestens die folgenden Datensätze benötigt (alle `is_active = true`):
+  - Kategorie `behavior_option` mit den Slugs `knapp`, `redselig`, `ängstlich`, `wissbegierig`, `verharmlosend` und den bisherigen Beschreibungen aus dem Code.
+  - Kategorie `special_hint` mit dem Slug `begruessungssatz` und dem gewünschten Begrüßungstext.
+- **Pflege:** Änderungen an Texten können direkt in Supabase vorgenommen werden. Nach Updates lässt sich der Cache bei Bedarf im Code über `module.supabase_content.clear_cached_content()` leeren (z. B. in einer Streamlit-Konsole).
+- **Fehlersuche:** Falls die Anwendung meldet, dass keine Einträge gefunden wurden, lohnt sich ein Blick in die Supabase-Konsole. Prüfe insbesondere die Spalten `category`, `slug` sowie den `is_active`-Status.
+
 ### Feedback- und Befundmodule
 - **Konfiguration:** Administratorinnen und Administratoren können Feedbackregeln anpassen und neue Befundvorlagen hinzufügen.
 - **Überwachung:** Es gibt Einsicht in Bewertungsverläufe, sodass Ausbildungsfortschritte nachvollzogen werden können.

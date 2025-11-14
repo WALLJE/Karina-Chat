@@ -11,6 +11,7 @@ from module.offline import (
     is_offline,
 )
 from module.loading_indicator import task_spinner
+from module.supabase_content import SupabaseContentError, get_special_hint
 from module.token_counter import init_token_counters, add_usage
 
 copyright_footer()
@@ -36,10 +37,22 @@ if "startzeit" not in st.session_state:
 
 # Nachrichtenverlauf initialisieren (außer system-Prompt)
 if "messages" not in st.session_state:
-    start_text = "Guten Tag, ich bin froh, dass ich mich heute bei Ihnen vorstellen kann."
+    try:
+        start_text = get_special_hint("begruessungssatz")
+    except SupabaseContentError as exc:
+        st.error(
+            "❌ Der Begrüßungssatz konnte nicht geladen werden: {hinweis}".format(
+                hinweis=exc
+            )
+        )
+        st.info(
+            "Debug-Tipp: Bitte prüfe in Supabase, ob der Eintrag mit slug='begruessungssatz' aktiv ist."
+        )
+        st.stop()
+
     st.session_state.messages = [
         {"role": "system", "content": st.session_state.SYSTEM_PROMPT},
-        {"role": "assistant", "content": start_text}
+        {"role": "assistant", "content": start_text},
     ]
 
 # Nachrichtenverlauf anzeigen (ohne System-Prompt)
