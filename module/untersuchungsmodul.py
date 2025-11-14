@@ -76,6 +76,12 @@ def generiere_sonderuntersuchung(
     # identifizierbare Befundfragmente enthält. Bei Bedarf können Entwicklerinnen
     # und Entwickler die Stichpunktzahl erhöhen, indem sie weitere Bullet-Punkte
     # aktivieren – entsprechende Hinweise stehen im Prompt.
+    # Wichtig: Die KI darf an dieser Stelle keinesfalls erneut den bisherigen Befundblock
+    # wiederholen. Anwenderinnen und Anwender sehen die früheren Ergebnisse bereits im UI,
+    # daher würde eine Verdopplung die Dokumentation aufblähen. Wir betonen im Prompt, dass
+    # ausschließlich das neue Ergebnis – kompakt und ohne Wiederholungen – ausgegeben werden
+    # soll. Für Debugging kann vorübergehend ``st.write(prompt)`` in der aufrufenden Funktion
+    # aktiviert werden, um den endgültigen Text zu prüfen.
     prompt = f"""
 {patient_forms.phrase("nom", capitalize=True)} weist die simulierte Erkrankung "{diagnose_szenario}" auf.
 Wichtige anamnestische Hinweise: {diagnose_features}
@@ -84,9 +90,10 @@ Bereits vorliegender Untersuchungsbefund:
 
 Die folgende zusätzliche körperliche Untersuchung wurde explizit angefordert:
 {sonderwunsch}
-Formuliere ein kompaktes, stichwortartiges Untersuchungsergebnis.
+Formuliere ein kompaktes, stichwortartiges Untersuchungsergebnis ausschließlich zu dieser Zusatzuntersuchung.
 
-Gib ausschließlich körperliche Untersuchungsbefunde an. Keine Diagnosen, kein Ausblick.
+Wiederhole keine Befunde aus dem bestehenden Untersuchungsblock.
+Gib ausschließlich neue körperliche Untersuchungsbefunde an. Keine Diagnosen, kein Ausblick.
 """
 
     init_token_counters()
