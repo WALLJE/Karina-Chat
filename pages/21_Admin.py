@@ -401,6 +401,8 @@ else:
         aktuelles_verhalten_lang = st.session_state.get("patient_verhalten")
         # Die Verhaltensoptionen dienen als Auswahlgrundlage für das Admin-Formular.
         verhaltensoptionen = get_verhaltensoptionen()
+        if not verhaltensoptionen:
+            st.stop()
         verhalten_option_keys = sorted(verhaltensoptionen.keys())
 
         szenario_text = (

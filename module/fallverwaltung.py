@@ -20,6 +20,7 @@ from module.fall_config import (
     get_amboss_fetch_preferences,
     get_behavior_fix_state,
 )
+from module.supabase_content import SupabaseContentError, get_behavior_options
 
 _AMBOSS_INPUT_COLUMN = "Amboss_Input"
 _AMBOSS_PERSIST_STATE_KEY = "amboss_persist_info"
@@ -231,21 +232,21 @@ def _protokolliere_amboss_status(*, status: str, hinweis: str, quelle: str | Non
         "quelle": quelle or "unbekannt",
     }
 
-# Übersicht aller verfügbaren Verhaltensoptionen mit sprechenden Beschreibungen. Die Schlüssel werden im
-# Session State abgelegt, damit eine Fixierung administrativ gesteuert werden kann.
-_VERHALTENSOPTIONEN: dict[str, str] = {
-    "knapp": "Beantworte Fragen grundsätzlich sehr knapp. Gib nur so viele Informationen preis, wie direkt erfragt wurden.",
-    "redselig": "Beginne Antworten gern mit kleinen Anekdoten über Alltag, Beruf oder Familie. Gehe auf medizinische Fragen nur beiläufig - aber korrekt - ein und lenke bei manchen Fragen wieder auf private Themen um.",
-    "ängstlich": "Wirke angespannt und vorsichtig, erwähne konkrete Sorgen (z. B. vor Krankenhaus oder Krebs) nur, wenn die Fragen darauf hindeuten, und vermeide Wiederholungen. ",
-    "wissbegierig": "Wirke vorbereitet, zitiere gelegentlich medizinische Begriffe aus Internetrecherchen und frage aktiv nach Differenzialdiagnosen, Untersuchungen oder Leitlinien.",
-    "verharmlosend": "Spiele Beschwerden konsequent herunter, nutze variierende Phrasen wie ‚Ist nicht so schlimm‘, vermeide Wiederholungen. Gib Symptome erst auf konkrete Nachfrage preis und betone, dass du eigentlich gesund wirken möchtest.",
-}
-
-
 def get_verhaltensoptionen() -> dict[str, str]:
-    """Gibt eine Kopie der Verhaltensoptionen zurück."""
+    """Gibt die in Supabase gepflegten Verhaltensoptionen zurück."""
 
-    return dict(_VERHALTENSOPTIONEN)
+    try:
+        return get_behavior_options()
+    except SupabaseContentError as exc:
+        st.error(
+            "❌ Verhaltensoptionen konnten nicht geladen werden: {hinweis}".format(
+                hinweis=exc
+            )
+        )
+        # Hinweis für Debugging: In ``module/supabase_content.py`` kann bei Bedarf
+        # die Cache-Funktion ``_load_entries_for_category`` mit ``st.write``
+        # ausgegeben werden, um die rohen Supabase-Datensätze zu inspizieren.
+        return {}
 
 def lade_fallbeispiele() -> pd.DataFrame:
     """Liest alle Fallbeispiele aus der Supabase-Tabelle ein."""
@@ -681,6 +682,14 @@ def prepare_fall_session_state(
     st.session_state.setdefault("patient_job", "unbekannt")
 
     verhaltensoptionen = get_verhaltensoptionen()
+    if not verhaltensoptionen:
+        st.error(
+            "❌ Es sind keine Verhaltensoptionen verfügbar. Bitte Supabase-Tabelle 'kommunikationshinweise' prüfen."
+        )
+        st.info(
+            "Debug-Tipp: Kontrolliere in Supabase, ob Einträge mit category='behavior_option' aktiv gesetzt sind."
+        )
+        st.stop()
     behavior_fixed, behavior_key = get_behavior_fix_state()
     if behavior_fixed and behavior_key in verhaltensoptionen:
         verhalten_memo = behavior_key
