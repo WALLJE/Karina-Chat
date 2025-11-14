@@ -1,4 +1,4 @@
-"""Zentrale Lesezugriffe auf Supabase für Verhaltensoptionen und Hinweis-Texte."""
+"""Zentrale Lesezugriffe auf Supabase für Patient*innenverhalten."""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -11,30 +11,24 @@ from supabase import Client, create_client
 # Konstanten für die gemeinsam genutzte Supabase-Tabelle.
 # ---------------------------------------------------------------------------
 
-# Name der Supabase-Tabelle, in der sowohl die Verhaltensoptionen als auch
-# besondere Hinweis-Texte (z. B. der Begrüßungssatz) gespeichert werden.
-# Die Tabelle wird im README näher beschrieben, einschließlich des SQL-Skripts
-# zur Erstellung in Supabase.
-_CONTENT_TABLE = "kommunikationshinweise"
-
-# Werte für die Spalte ``category`` der Tabelle. Über sie wird gesteuert,
-# ob ein Datensatz ein Verhalten ("behavior_option") oder ein Hinweistext
-# ("special_hint") darstellt.
-_CATEGORY_BEHAVIOR = "behavior_option"
-_CATEGORY_HINT = "special_hint"
+# Name der Supabase-Tabelle, in der jede Zeile eine Verhaltenskonfiguration
+# beschreibt (Prompt + Begrüßungssatz). Die genaue Tabellenstruktur inklusive
+# SQL-Befehl ist im README erläutert.
+_BEHAVIOR_TABLE = "patientenverhalten"
 
 
 class SupabaseContentError(RuntimeError):
-    """Sammel-Exception für Lesefehler in der Kommunikationshinweis-Tabelle."""
+    """Sammel-Exception für Lesefehler in der Verhaltenstabelle."""
 
 
 @dataclass(frozen=True)
-class _ContentEntry:
-    """Hilfsstruktur für Zeilen aus der Supabase-Tabelle."""
+class BehaviorEntry:
+    """Abbild einer Tabellenzeile mit Prompt und Begrüßung."""
 
-    slug: str
-    content: str
-    label: str | None = None
+    key: str
+    title: str
+    prompt: str
+    greeting: str
 
 
 def _get_supabase_client() -> Client:
@@ -62,39 +56,41 @@ def _get_supabase_client() -> Client:
         ) from exc
 
 
-def _parse_entry(row: Dict[str, Any]) -> _ContentEntry | None:
+def _parse_behavior_row(row: Dict[str, Any]) -> BehaviorEntry | None:
     """Konvertiert eine geladene Tabellenzeile in eine geprüfte Struktur."""
 
-    slug = str(row.get("slug", "")).strip()
-    if not slug:
+    raw_title = str(row.get("verhalten_titel", "")).strip()
+    if not raw_title:
         return None
 
-    content = str(row.get("content", "")).strip()
-    if not content:
+    prompt = str(row.get("verhalten_prompt", "")).strip()
+    if not prompt:
         return None
 
-    label_value = row.get("label")
-    label = str(label_value).strip() if isinstance(label_value, str) else None
-    return _ContentEntry(slug=slug, content=content, label=label)
+    greeting = str(row.get("verhalten_begrussung", "")).strip()
+    if not greeting:
+        return None
+
+    key = raw_title.lower()
+    return BehaviorEntry(key=key, title=raw_title, prompt=prompt, greeting=greeting)
 
 
 @st.cache_data(show_spinner=False)
-def _load_entries_for_category(category: str) -> dict[str, _ContentEntry]:
-    """Liest alle aktiven Einträge einer Kategorie aus Supabase."""
+def _load_behavior_entries() -> dict[str, BehaviorEntry]:
+    """Liest alle aktiven Verhaltensoptionen aus Supabase."""
 
     client = _get_supabase_client()
     try:
         response = (
-            client.table(_CONTENT_TABLE)
-            .select("slug,label,content,is_active")
-            .eq("category", category)
+            client.table(_BEHAVIOR_TABLE)
+            .select("verhalten_titel,verhalten_prompt,verhalten_begrussung,is_active")
             .eq("is_active", True)
-            .order("slug", desc=False)
+            .order("verhalten_titel", desc=False)
             .execute()
         )
     except Exception as exc:  # pragma: no cover - Netzwerkaussetzer schwer simulierbar
         raise SupabaseContentError(
-            "Abruf der Tabelle 'kommunikationshinweise' ist fehlgeschlagen."
+            "Abruf der Tabelle 'patientenverhalten' ist fehlgeschlagen."
         ) from exc
 
     if getattr(response, "error", None):
@@ -103,12 +99,15 @@ def _load_entries_for_category(category: str) -> dict[str, _ContentEntry]:
         )
 
     rows = response.data or []
-    result: dict[str, _ContentEntry] = {}
+    # Debugging-Hinweis: Bei Bedarf kann hier ein ``st.write(rows)`` aktiviert werden,
+    # um die rohen Supabase-Daten temporär einzublenden. Das erleichtert das Auffinden
+    # von Tippfehlern in Spaltennamen oder deaktivierten Datensätzen.
+    result: dict[str, BehaviorEntry] = {}
     for row in rows:
-        parsed = _parse_entry(dict(row))
+        parsed = _parse_behavior_row(dict(row))
         if not parsed:
             continue
-        result[parsed.slug] = parsed
+        result[parsed.key] = parsed
 
     return result
 
@@ -116,42 +115,40 @@ def _load_entries_for_category(category: str) -> dict[str, _ContentEntry]:
 def clear_cached_content() -> None:
     """Invalidiert alle Cache-Einträge dieses Moduls."""
 
-    _load_entries_for_category.clear()
+    _load_behavior_entries.clear()
 
 
-def get_behavior_options() -> dict[str, str]:
+def get_behavior_options() -> dict[str, BehaviorEntry]:
     """Liefert sämtliche Verhaltensoptionen aus Supabase."""
 
-    eintraege = _load_entries_for_category(_CATEGORY_BEHAVIOR)
+    eintraege = _load_behavior_entries()
     if not eintraege:
         raise SupabaseContentError(
             "Keine Verhaltensoptionen in Supabase gefunden. Bitte Tabelle prüfen."
         )
 
-    # Wir geben ein einfaches Dict zurück, damit bestehende Aufrufer weiterhin
-    # ein Mapping von Schlüssel zu Beschreibung erhalten.
-    return {slug: entry.content for slug, entry in eintraege.items()}
+    return eintraege
 
 
-def get_special_hint(slug: str) -> str:
-    """Gibt einen benannten Hinweistext (z. B. den Begrüßungssatz) zurück."""
+def get_behavior_entry(key: str) -> BehaviorEntry:
+    """Gibt eine konkrete Verhaltenszeile anhand des Titels zurück."""
 
-    slug_clean = str(slug).strip().lower()
-    if not slug_clean:
+    key_clean = str(key).strip().lower()
+    if not key_clean:
         raise SupabaseContentError(
-            "Hinweis konnte nicht geladen werden: Ungültiger oder leerer Schlüssel."
+            "Verhalten konnte nicht geladen werden: Ungültiger oder leerer Schlüssel."
         )
 
-    hinweise = _load_entries_for_category(_CATEGORY_HINT)
-    if not hinweise:
+    eintraege = _load_behavior_entries()
+    if not eintraege:
         raise SupabaseContentError(
-            "Keine Hinweis-Texte in Supabase gefunden. Bitte Tabelle prüfen."
+            "Keine Verhaltensoptionen in Supabase gefunden. Bitte Tabelle prüfen."
         )
 
-    eintrag = hinweise.get(slug_clean)
+    eintrag = eintraege.get(key_clean)
     if not eintrag:
         raise SupabaseContentError(
-            f"Hinweis '{slug_clean}' ist nicht in Supabase hinterlegt."
+            f"Verhalten '{key_clean}' ist nicht in Supabase hinterlegt."
         )
 
-    return eintrag.content
+    return eintrag

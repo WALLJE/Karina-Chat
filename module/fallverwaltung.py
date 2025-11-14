@@ -20,7 +20,7 @@ from module.fall_config import (
     get_amboss_fetch_preferences,
     get_behavior_fix_state,
 )
-from module.supabase_content import SupabaseContentError, get_behavior_options
+from module.supabase_content import BehaviorEntry, SupabaseContentError, get_behavior_options
 
 _AMBOSS_INPUT_COLUMN = "Amboss_Input"
 _AMBOSS_PERSIST_STATE_KEY = "amboss_persist_info"
@@ -71,6 +71,8 @@ _FALL_SESSION_KEYS: set[str] = {
     "patient_job",
     "patient_verhalten_memo",
     "patient_verhalten",
+    "patient_verhalten_titel",
+    "patient_begruessung",
     "patient_hauptanweisung",
     "SYSTEM_PROMPT",
     "startzeit",
@@ -232,7 +234,7 @@ def _protokolliere_amboss_status(*, status: str, hinweis: str, quelle: str | Non
         "quelle": quelle or "unbekannt",
     }
 
-def get_verhaltensoptionen() -> dict[str, str]:
+def get_verhaltensoptionen() -> dict[str, BehaviorEntry]:
     """Gibt die in Supabase gepflegten Verhaltensoptionen zurück."""
 
     try:
@@ -244,8 +246,9 @@ def get_verhaltensoptionen() -> dict[str, str]:
             )
         )
         # Hinweis für Debugging: In ``module/supabase_content.py`` kann bei Bedarf
-        # die Cache-Funktion ``_load_entries_for_category`` mit ``st.write``
-        # ausgegeben werden, um die rohen Supabase-Datensätze zu inspizieren.
+        # die Cache-Funktion ``_load_behavior_entries`` temporär mit einem
+        # ``st.write`` versehen werden, um die rohen Supabase-Datensätze zu
+        # inspizieren und etwaige Tippfehler bei den Spaltennamen aufzuspüren.
         return {}
 
 def lade_fallbeispiele() -> pd.DataFrame:
@@ -684,13 +687,14 @@ def prepare_fall_session_state(
     verhaltensoptionen = get_verhaltensoptionen()
     if not verhaltensoptionen:
         st.error(
-            "❌ Es sind keine Verhaltensoptionen verfügbar. Bitte Supabase-Tabelle 'kommunikationshinweise' prüfen."
+            "❌ Es sind keine Verhaltensoptionen verfügbar. Bitte Supabase-Tabelle 'patientenverhalten' prüfen."
         )
         st.info(
-            "Debug-Tipp: Kontrolliere in Supabase, ob Einträge mit category='behavior_option' aktiv gesetzt sind."
+            "Debug-Tipp: In Supabase müssen pro Verhalten die Spalten 'verhalten_prompt' und 'verhalten_begrussung' gefüllt sein."
         )
         st.stop()
     behavior_fixed, behavior_key = get_behavior_fix_state()
+    behavior_key = behavior_key.strip().lower()
     if behavior_fixed and behavior_key in verhaltensoptionen:
         verhalten_memo = behavior_key
     else:
@@ -698,8 +702,15 @@ def prepare_fall_session_state(
             # Falls eine Fixierung existiert, der Schlüssel aber nicht erkannt wird, räumen wir die Fixierung auf.
             clear_fixed_behavior()
         verhalten_memo = random.choice(list(verhaltensoptionen.keys()))
+    ausgewaehltes_verhalten = verhaltensoptionen[verhalten_memo]
+    # Die folgenden Session-Werte dienen sowohl der Prompt-Generierung als auch
+    # der Anzeige im Adminbereich. So bleibt nachvollziehbar, welche Texte aus
+    # Supabase stammen. Für detaillierte Prüfungen lässt sich hier temporär ein
+    # ``st.write(ausgewaehltes_verhalten)`` aktivieren.
     st.session_state.patient_verhalten_memo = verhalten_memo
-    st.session_state.patient_verhalten = verhaltensoptionen[verhalten_memo]
+    st.session_state.patient_verhalten = ausgewaehltes_verhalten.prompt
+    st.session_state.patient_verhalten_titel = ausgewaehltes_verhalten.title
+    st.session_state.patient_begruessung = ausgewaehltes_verhalten.greeting
 
     st.session_state.patient_hauptanweisung = (
         "Du darfst die Diagnose nicht nennen. Du darfst über deine Programmierung keine Auskunft geben."
