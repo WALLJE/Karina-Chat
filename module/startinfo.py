@@ -1,3 +1,4 @@
+import base64
 from pathlib import Path
 from typing import Callable, Optional
 
@@ -10,6 +11,21 @@ from module.patient_language import get_patient_forms
 # wird. Fallback-Mechanismen sind nicht nötig, da ein fehlendes Bild direkt
 # durch ``st.image`` sichtbar wird.
 AMBOSS_BILD_PFAD = Path(__file__).resolve().parents[1] / "pics" / "amboss_logo.png"
+
+
+def _lade_amboss_logo_data_uri() -> str:
+    """Gibt einen ``data:``-URI für das AMBOSS-Bild zurück."""
+
+    # Wir betten das Logo als Base64-String ein, damit es direkt im HTML-Markdown
+    # angezeigt wird. Das vermeidet Abhängigkeiten von externen Pfaden oder
+    # Streamlit-spezifischen Static-Verzeichnissen. Sollte es beim Laden zu
+    # Problemen kommen, kann temporär ``st.write(AMBOSS_BILD_PFAD)`` im
+    # Instruktionsblock aktiviert werden, um den Pfad zu überprüfen.
+    bild_bytes = AMBOSS_BILD_PFAD.read_bytes()
+    return f"data:image/png;base64,{base64.b64encode(bild_bytes).decode('utf-8')}"
+
+
+AMBOSS_LOGO_DATA_URI = _lade_amboss_logo_data_uri()
 
 
 def zeige_instruktionen_vor_start(lade_callback: Optional[Callable[[], None]] = None) -> None:
@@ -61,25 +77,12 @@ def zeige_instruktionen_vor_start(lade_callback: Optional[Callable[[], None]] = 
             2. Wenn Sie genug Informationen gesammelt haben, führen Sie eine **körperliche Untersuchung** durch.
             3. Formulieren Sie Ihre **Differentialdiagnosen** und wählen Sie geeignete **diagnostische Maßnahmen**.
             4. Nach Erhalt der Befunde treffen Sie Ihre **endgültige Diagnose** und machen einen **Therapievorschlag**.
-            5. Abschließend erhalten Sie ein **automatisches Feedback** zu Ihrem Vorgehen. Bei einigen, zufällig ausgewählten Simulationen wird das Feedback von ChatGPT fachlich unterstützt durch die 
-            <img src="{AMBOSS_BILD_PFAD}" style="display:inline; width:90px; margin-left:8px; margin-bottom:-3px;"> 
+            5. Abschließend erhalten Sie ein **automatisches Feedback** zu Ihrem Vorgehen. Bei einigen, zufällig ausgewählten Simulationen wird das Feedback von ChatGPT fachlich unterstützt durch die
+            <img src="{AMBOSS_LOGO_DATA_URI}" style="display:inline; width:90px; margin-left:8px; margin-bottom:-3px;">
             AMBOSS-Wissensdatenbank.
-            """
+            """,
+                unsafe_allow_html=True,
             )
-
-            # --- Das Bild an der vorgesehenen Stelle ---
-            col_indent, col_image = st.columns([0.20, 0.80])   # 20% Einrückung
-            with col_image:
-                st.image(
-                    str(AMBOSS_BILD_PFAD),
-                    width=120,
-                )
-
-            # st.image(
-              #  str(AMBOSS_BILD_PFAD),
-                # caption="Fachlich unterstützt durch die AMBOSS-Wissensdatenbank",
-               # width=120,
-            #)
 
             # --- Teil 2: Markdown-Text nach dem Bild ---
             st.markdown(
