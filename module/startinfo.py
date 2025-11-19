@@ -39,8 +39,7 @@ def zeige_instruktionen_vor_start(lade_callback: Optional[Callable[[], None]] = 
             )
 
 # --- Teil 1: Markdown-Text vor dem Bild ---
-instruktionen_placeholder.markdown(
-    f"""
+instruktionen_placeholder.markdown(f"""
 #### Instruktionen für Studierende:
 {patient_intro}
 Ihr Ziel ist es, durch gezielte Anamnese und klinisches Denken eine Verdachtsdiagnose zu stellen sowie ein sinnvolles diagnostisches und therapeutisches Vorgehen zu entwickeln.
