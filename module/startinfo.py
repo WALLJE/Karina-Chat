@@ -68,7 +68,7 @@ def zeige_instruktionen_vor_start(lade_callback: Optional[Callable[[], None]] = 
             # --- Das Bild an der vorgesehenen Stelle ---
             st.image(
                 str(AMBOSS_BILD_PFAD),
-                caption="Fachlich unterstützt durch die AMBOSS-Wissensdatenbank",
+                # caption="Fachlich unterstützt durch die AMBOSS-Wissensdatenbank",
                 width=120,
             )
 
