@@ -67,11 +67,11 @@ def zeige_instruktionen_vor_start(lade_callback: Optional[Callable[[], None]] = 
 
             # --- Das Bild an der vorgesehenen Stelle ---
             col_indent, col_image = st.columns([0.20, 0.80])   # 20% Einrückung
-                with col_image:
-                    st.image(
-                        str(AMBOSS_BILD_PFAD),
-                        width=120,
-                    )
+            with col_image:
+                st.image(
+                    str(AMBOSS_BILD_PFAD),
+                    width=120,
+                )
 
             # st.image(
               #  str(AMBOSS_BILD_PFAD),
