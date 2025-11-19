@@ -50,7 +50,9 @@ Ihr Ziel ist es, durch gezielte Anamnese und klinisches Denken eine Verdachtsdia
 2. Wenn Sie genug Informationen gesammelt haben, führen Sie eine **körperliche Untersuchung** durch.
 3. Formulieren Sie Ihre **Differentialdiagnosen** und wählen Sie geeignete **diagnostische Maßnahmen**.
 4. Nach Erhalt der Befunde treffen Sie Ihre **endgültige Diagnose** und machen einen **Therapievorschlag**.
-5. Abschließend erhalten Sie ein **automatisches Feedback** zu Ihrem Vorgehen.
+5. Abschließend erhalten Sie ein **automatisches Feedback** zu Ihrem Vorgehen. Bei einigen, zufällig ausgewählten Simulationen wird das Feedback von ChatGPT fachlich unterstützt durch die AMBOSS-Wissensdatenbank.
+
+![AMBOSS-Logo – Wissensabgleich](pics/amboss_logo.png)
 
 > 💬 **Hinweis:** Sie können {patient_forms.phrase("acc")} auch nach der ersten Diagnostik weiter befragen –
 z. B. bei neuen Verdachtsmomenten oder zur gezielten Klärung offener Fragen.
