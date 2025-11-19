@@ -38,8 +38,9 @@ def zeige_instruktionen_vor_start(lade_callback: Optional[Callable[[], None]] = 
                 f"bzw. einem simulierten Patienten, {patient_forms.relative_pronoun()} sich in Ihrer hausärztlichen Sprechstunde vorstellt."
             )
 
-        instruktionen_placeholder.markdown(
-            f"""
+# --- Teil 1: Markdown-Text vor dem Bild ---
+instruktionen_placeholder.markdown(
+    f"""
 #### Instruktionen für Studierende:
 {patient_intro}
 Ihr Ziel ist es, durch gezielte Anamnese und klinisches Denken eine Verdachtsdiagnose zu stellen sowie ein sinnvolles diagnostisches und therapeutisches Vorgehen zu entwickeln.
@@ -51,11 +52,21 @@ Ihr Ziel ist es, durch gezielte Anamnese und klinisches Denken eine Verdachtsdia
 3. Formulieren Sie Ihre **Differentialdiagnosen** und wählen Sie geeignete **diagnostische Maßnahmen**.
 4. Nach Erhalt der Befunde treffen Sie Ihre **endgültige Diagnose** und machen einen **Therapievorschlag**.
 5. Abschließend erhalten Sie ein **automatisches Feedback** zu Ihrem Vorgehen. Bei einigen, zufällig ausgewählten Simulationen wird das Feedback von ChatGPT fachlich unterstützt durch die AMBOSS-Wissensdatenbank.
+"""
+)
 
-![AMBOSS-Logo – Wissensabgleich](pics/amboss_logo.png)
+# --- Das Bild an der vorgesehenen Stelle ---
+instruktionen_placeholder.image(
+    "pics/amboss_logo.png",
+    caption="Fachlich unterstützt durch die AMBOSS-Wissensdatenbank",
+    width=220,
+)
 
+# --- Teil 2: Markdown-Text nach dem Bild ---
+instruktionen_placeholder.markdown(
+    f"""
 > 💬 **Hinweis:** Sie können {patient_forms.phrase("acc")} auch nach der ersten Diagnostik weiter befragen –
-z. B. bei neuen Verdachtsmomenten oder zur gezielten Klärung offener Fragen.
+z. B. bei neuen Verdachtsmomenten oder zur gezielten Klärung offener Fragen.
 
 Im Wartezimmer sitzen weitere {patient_forms.plural_phrase()} mit anderen Krankheitsbildern, die Sie durch einen erneuten Aufruf der App kennenlernen können.
 
@@ -65,7 +76,8 @@ Im Wartezimmer sitzen weitere {patient_forms.plural_phrase()} mit anderen Krankh
 
 ---
 """
-        )
+)
+
 
     schreibe_instruktionen()
 
