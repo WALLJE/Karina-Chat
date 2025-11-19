@@ -66,11 +66,18 @@ def zeige_instruktionen_vor_start(lade_callback: Optional[Callable[[], None]] = 
             )
 
             # --- Das Bild an der vorgesehenen Stelle ---
-            st.image(
-                str(AMBOSS_BILD_PFAD),
+            col_indent, col_image = st.columns([0.20, 0.80])   # 20% Einrückung
+                with col_image:
+                    st.image(
+                        str(AMBOSS_BILD_PFAD),
+                        width=120,
+                    )
+
+            # st.image(
+              #  str(AMBOSS_BILD_PFAD),
                 # caption="Fachlich unterstützt durch die AMBOSS-Wissensdatenbank",
-                width=120,
-            )
+               # width=120,
+            #)
 
             # --- Teil 2: Markdown-Text nach dem Bild ---
             st.markdown(
