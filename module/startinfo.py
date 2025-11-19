@@ -61,7 +61,7 @@ def zeige_instruktionen_vor_start(lade_callback: Optional[Callable[[], None]] = 
             2. Wenn Sie genug Informationen gesammelt haben, führen Sie eine **körperliche Untersuchung** durch.
             3. Formulieren Sie Ihre **Differentialdiagnosen** und wählen Sie geeignete **diagnostische Maßnahmen**.
             4. Nach Erhalt der Befunde treffen Sie Ihre **endgültige Diagnose** und machen einen **Therapievorschlag**.
-            5. Abschließend erhalten Sie ein **automatisches Feedback** zu Ihrem Vorgehen. Bei einigen, zufällig ausgewählten Simulationen wird das Feedback von ChatGPT fachlich unterstützt durch die AMBOSS-Wissensdatenbank.
+            5. Abschließend erhalten Sie ein **automatisches Feedback** zu Ihrem Vorgehen. Bei einigen, zufällig ausgewählten Simulationen wird das Feedback von ChatGPT fachlich unterstützt durch die <img src="{AMBOSS_BILD_PFAD}" style="display:inline; width:90px; margin-left:8px; margin-bottom:-3px;"> AMBOSS-Wissensdatenbank.
             """
             )
 
