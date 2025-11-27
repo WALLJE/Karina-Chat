@@ -57,6 +57,7 @@ Der Karina-Chat unterstützt medizinische Ausbildungsszenarien, indem realistisc
 ## Grundlegende Nutzung
 - **Modulauswahl:** Über das Seitenmenü lassen sich die verschiedenen Module aufrufen (z. B. Sprach-, Befund- oder Feedbackmodul).
 - **Startseite als Einstieg:** `Karina_Chat_2.py` dient ausschließlich der Fallvorbereitung und führt nach Bestätigung der Instruktionen automatisch zur ersten Seite der Multipage-App.
+- **Klinik-Logo beim Start:** Solange noch kein patientenspezifisches Foto vorliegt, zeigt die Sidebar zu Beginn immer `pics/Logo_Klinik.png` an. Sobald der Fall vorbereitet ist und passende Bilder gefunden werden, wechselt die Anzeige automatisch.
 - **Interaktion:** Dialoge werden Schritt für Schritt geführt. Eingaben können über Textfelder oder vordefinierte Auswahlmöglichkeiten erfolgen.
 - **Speicherung:** Relevante Eingaben werden intern abgelegt, sodass ein Wechsel zwischen Modulen ohne Datenverlust möglich ist.
 - **Körperliche Untersuchung:** Der automatisch generierte Befund führt immer mit den Vitalparametern Blutdruck (mmHg) und Herzfrequenz (/Minute) ein, damit Lernende sofort einen vollständigen Überblick erhalten.
