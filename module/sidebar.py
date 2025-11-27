@@ -12,6 +12,13 @@ from PIL import Image
 # werden konnte.
 STANDARD_LOGO_PFAD = Path(__file__).resolve().parents[1] / "pics" / "Logo_Klinik.png"
 
+# Die Zielbreite für das Sidebar-Bild wird etwas großzügiger gewählt, damit das
+# Klinik-Logo und spätere Patientenbilder den vorhandenen Platz besser nutzen
+# und in der Sidebar klar erkennbar sind. Über den einstellbaren Wert kann das
+# Erscheinungsbild bei Bedarf schnell angepasst werden, ohne die Logik weiter
+# zu verändern.
+SIDEBAR_BILD_BREITE = 220
+
 
 def show_sidebar():
     # DEBUG
@@ -98,14 +105,20 @@ def show_sidebar():
                 # Hinweis für Debugging: Bei Bedarf kann die folgende Zeile aktiviert werden,
                 # um den aktuell verwendeten Bildpfad in der Sidebar auszugeben.
                 # st.sidebar.write("🧪 DEBUG: Verwendeter Bildpfad:", patientenbild)
-                bildplatzhalter.image(patientenbild, width=160)
+                # Die Bildbreite orientiert sich an `SIDEBAR_BILD_BREITE`, damit das Logo größer
+                # erscheint und die Sidebar optisch ausfüllt. Bei Änderungen an der Sidebar-Breite
+                # kann der Wert unkompliziert angepasst werden.
+                bildplatzhalter.image(
+                    patientenbild,
+                    width=SIDEBAR_BILD_BREITE,
+                )
             except Exception as e:
                 st.warning(f"⚠️ Bild konnte nicht geladen werden: {e}")
         else:
             # Sichtbarer, aber neutraler Platzhalter, damit die Bildfläche reserviert bleibt.
             bildplatzhalter.markdown(
                 """
-                <div style="width: 160px; height: 160px; border-radius: 12px; background-color: rgba(0, 0, 0, 0.05);"></div>
+                <div style="width: 100%; max-width: 240px; height: 160px; border-radius: 12px; background-color: rgba(0, 0, 0, 0.05);"></div>
                 """,
                 unsafe_allow_html=True,
             )
