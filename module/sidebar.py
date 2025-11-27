@@ -1,7 +1,16 @@
-import streamlit as st
 import os
 import random
+from pathlib import Path
+
+import streamlit as st
 from PIL import Image
+
+
+# Der Logo-Pfad wird zentral definiert, damit bei einem ersten Seitenaufruf
+# bewusst immer dasselbe Bild erscheint. So sehen Nutzerinnen und Nutzer sofort
+# das Klinik-Branding, wenn noch kein patientenspezifisches Foto zugeordnet
+# werden konnte.
+STANDARD_LOGO_PFAD = Path(__file__).resolve().parents[1] / "pics" / "Logo_Klinik.png"
 
 
 def show_sidebar():
@@ -58,9 +67,23 @@ def show_sidebar():
         if not valid_images and pic_dir != "pics":
             valid_images = lade_gueltige_bilder("pics")
 
+        if "patient_logo" not in st.session_state:
+            # Beim allerersten Aufruf setzen wir das Klinik-Logo als Platzhalter,
+            # damit kein zufälliges Bild erscheint und der Start klar erkennbar ist.
+            # Falls das Logo fehlen sollte, kann per Debugging-Hinweis
+            # ``st.sidebar.write(STANDARD_LOGO_PFAD)`` aktiviert werden, um den
+            # erwarteten Pfad zu prüfen.
+            if STANDARD_LOGO_PFAD.is_file():
+                st.session_state.patient_logo = str(STANDARD_LOGO_PFAD)
+        
         if valid_images:
+            # Sobald valide patientenspezifische Bilder vorhanden sind, ersetzen
+            # wir den Platzhalter, damit ein zum Szenario passendes Foto erscheint.
+            # Der Austausch erfolgt auch, wenn der bisherige Pfad nicht mehr im
+            # aktuellen Pool enthalten ist (z. B. nach einem Szenariowechsel).
             if (
                 "patient_logo" not in st.session_state
+                or st.session_state.patient_logo == str(STANDARD_LOGO_PFAD)
                 or st.session_state.patient_logo not in valid_images
             ):
                 st.session_state.patient_logo = random.choice(valid_images)
