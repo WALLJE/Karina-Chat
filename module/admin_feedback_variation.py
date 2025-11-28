@@ -171,6 +171,49 @@ def lade_feedback_fall(fall_id: int) -> FeedbackCaseData:
     )
 
 
+def _extrahiere_user_verlauf(chatverlauf: str, patientenname: str) -> str:
+    """Filtert den gespeicherten Chatverlauf auf Nutzer:innen-Beiträge.
+
+    Der ursprüngliche Export aus ``module.gpt_feedback`` markiert Nutzerfragen
+    mit dem Präfix ``"Du:"`` und versieht alle übrigen Zeilen mit dem
+    jeweils verwendeten Patientennamen. Diese Funktion streicht daher alle
+    Zeilen, die nicht eindeutig als Nutzereingabe erkennbar sind. So wird beim
+    erneuten Feedback-Lauf derselbe Input wie im Live-Betrieb genutzt.
+
+    Für Debugging kann der Rückgabewert über ``st.write`` inspiziert werden,
+    falls in historischen Datensätzen ungewöhnliche Präfixe auftauchen.
+    """
+
+    if not chatverlauf:
+        return ""
+
+    nutzerzeilen: List[str] = []
+    patientenname = patientenname.strip()
+
+    for zeile in chatverlauf.splitlines():
+        bereinigt = zeile.strip()
+        if not bereinigt:
+            continue
+
+        sprecher, trenner, inhalt = bereinigt.partition(":")
+        if not trenner:
+            # Falls alte Datensätze kein Präfix haben, hilft eine temporäre
+            # ``st.write(bereinigt)``-Ausgabe, um ein passendes Muster zu
+            # ergänzen. Standardmäßig wird diese Zeile übersprungen, damit
+            # keine Patienten- oder Systemtexte in den Prompt geraten.
+            continue
+
+        sprecher_klein = sprecher.strip().lower()
+        if sprecher_klein in {"du", "user", "studierende", "studierender"}:
+            nutzerzeilen.append(inhalt.strip())
+        elif patientenname and sprecher.strip() == patientenname:
+            # Patientenantworten werden bewusst ignoriert, damit der Prompt
+            # unverändert nur die Nutzereingaben enthält.
+            continue
+
+    return "\n".join(nutzerzeilen).strip()
+
+
 def _uebernehme_in_session_state(rohwerte: Dict[str, object]) -> None:
     """Überträgt die geladenen Felder in den Session-State.
 
@@ -180,8 +223,28 @@ def _uebernehme_in_session_state(rohwerte: Dict[str, object]) -> None:
     temporär ``st.write(rohwerte)`` eingebaut wird.
     """
 
+    patientenname = str(rohwerte.get("name", "")).strip() or "Patient"
+    chatverlauf_roh = str(rohwerte.get("chatverlauf", "")).strip()
+    user_chatverlauf = _extrahiere_user_verlauf(chatverlauf_roh, patientenname)
+
+    # Falls keine Nutzerzeilen erkannt werden, wird der Verlauf bewusst NICHT
+    # automatisch ergänzt, damit der Prompt nicht versehentlich Patientenant-
+    # worten enthält. Über eine temporäre ``st.write(chatverlauf_roh)``-
+    # Ausgabe können Admins das Rohformat analysieren und bei Bedarf das
+    # Präfix-Set in ``_extrahiere_user_verlauf`` erweitern. Ein expliziter
+    # Hinweis macht auf die leere Eingabe aufmerksam, sodass der Datensatz
+    # vor dem erneuten Feedbacklauf bereinigt werden kann.
+    if not user_chatverlauf and chatverlauf_roh:
+        st.warning(
+            "⚠️ Im gespeicherten Chatverlauf wurden keine eindeutigen Nutzer:innen-Zeilen gefunden. "
+            "Bitte Präfixe prüfen und ggf. anpassen."
+        )
+
     for spaltenname, state_key in _REQUIRED_FIELDS.items():
-        st.session_state[state_key] = rohwerte.get(spaltenname, "") or ""
+        wert = rohwerte.get(spaltenname, "") or ""
+        if spaltenname == "chatverlauf":
+            wert = user_chatverlauf
+        st.session_state[state_key] = wert
 
     # Historische Keys aus dem normalen Feedback-Modul werden zusätzlich
     # gepflegt, damit andere Hilfsfunktionen weiterhin funktionieren, falls sie
@@ -198,8 +261,11 @@ def _uebernehme_in_session_state(rohwerte: Dict[str, object]) -> None:
 
     # Damit der Gesprächsverlauf vom Feedback-Prompt erkannt wird, wird er als
     # einzige Nutzer-Nachricht in ``st.session_state.messages`` hinterlegt.
-    chatverlauf = str(rohwerte.get("chatverlauf", "")).strip()
-    st.session_state["messages"] = [{"role": "user", "content": chatverlauf}] if chatverlauf else []
+    st.session_state["messages"] = [
+        {"role": "user", "content": abschnitt}
+        for abschnitt in user_chatverlauf.split("\n")
+        if abschnitt.strip()
+    ]
 
     # Für die erneute Berechnung wird das finale Feedback bewusst entfernt.
     st.session_state.pop("final_feedback", None)
@@ -340,11 +406,31 @@ def _erstelle_pdf(laufgruppe: uuid.UUID, ergebnisse: List[FeedbackRunResult]) ->
         pdf.ln(2)
         pdf.multi_cell(zellenbreite, 6, _wrap_for_pdf(ergebnis.feedback_text))
 
-    # Rückgabe erfolgt als Bytes. ``output(dest="S")`` liefert einen
-    # latin-1-kodierten String; das anschließende ``encode`` konvertiert ihn in
-    # echte Bytes ohne Zeichenaustausch. Bei Bedarf kann ``st.write(pdf.pages)``
-    # aktiviert werden, um den Rohinhalt zu inspizieren.
-    return pdf.output(dest="S").encode("latin-1")
+    # Rückgabe erfolgt als Bytes. fpdf2 liefert bei ``dest="S"`` seit Version
+    # 2.7 standardmäßig ein ``bytearray``. Falls in älteren Umgebungen noch ein
+    # ``bytes``- oder ``str``-Objekt zurückkommt, wandeln wir das Ergebnis
+    # defensiv um und geben eine klare Fehlermeldung aus, statt stumm eine
+    # AttributeError zu produzieren. Für Debugging kann testweise
+    # ``st.write(type(roh_output), len(roh_output))`` aktiviert werden, um den
+    # Rückgabetyp im konkreten Deployment sichtbar zu machen.
+    roh_output = pdf.output(dest="S")
+
+    if isinstance(roh_output, bytearray):
+        return bytes(roh_output)
+
+    if isinstance(roh_output, bytes):
+        return roh_output
+
+    if isinstance(roh_output, str):
+        # fpdf1 gab hier einen latin-1-kodierten String zurück. Wir übernehmen
+        # dieses Mapping explizit, damit historische Deployments weiterhin
+        # funktionieren, und lassen bei nicht abbildbaren Zeichen bewusst einen
+        # Fehler zu, statt still etwas abzuschneiden.
+        return roh_output.encode("latin-1")
+
+    raise FeedbackVariationError(
+        "Unerwarteter Rückgabetyp beim PDF-Export. Bitte fpdf-Version prüfen."
+    )
 
 
 def fuehre_feedback_durchlaeufe_aus(
