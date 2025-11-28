@@ -174,14 +174,18 @@ def lade_feedback_fall(fall_id: int) -> FeedbackCaseData:
 def _extrahiere_user_verlauf(chatverlauf: str, patientenname: str) -> str:
     """Filtert den gespeicherten Chatverlauf auf Nutzer:innen-Beiträge.
 
-    Der ursprüngliche Export aus ``module.gpt_feedback`` markiert Nutzerfragen
-    mit dem Präfix ``"Du:"`` und versieht alle übrigen Zeilen mit dem
-    jeweils verwendeten Patientennamen. Diese Funktion streicht daher alle
-    Zeilen, die nicht eindeutig als Nutzereingabe erkennbar sind. So wird beim
-    erneuten Feedback-Lauf derselbe Input wie im Live-Betrieb genutzt.
+    Der ursprüngliche Export aus ``module.gpt_feedback`` markiert nur die
+    erste Zeile eines User-Posts mit dem Präfix ``"Du:"``. Mehrzeilige
+    Nachrichten enthalten daher Fortsetzungszeilen ohne Präfix, die im alten
+    Parsing-Prozess fälschlich verworfen wurden. Hier wird der zuletzt
+    erkannte Sprecher gemerkt, sodass alle Folgezeilen korrekt der aktuellen
+    Nutzereingabe zugeschlagen werden. Patientenantworten werden weiterhin
+    konsequent ignoriert.
 
-    Für Debugging kann der Rückgabewert über ``st.write`` inspiziert werden,
-    falls in historischen Datensätzen ungewöhnliche Präfixe auftauchen.
+    Für Debugging kann der Rückgabewert über ``st.write`` inspiziert werden.
+    Zusätzlich lässt sich bei Bedarf in den Schleifen unten ein temporäres
+    ``st.write(zeile, aktueller_sprecher)`` einfügen, um das Verhalten bei
+    unbekannten Präfixen nachzuvollziehen.
     """
 
     if not chatverlauf:
@@ -189,27 +193,50 @@ def _extrahiere_user_verlauf(chatverlauf: str, patientenname: str) -> str:
 
     nutzerzeilen: List[str] = []
     patientenname = patientenname.strip()
+    aktueller_sprecher = ""
 
     for zeile in chatverlauf.splitlines():
-        bereinigt = zeile.strip()
-        if not bereinigt:
+        bereinigt = zeile.rstrip()
+
+        # Leere Zeilen werden nur übernommen, wenn zuvor bereits eine
+        # Nutzereingabe erkannt wurde. Dadurch bleiben manuelle Absatzwechsel
+        # in mehrzeiligen Fragen erhalten, während rein dekorative Leerzeilen
+        # ohne Kontext ignoriert werden.
+        if not bereinigt.strip():
+            if aktueller_sprecher == "user":
+                nutzerzeilen.append("")
             continue
 
-        sprecher, trenner, inhalt = bereinigt.partition(":")
-        if not trenner:
-            # Falls alte Datensätze kein Präfix haben, hilft eine temporäre
-            # ``st.write(bereinigt)``-Ausgabe, um ein passendes Muster zu
-            # ergänzen. Standardmäßig wird diese Zeile übersprungen, damit
-            # keine Patienten- oder Systemtexte in den Prompt geraten.
-            continue
+        sprecher, trenner, inhalt = bereinigt.strip().partition(":")
+        hat_praefix = bool(trenner)
 
-        sprecher_klein = sprecher.strip().lower()
-        if sprecher_klein in {"du", "user", "studierende", "studierender"}:
-            nutzerzeilen.append(inhalt.strip())
-        elif patientenname and sprecher.strip() == patientenname:
-            # Patientenantworten werden bewusst ignoriert, damit der Prompt
-            # unverändert nur die Nutzereingaben enthält.
-            continue
+        if hat_praefix:
+            sprecher_label = sprecher.strip()
+            sprecher_klein = sprecher_label.lower()
+
+            if sprecher_klein in {"du", "user", "studierende", "studierender"}:
+                aktueller_sprecher = "user"
+            elif patientenname and sprecher_label == patientenname:
+                # Patientenantworten setzen den Sprecher bewusst um, damit
+                # nachfolgende Zeilen ohne Präfix nicht fälschlich als
+                # Nutzereingabe interpretiert werden.
+                aktueller_sprecher = "patient"
+            else:
+                # Unbekannter Sprecher: Der aktuelle Kontext wird gelöscht, um
+                # versehentliche Übernahmen zu vermeiden. Bei Bedarf kann hier
+                # temporär ein ``st.write`` gesetzt werden, um das Rohformat zu
+                # inspizieren.
+                aktueller_sprecher = ""
+
+            inhalt_text = inhalt.strip()
+        else:
+            # Keine neue Sprecherangabe: Wir setzen auf den zuletzt gemerkten
+            # Kontext. So werden Fortsetzungszeilen mehrzeiliger Nutzereingaben
+            # zuverlässig mitgespeichert.
+            inhalt_text = bereinigt.strip()
+
+        if aktueller_sprecher == "user" and inhalt_text:
+            nutzerzeilen.append(inhalt_text)
 
     return "\n".join(nutzerzeilen).strip()
 
@@ -397,8 +424,15 @@ def _erstelle_pdf(laufgruppe: uuid.UUID, ergebnisse: List[FeedbackRunResult]) ->
         _setze_unicode_font(pdf, groesse=12)
         pdf.multi_cell(zellenbreite, 8, _wrap_for_pdf(titel))
         pdf.ln(2)
+        # Datumsanzeige bevorzugt den gespeicherten Fallzeitpunkt, damit die
+        # Auswertung die ursprüngliche Erstellung besser nachverfolgen kann.
+        # Fällt der Wert in Supabase aus (ältere Datensätze), wird der aktuelle
+        # Tag eingetragen, um ein leeres Feld wie im Screenshot-Feedback zu
+        # vermeiden.
+        datum_anzeige = ergebnis.fall_datum or datetime.now().strftime("%d.%m.%Y")
+
         pdf.multi_cell(zellenbreite, 8, _wrap_for_pdf(f"Fall-ID: {ergebnis.feedback_id}"))
-        pdf.multi_cell(zellenbreite, 8, _wrap_for_pdf(f"Datum: {datetime.now():%d.%m.%Y}"))
+        pdf.multi_cell(zellenbreite, 8, _wrap_for_pdf(f"Datum: {datum_anzeige}"))
         pdf.multi_cell(zellenbreite, 8, _wrap_for_pdf(f"Durchlauf: {ergebnis.lauf_index}"))
         pdf.ln(4)
         _setze_unicode_font(pdf, groesse=11)
