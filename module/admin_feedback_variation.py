@@ -10,13 +10,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from html import escape
+from io import BytesIO
 from pathlib import Path
 import uuid
 from typing import Dict, Iterable, List
 
 import streamlit as st
 from supabase import Client, create_client
-from weasyprint import CSS, HTML
+from xhtml2pdf import pisa
 
 from feedbackmodul import feedback_erzeugen
 from module.feedback_mode import (
@@ -309,14 +310,14 @@ def _erstelle_html_dokument(laufgruppe: uuid.UUID, ergebnisse: List[FeedbackRunR
     Das Layout nutzt ausschließlich Standard-CSS und vermeidet Pixel-genaue
     Positionierungen. Tabellen und Flex-Container sorgen für stabile Umbrüche,
     ohne auf manuelle Breitenberechnungen angewiesen zu sein. Für Debugging kann
-    der Rückgabewert temporär über ``st.write(html)`` ausgegeben werden, um
-    Rendering-Probleme in WeasyPrint nachzustellen.
+    der Rückgabewert temporär über ``st.write(html)`` ausgegeben werden, um das
+    Ergebnis in einem Browser zu prüfen oder bei Bedarf an xhtml2pdf anzupassen.
     """
 
     kopfzeile = f"Feedback-Lauf {laufgruppe}"  # Modus bleibt bewusst verborgen.
     abschnitte: List[str] = []
 
-    for ergebnis in ergebnisse:
+    for index, ergebnis in enumerate(ergebnisse):
         datum_text = escape(ergebnis.fall_datum or "kein Datum in Supabase hinterlegt")
         feedback_text = escape(ergebnis.feedback_text).replace("\n", "<br/>")
         szenario_text = escape(ergebnis.szenario or "unbekannt")
@@ -325,6 +326,13 @@ def _erstelle_html_dokument(laufgruppe: uuid.UUID, ergebnisse: List[FeedbackRunR
             if ergebnis.fehlende_variablen
             else ""
         )
+        # Jede Feedback-Sektion soll auf einer eigenen Seite landen. Daher wird
+        # ein expliziter Seitenumbruch angefügt, solange weitere Ergebnisse
+        # folgen. So bleibt der Aufbau der früheren FPDF-Variante erhalten,
+        # ohne am Dokumentende überflüssige Leerseiten zu erzeugen. Bei Bedarf
+        # kann ein temporäres ``st.write(abschnitte)`` helfen, die HTML-Struktur
+        # für Debugging zu inspizieren.
+        page_break = "<div class='page-break'></div>" if index < len(ergebnisse) - 1 else ""
         abschnitte.append(
             f"""
             <section class='feedback-block'>
@@ -341,6 +349,7 @@ def _erstelle_html_dokument(laufgruppe: uuid.UUID, ergebnisse: List[FeedbackRunR
                 {fehlende_variablen_text}
               </article>
             </section>
+            {page_break}
             """
         )
 
@@ -367,6 +376,9 @@ def _erstelle_html_dokument(laufgruppe: uuid.UUID, ergebnisse: List[FeedbackRunR
             padding: 12px 14px;
             margin-bottom: 18px;
             background: #f9fafb;
+        }}
+        .page-break {{
+            page-break-after: always;
         }}
         header {{
             display: flex;
@@ -410,24 +422,31 @@ def _erstelle_html_dokument(laufgruppe: uuid.UUID, ergebnisse: List[FeedbackRunR
 
 
 def _erstelle_pdf(laufgruppe: uuid.UUID, ergebnisse: List[FeedbackRunResult]) -> bytes:
-    """Wandelt das HTML-Template per WeasyPrint in ein PDF um."""
+    """Wandelt das HTML-Template mit ``xhtml2pdf`` in ein PDF um."""
 
     html_inhalt = _erstelle_html_dokument(laufgruppe, ergebnisse)
-    try:
-        # Für detailierte Layout-Debugs kann die Ausgabe mit ``st.write(html_inhalt)``
-        # inspiziert oder als separate Datei gespeichert werden. WeasyPrint rendert
-        # das HTML serverseitig ohne Browserabhängigkeiten.
-        css = CSS(string="""
-            @font-face {
-                font-family: 'DejaVu Sans';
-                src: local('DejaVu Sans'), local('DejaVuSans');
-            }
-        """)
-        return HTML(string=html_inhalt, base_url=str(_STATIC_ASSETS_DIR.resolve())).write_pdf(stylesheets=[css])
-    except Exception as exc:  # pragma: no cover - Renderer-Spezifika schwer testbar
+
+    # ``xhtml2pdf`` arbeitet rein in Python (ReportLab-basiert) und vermeidet damit
+    # die systemabhängigen Bibliotheken von WeasyPrint (z. B. Pango). Das reduziert
+    # Fehlermeldungen in Cloud-Umgebungen erheblich. Bei Layoutproblemen lässt sich
+    # der generierte HTML-String über ``st.write(html_inhalt)`` inspizieren oder in
+    # eine Datei schreiben, um ihn lokal in einem Browser zu prüfen.
+    pdf_puffer = BytesIO()
+    ergebnis = pisa.CreatePDF(
+        src=html_inhalt,
+        dest=pdf_puffer,
+        encoding="utf-8",
+    )
+
+    # Bei Fehlern liefert ``CreatePDF`` einen Status zurück. Wir fangen diesen explizit
+    # ab, damit Admins den Hinweis sofort sehen und ggf. anhand der Kommentare ein
+    # zielgerichtetes Debugging durchführen können.
+    if ergebnis.err:
         raise FeedbackVariationError(
-            "PDF-Erstellung via WeasyPrint fehlgeschlagen. Bitte siehe die Kommentare im Code für Debug-Hinweise."
-        ) from exc
+            "PDF-Erstellung via xhtml2pdf fehlgeschlagen. Prüfe die Kommentare im Code für Debug-Hinweise."
+        )
+
+    return pdf_puffer.getvalue()
 
 
 def fuehre_feedback_durchlaeufe_aus(

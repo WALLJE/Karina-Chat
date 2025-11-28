@@ -3,4 +3,4 @@ openai
 openpyxl
 supabase
 cryptography
-weasyprint
+xhtml2pdf
