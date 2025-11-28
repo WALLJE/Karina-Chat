@@ -3,15 +3,15 @@
 Die Funktionen in diesem Modul sind bewusst umfangreich kommentiert, damit
 Administrierende die einzelnen Schritte nachvollziehen und bei Bedarf
 anpassen können. Alle Abläufe sind strikt auf den Admin-Modus beschränkt und
-verändern keine Nutzungswege im regulären Betrieb.
+verändern keine Nutzungswege im regulären Betrieb. Die Variationen der GPT-
+Feedbacks werden ausschließlich in Supabase gespeichert; zusätzliche Ausgaben
+oder herunterladbare Dateien wurden bewusst entfernt, um den Code schlank und
+zielgerichtet zu halten.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from html import escape
-from io import BytesIO
-from pathlib import Path
 import uuid
 from typing import Dict, Iterable, List
 
@@ -63,13 +63,6 @@ _OPTIONAL_FIELDS: Dict[str, str] = {
     "diagnostik_runden_gesamt": "diagnostik_runden_gesamt",
     "koerper_befund": "koerper_befund",
 }
-
-# Pfad zum optionalen Logo oder anderen statischen Ressourcen. Das Template
-# ist so aufgebaut, dass auch ohne zusätzliche Assets ein valides PDF entsteht.
-# Für Debugging kann hier ein Logo hinterlegt und im Template eingebunden
-# werden – die entsprechende CSS-Regel ist kommentiert vorbereitet.
-_STATIC_ASSETS_DIR = Path("pics")
-
 
 class FeedbackVariationError(RuntimeError):
     """Spezifische Exception für Fehler im Evaluationsablauf."""
@@ -284,257 +277,11 @@ def _setze_feedback_modus(modus: str) -> None:
 def _erstelle_html_dokument(laufgruppe: uuid.UUID, ergebnisse: List[FeedbackRunResult]) -> str:
     """Baut ein HTML-Template, das später verlustfrei in PDF konvertiert wird.
 
-    Das Layout nutzt ausschließlich Standard-CSS und vermeidet Pixel-genaue
-    Positionierungen. Tabellen und Flex-Container sorgen für stabile Umbrüche,
-    ohne auf manuelle Breitenberechnungen angewiesen zu sein. Für Debugging kann
-    der Rückgabewert temporär über ``st.write(html)`` ausgegeben werden, um das
-    Ergebnis in einem Browser zu prüfen oder bei Bedarf an xhtml2pdf anzupassen.
-    """
-
-    kopfzeile = f"Feedback-Lauf {laufgruppe}"  # Modus bleibt bewusst verborgen.
-    abschnitte: List[str] = []
-
-    for index, ergebnis in enumerate(ergebnisse):
-        datum_text = escape(ergebnis.fall_datum or "kein Datum in Supabase hinterlegt")
-        feedback_text = escape(ergebnis.feedback_text).replace("\n", "<br/>")
-        szenario_text = escape(ergebnis.szenario or "unbekannt")
-        fehlende_variablen_text = (
-            f"<p class='hinweis'>Fehlende Variablen: {escape(', '.join(sorted(set(ergebnis.fehlende_variablen))))}</p>"
-            if ergebnis.fehlende_variablen
-            else ""
-        )
-        # Jede Feedback-Sektion soll auf einer eigenen Seite landen. Daher wird
-        # ein expliziter Seitenumbruch angefügt, solange weitere Ergebnisse
-        # folgen. So bleibt der Aufbau der früheren FPDF-Variante erhalten,
-        # ohne am Dokumentende überflüssige Leerseiten zu erzeugen. Bei Bedarf
-        # kann ein temporäres ``st.write(abschnitte)`` helfen, die HTML-Struktur
-        # für Debugging zu inspizieren.
-        page_break = "<div class='page-break'></div>" if index < len(ergebnisse) - 1 else ""
-        abschnitte.append(
-            f"""
-            <section class='feedback-block'>
-              <header>
-                <div class='meta'>
-                  <div><strong>Fall-ID:</strong> {ergebnis.feedback_id}</div>
-                  <div><strong>Datum:</strong> {datum_text}</div>
-                  <div><strong>Durchlauf:</strong> {ergebnis.lauf_index}</div>
-                </div>
-                <div class='szenario'><strong>Szenario:</strong> {szenario_text}</div>
-              </header>
-              <article>
-                <p>{feedback_text}</p>
-                {fehlende_variablen_text}
-              </article>
-            </section>
-            {page_break}
-            """
-        )
-
-    abschnitt_html = "".join(abschnitte)
-    stylesheet = f"""
-        @page {{
-            size: A4;
-            margin: 20mm 15mm;
-        }}
-        body {{
-            font-family: 'DejaVu Sans', 'Helvetica', sans-serif;
-            color: #1f2937;
-            line-height: 1.5;
-            font-size: 12pt;
-        }}
-        h1 {{
-            font-size: 16pt;
-            margin-bottom: 12px;
-        }}
-        .feedback-block {{
-            page-break-inside: avoid;
-            border: 1px solid #d1d5db;
-            border-radius: 8px;
-            padding: 12px 14px;
-            margin-bottom: 18px;
-            background: #f9fafb;
-        }}
-        .page-break {{
-            page-break-after: always;
-        }}
-        header {{
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-            margin-bottom: 10px;
-        }}
-        .meta {{
-            display: flex;
-            flex-wrap: wrap;
-            gap: 12px;
-        }}
-        .szenario {{
-            font-style: italic;
-            color: #374151;
-        }}
-        article p {{
-            margin: 0 0 8px 0;
-            white-space: pre-wrap;
-        }}
-        .hinweis {{
-            font-size: 10pt;
-            color: #6b7280;
-        }}
-    """
-
-    return f"""
-    <!DOCTYPE html>
-    <html lang='de'>
-      <head>
-        <meta charset='utf-8' />
-        <title>Feedback-Lauf {laufgruppe}</title>
-        <style>{stylesheet}</style>
-      </head>
-      <body>
-        <h1>{kopfzeile}</h1>
-        {abschnitt_html}
-      </body>
-    </html>
-    """
-
-
-def _erstelle_pdf(laufgruppe: uuid.UUID, ergebnisse: List[FeedbackRunResult]) -> bytes:
-    """Wandelt das HTML-Template mit ``xhtml2pdf`` in ein PDF um."""
-
-    html_inhalt = _erstelle_html_dokument(laufgruppe, ergebnisse)
-
-    # ``xhtml2pdf`` arbeitet rein in Python (ReportLab-basiert) und vermeidet damit
-    # die systemabhängigen Bibliotheken von WeasyPrint (z. B. Pango). Das reduziert
-    # Fehlermeldungen in Cloud-Umgebungen erheblich. Bei Layoutproblemen lässt sich
-    # der generierte HTML-String über ``st.write(html_inhalt)`` inspizieren oder in
-    # eine Datei schreiben, um ihn lokal in einem Browser zu prüfen.
-    pdf_puffer = BytesIO()
-    ergebnis = pisa.CreatePDF(
-        src=html_inhalt,
-        dest=pdf_puffer,
-        encoding="utf-8",
-    )
-
-    # Bei Fehlern liefert ``CreatePDF`` einen Status zurück. Wir fangen diesen explizit
-    # ab, damit Admins den Hinweis sofort sehen und ggf. anhand der Kommentare ein
-    # zielgerichtetes Debugging durchführen können.
-    if ergebnis.err:
-        raise FeedbackVariationError(
-            "PDF-Erstellung via xhtml2pdf fehlgeschlagen. Prüfe die Kommentare im Code für Debug-Hinweise."
-        )
-
-    # add_font ist idempotent – wir prüfen dennoch den Cache, um die Fehlermeldung
-    # "Font already added" zu vermeiden und die Logs sauber zu halten.
-    if _PDF_FONT_NAME not in pdf.fonts:
-        try:
-            pdf.add_font(_PDF_FONT_NAME, "", str(_PDF_FONT_PATH), uni=True)
-        except RuntimeError as exc:
-            raise FeedbackVariationError(
-                "Unicode-Font konnte nicht geladen werden. Bitte prüfe den Pfad "
-                "und die Dateiberechtigungen."
-            ) from exc
-
-    pdf.set_font(_PDF_FONT_NAME, size=groesse)
-
-
-def _konvertiere_pdf_output_zu_bytes(roh_output: object) -> bytes:
-    """Wandelt den Rückgabewert von ``pdf.output`` stabil in echte Bytes um.
-
-    fpdf/fpdf2 liefern je nach Version unterschiedliche Typen zurück
-    (``bytearray``, ``bytes`` oder – in sehr alten Varianten – ``str``).
-    Diese Funktion normalisiert alle bekannten Varianten auf ``bytes`` und
-    dokumentiert den beobachteten Typ in der Fehlermeldung, falls etwas
-    Unerwartetes auftaucht. So lassen sich Versions- oder Umgebungsprobleme
-    schneller eingrenzen, ohne dass ein stiller Attribut-Fehler auftritt.
-    """
-
-    # Neuere fpdf2-Versionen nutzen ``bytearray``; die Bytes-Repräsentation
-    # bleibt unverändert erhalten und kann verlustfrei gecastet werden.
-    if isinstance(roh_output, bytearray):
-        return bytes(roh_output)
-
-    # Falls fpdf bereits ``bytes`` liefert, kann das Ergebnis direkt
-    # weitergereicht werden – kein erneutes Encoding notwendig.
-    if isinstance(roh_output, bytes):
-        return roh_output
-
-    # Manche Python-Distributionen geben hier eine ``memoryview`` zurück,
-    # die explizit in Bytes überführt werden muss. Über ``st.write`` lässt
-    # sich der Typ bei Bedarf inspizieren, um den Fehler einzugrenzen.
-    if isinstance(roh_output, memoryview):  # type: ignore[name-defined]
-        return roh_output.tobytes()
-
-    # fpdf1 gab an dieser Stelle einen latin-1-kodierten ``str`` zurück.
-    # Wir übernehmen dieses Mapping bewusst, damit historische Deployments
-    # weiterhin funktionieren. Sollte ein Zeichen nicht abbildbar sein,
-    # darf der Encoder eine klare Exception werfen, damit Admins den
-    # fehlerhaften Inhalt identifizieren können.
-    if isinstance(roh_output, str):
-        return roh_output.encode("latin-1")
-
-    # Alles andere ist unerwartet. Der Typ wird in der Fehlermeldung
-    # genannt, damit sofort erkennbar ist, ob etwa eine inkompatible
-    # fpdf-Version oder ein Wrapper im Spiel ist.
-    raise FeedbackVariationError(
-        "Unerwarteter Rückgabetyp beim PDF-Export. "
-        f"Erhalten: {type(roh_output).__name__}. Bitte fpdf-Version und "
-        "Parameter `dest='S'` prüfen. Bei Bedarf temporär "
-        "`st.write(type(roh_output))` aktivieren, um den Typ im Deployment "
-        "sichtbar zu machen."
-    )
-
-
-def _erstelle_pdf(laufgruppe: uuid.UUID, ergebnisse: List[FeedbackRunResult]) -> bytes:
-    """Erzeugt ein PDF, in dem jedes Feedback auf einer eigenen Seite steht."""
-
-    pdf = FPDF(format="A4")
-    # Breite Ränder plus automatischer Seitenumbruch reduzieren die Gefahr,
-    # dass untrennbare Wörter den verfügbaren Platz überschreiten. Sollte es
-    # dennoch klemmen, kann testweise der Margin erhöht oder der Text über
-    # ``st.write`` inspiziert werden (siehe Debug-Hinweise oben).
-    pdf.set_left_margin(15)
-    pdf.set_right_margin(15)
-    pdf.set_auto_page_break(auto=True, margin=15)
-
-    # Explizite Breitenberechnung in Millimetern: Dadurch wird vermieden, dass
-    # sich ein verschobener X-Offset aus vorigen Zellen auf nachfolgende
-    # Breitenberechnungen auswirkt. Der Wert orientiert sich an A4 mit 15 mm
-    # Rand: 210 mm - 15 mm - 15 mm = 180 mm.
-    zellenbreite = pdf.w - pdf.l_margin - pdf.r_margin
-
-    titel = f"Feedback-Lauf {laufgruppe}"  # Modus wird bewusst nicht ausgegeben.
-
-    for ergebnis in ergebnisse:
-        pdf.add_page()
-        # Unicode-fähige Schrift aktivieren, damit Sonderzeichen wie "₂" oder
-        # mathematische Symbole nicht zum Abbruch führen.
-        _setze_unicode_font(pdf, groesse=12)
-        pdf.multi_cell(zellenbreite, 8, _wrap_for_pdf(titel))
-        pdf.ln(2)
-        pdf.multi_cell(zellenbreite, 8, _wrap_for_pdf(f"Fall-ID: {ergebnis.feedback_id}"))
-        pdf.multi_cell(zellenbreite, 8, _wrap_for_pdf(f"Datum: {datetime.now():%d.%m.%Y}"))
-        pdf.multi_cell(zellenbreite, 8, _wrap_for_pdf(f"Durchlauf: {ergebnis.lauf_index}"))
-        pdf.ln(4)
-        _setze_unicode_font(pdf, groesse=11)
-        pdf.multi_cell(zellenbreite, 6, _wrap_for_pdf(f"Szenario: {ergebnis.szenario or 'unbekannt'}"))
-        pdf.ln(2)
-        pdf.multi_cell(zellenbreite, 6, _wrap_for_pdf(ergebnis.feedback_text))
-
-    # Rückgabe erfolgt als Bytes. fpdf2 liefert bei ``dest="S"`` seit Version
-    # 2.7 standardmäßig ein ``bytearray``; ältere Versionen liefern ``bytes``
-    # oder ``str``. Die Hilfsfunktion kümmert sich um die Normalisierung und
-    # liefert bei neuen, unbekannten Typen eine aussagekräftige Fehlermeldung.
-    # Für Debugging kann testweise ``st.write(type(roh_output))`` aktiviert
-    # werden, um den Rückgabetyp im konkreten Deployment sichtbar zu machen.
-    roh_output = pdf.output(dest="S")
-    return _konvertiere_pdf_output_zu_bytes(roh_output)
-
-
 def fuehre_feedback_durchlaeufe_aus(
     fall: FeedbackCaseData,
     durchlaeufe: int,
     modi: Iterable[str],
-) -> tuple[list[FeedbackRunResult], uuid.UUID]:
+) -> List[FeedbackRunResult]:
     """Startet mehrere Feedback-Berechnungen für denselben Fall.
 
     Args:
@@ -543,8 +290,7 @@ def fuehre_feedback_durchlaeufe_aus(
         modi: Iterable aus ``FEEDBACK_MODE_CHATGPT`` oder ``FEEDBACK_MODE_AMBOSS_CHATGPT``.
 
     Returns:
-        Alle berechneten Ergebnisse sowie die gemeinsame Laufgruppennummer, damit
-        anschließend separat ein PDF generiert werden kann.
+        Liste aller Ergebnisse; die Speicherung erfolgt separat über Supabase.
     """
 
     if is_offline():
@@ -600,15 +346,7 @@ def fuehre_feedback_durchlaeufe_aus(
     if urspruenglicher_modus:
         st.session_state[SESSION_KEY_EFFECTIVE_MODE] = urspruenglicher_modus
 
-    return ergebnisse, laufgruppe
-
-
-def erstelle_pdf_aus_ergebnissen(
-    laufgruppe: uuid.UUID, ergebnisse: List[FeedbackRunResult]
-) -> bytes:
-    """Stellt das HTML her und wandelt es anschließend in eine PDF-Datei um."""
-
-    return _erstelle_pdf(laufgruppe, ergebnisse)
+    return ergebnisse
 
 
 def speichere_durchlaeufe_in_supabase(ergebnisse: List[FeedbackRunResult]) -> None:

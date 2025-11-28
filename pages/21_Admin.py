@@ -848,7 +848,6 @@ st.subheader("Feedback-Variabilität im Adminmodus")
 # Session-State-Defaults für den Evaluationsabschnitt, damit die Bedienelemente
 # auch nach einem Refresh konsistente Werte anzeigen.
 st.session_state.setdefault("admin_feedback_fall", None)
-st.session_state.setdefault("admin_feedback_pdf_bytes", b"")
 
 st.write(
     "Nutze diesen Abschnitt, um einen gespeicherten Feedback-Datensatz erneut durch GPT auszuwerten. "
@@ -885,7 +884,6 @@ with st.expander("⚙️ Einstellungen für Feedback-Durchläufe"):
             fehlermeldung.error(str(exc))
         else:
             st.session_state["admin_feedback_fall"] = fall
-            st.session_state["admin_feedback_pdf_bytes"] = b""
             fehlermeldung.empty()
             st.success(
                 "Fall erfolgreich geladen. Alle benötigten Variablen wurden in den Session-State übernommen."
@@ -920,39 +918,17 @@ if fall:
         st.error("Bitte wähle mindestens einen Modus für die Durchläufe aus.")
     else:
         if st.button("Durchläufe starten und speichern", type="primary"):
-            ladeaufgaben = [
-                "GPT-Feedback neu berechnen",
-                "Durchläufe in Supabase speichern",
-                "PDF aus HTML erzeugen",
-            ]
-            with task_spinner("Durchläufe werden erstellt...", ladeaufgaben) as indikator:
-                try:
-                    ergebnisse, laufgruppe = fuehre_feedback_durchlaeufe_aus(
-                        fall, durchlauf_anzahl, ausgewaehlte_modi
-                    )
-                    indikator.advance(1)
-                    speichere_durchlaeufe_in_supabase(ergebnisse)
-                    indikator.advance(1)
-                    pdf_bytes = erstelle_pdf_aus_ergebnissen(laufgruppe, ergebnisse)
-                    indikator.advance(1)
-                except FeedbackVariationError as exc:
-                    st.error(str(exc))
-                except Exception as exc:  # pragma: no cover - defensive Absicherung
-                    st.error(
-                        "Unerwarteter Fehler bei der Berechnung. Siehe Kommentare im Code für Debug-Hinweise."
-                    )
-                    st.caption(str(exc))
-                else:
-                    st.session_state["admin_feedback_pdf_bytes"] = pdf_bytes
-                    st.success(
-                        "Alle Durchläufe wurden abgeschlossen, gespeichert und als PDF zum Download vorbereitet."
-                    )
-
-pdf_bytes = st.session_state.get("admin_feedback_pdf_bytes", b"") or b""
-if pdf_bytes:
-    st.download_button(
-        "PDF mit aktuellen Durchläufen herunterladen",
-        data=pdf_bytes,
-        file_name="feedback_durchlaeufe.pdf",
-        mime="application/pdf",
-    )
+            try:
+                ergebnisse = fuehre_feedback_durchlaeufe_aus(fall, durchlauf_anzahl, ausgewaehlte_modi)
+                speichere_durchlaeufe_in_supabase(ergebnisse)
+            except FeedbackVariationError as exc:
+                st.error(str(exc))
+            except Exception as exc:  # pragma: no cover - defensive Absicherung
+                st.error(
+                    "Unerwarteter Fehler bei der Berechnung. Siehe Kommentare im Code für Debug-Hinweise."
+                )
+                st.caption(str(exc))
+            else:
+                st.success(
+                    "Alle Durchläufe wurden abgeschlossen und mit gemeinsamer Laufnummer in Supabase gespeichert."
+                )
