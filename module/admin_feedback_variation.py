@@ -9,20 +9,19 @@ verändern keine Nutzungswege im regulären Betrieb.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
+from html import escape
+from io import BytesIO
 from pathlib import Path
-import re
-import textwrap
 import uuid
-from typing import Dict, Iterable, List, Tuple
+from typing import Dict, Iterable, List
 
 # Hinweis: Zusätzliche Standardbibliotheken wie ``io`` werden bewusst nur
 # eingebunden, wenn sie tatsächlich gebraucht werden. Der Code bleibt so für
 # Admins übersichtlich, ohne unnötige Abhängigkeiten aufzubauen.
 
 import streamlit as st
-from fpdf import FPDF
 from supabase import Client, create_client
+from xhtml2pdf import pisa
 
 from feedbackmodul import feedback_erzeugen
 from module.feedback_mode import (
@@ -65,11 +64,11 @@ _OPTIONAL_FIELDS: Dict[str, str] = {
     "koerper_befund": "koerper_befund",
 }
 
-# Feste Schriftart mit Unicode-Unterstützung, damit Sonderzeichen wie "₂"
-# sauber gerendert werden. Sollte der Font auf dem System fehlen, wird eine
-# klare Fehlermeldung ausgegeben, damit Admins gezielt nachrüsten können.
-_PDF_FONT_NAME = "DejaVuSans"
-_PDF_FONT_PATH = Path("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf")
+# Pfad zum optionalen Logo oder anderen statischen Ressourcen. Das Template
+# ist so aufgebaut, dass auch ohne zusätzliche Assets ein valides PDF entsteht.
+# Für Debugging kann hier ein Logo hinterlegt und im Template eingebunden
+# werden – die entsprechende CSS-Regel ist kommentiert vorbereitet.
+_STATIC_ASSETS_DIR = Path("pics")
 
 
 class FeedbackVariationError(RuntimeError):
@@ -282,82 +281,146 @@ def _setze_feedback_modus(modus: str) -> None:
     reset_random_mode()
     st.session_state[SESSION_KEY_EFFECTIVE_MODE] = modus
 
+def _erstelle_html_dokument(laufgruppe: uuid.UUID, ergebnisse: List[FeedbackRunResult]) -> str:
+    """Baut ein HTML-Template, das später verlustfrei in PDF konvertiert wird.
 
-def _splitte_lange_tokens(text: str, max_tokenlaenge: int = 60) -> str:
-    """Zerschneidet extrem lange Wörter, damit ``multi_cell`` nicht scheitert.
-
-    Die FPDF-Fehlermeldung "Not enough horizontal space to render a single
-    character" tritt auf, wenn ein einzelnes, untrennbares Token breiter ist als
-    der verfügbare Zellenraum. Diese Hilfsfunktion flicht nach ``max_tokenlaenge``
-    Zeichen Leerzeichen ein, sodass FPDF das Wort sauber umbrechen kann. Die
-    originale Zeichenfolge bleibt dabei visuell gut lesbar, ein möglicher
-    Minimalverlust (fehlende Silbentrennung) ist für die Auswertung unerheblich.
+    Das Layout nutzt ausschließlich Standard-CSS und vermeidet Pixel-genaue
+    Positionierungen. Tabellen und Flex-Container sorgen für stabile Umbrüche,
+    ohne auf manuelle Breitenberechnungen angewiesen zu sein. Für Debugging kann
+    der Rückgabewert temporär über ``st.write(html)`` ausgegeben werden, um das
+    Ergebnis in einem Browser zu prüfen oder bei Bedarf an xhtml2pdf anzupassen.
     """
 
-    def _teile_token(token: str) -> str:
-        if len(token) <= max_tokenlaenge:
-            return token
-        # Die Wortteile werden mit Leerzeichen verbunden, damit FPDF einen
-        # Umbruchpunkt erkennt. Bei Bedarf kann das Limit über den Parameter
-        # ``max_tokenlaenge`` variiert werden.
-        return " ".join(
-            token[i : i + max_tokenlaenge]
-            for i in range(0, len(token), max_tokenlaenge)
+    kopfzeile = f"Feedback-Lauf {laufgruppe}"  # Modus bleibt bewusst verborgen.
+    abschnitte: List[str] = []
+
+    for index, ergebnis in enumerate(ergebnisse):
+        datum_text = escape(ergebnis.fall_datum or "kein Datum in Supabase hinterlegt")
+        feedback_text = escape(ergebnis.feedback_text).replace("\n", "<br/>")
+        szenario_text = escape(ergebnis.szenario or "unbekannt")
+        fehlende_variablen_text = (
+            f"<p class='hinweis'>Fehlende Variablen: {escape(', '.join(sorted(set(ergebnis.fehlende_variablen))))}</p>"
+            if ergebnis.fehlende_variablen
+            else ""
+        )
+        # Jede Feedback-Sektion soll auf einer eigenen Seite landen. Daher wird
+        # ein expliziter Seitenumbruch angefügt, solange weitere Ergebnisse
+        # folgen. So bleibt der Aufbau der früheren FPDF-Variante erhalten,
+        # ohne am Dokumentende überflüssige Leerseiten zu erzeugen. Bei Bedarf
+        # kann ein temporäres ``st.write(abschnitte)`` helfen, die HTML-Struktur
+        # für Debugging zu inspizieren.
+        page_break = "<div class='page-break'></div>" if index < len(ergebnisse) - 1 else ""
+        abschnitte.append(
+            f"""
+            <section class='feedback-block'>
+              <header>
+                <div class='meta'>
+                  <div><strong>Fall-ID:</strong> {ergebnis.feedback_id}</div>
+                  <div><strong>Datum:</strong> {datum_text}</div>
+                  <div><strong>Durchlauf:</strong> {ergebnis.lauf_index}</div>
+                </div>
+                <div class='szenario'><strong>Szenario:</strong> {szenario_text}</div>
+              </header>
+              <article>
+                <p>{feedback_text}</p>
+                {fehlende_variablen_text}
+              </article>
+            </section>
+            {page_break}
+            """
         )
 
-    segmente = re.split(r"(\s+)", text)
-    return "".join(_teile_token(segment) if segment and not segment.isspace() else segment for segment in segmente)
-
-
-def _wrap_for_pdf(text: str, breite_zeichen: int = 95) -> str:
-    """Formatiert Text für ``multi_cell`` und bricht lange Wörter um.
-
-    Neben dem klassischen Zeilenumbruch per ``textwrap.fill`` werden extrem
-    lange Tokens vorab künstlich getrennt. Das verhindert zuverlässig den
-    bekannten FPDF-Abbruch. Für Debugging kann temporär ``st.write(text)``
-    aufgerufen werden, um zu prüfen, welcher Text hier ankommt.
+    abschnitt_html = "".join(abschnitte)
+    stylesheet = f"""
+        @page {{
+            size: A4;
+            margin: 20mm 15mm;
+        }}
+        body {{
+            font-family: 'DejaVu Sans', 'Helvetica', sans-serif;
+            color: #1f2937;
+            line-height: 1.5;
+            font-size: 12pt;
+        }}
+        h1 {{
+            font-size: 16pt;
+            margin-bottom: 12px;
+        }}
+        .feedback-block {{
+            page-break-inside: avoid;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            padding: 12px 14px;
+            margin-bottom: 18px;
+            background: #f9fafb;
+        }}
+        .page-break {{
+            page-break-after: always;
+        }}
+        header {{
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-bottom: 10px;
+        }}
+        .meta {{
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+        }}
+        .szenario {{
+            font-style: italic;
+            color: #374151;
+        }}
+        article p {{
+            margin: 0 0 8px 0;
+            white-space: pre-wrap;
+        }}
+        .hinweis {{
+            font-size: 10pt;
+            color: #6b7280;
+        }}
     """
 
-    if not text:
-        return ""
-
-    text = _splitte_lange_tokens(str(text))
-
-    def _umbruch(block: str) -> str:
-        return textwrap.fill(
-            block.strip(),
-            width=breite_zeichen,
-            break_long_words=True,
-            break_on_hyphens=False,
-        )
-
-    saubere_abschnitte: List[str] = []
-    for abschnitt in text.replace("\r\n", "\n").replace("\r", "\n").split("\n"):
-        if not abschnitt.strip():
-            saubere_abschnitte.append("")
-            continue
-        saubere_abschnitte.append(_umbruch(abschnitt))
-
-    return "\n".join(saubere_abschnitte)
-
-
-def _setze_unicode_font(pdf: FPDF, groesse: int = 12) -> None:
-    """Aktiviert eine Unicode-Schriftart, die auch Sonderzeichen rendern kann.
-
-    Der Fehler "Character ... is outside the range of characters supported by the"
-    " font used" tritt auf, wenn der Standard-Helvetica-Font auf ein nicht
-    unterstütztes Zeichen trifft (z. B. Tiefstellungen wie "₂"). Durch das
-    Hinterlegen eines TrueType-Fonts mit Unicode-Unterstützung (DejaVuSans) wird
-    dieser Engpass eliminiert. Falls der Font im Deployment fehlt, erhält die
-    Admin-Oberfläche eine klare Fehlermeldung. Für tiefere Analysen kann temporär
-    ``st.write(pdf.fonts)`` aktiviert werden, um den Font-Cache einzusehen.
+    return f"""
+    <!DOCTYPE html>
+    <html lang='de'>
+      <head>
+        <meta charset='utf-8' />
+        <title>Feedback-Lauf {laufgruppe}</title>
+        <style>{stylesheet}</style>
+      </head>
+      <body>
+        <h1>{kopfzeile}</h1>
+        {abschnitt_html}
+      </body>
+    </html>
     """
 
-    if not _PDF_FONT_PATH.exists():
+
+def _erstelle_pdf(laufgruppe: uuid.UUID, ergebnisse: List[FeedbackRunResult]) -> bytes:
+    """Wandelt das HTML-Template mit ``xhtml2pdf`` in ein PDF um."""
+
+    html_inhalt = _erstelle_html_dokument(laufgruppe, ergebnisse)
+
+    # ``xhtml2pdf`` arbeitet rein in Python (ReportLab-basiert) und vermeidet damit
+    # die systemabhängigen Bibliotheken von WeasyPrint (z. B. Pango). Das reduziert
+    # Fehlermeldungen in Cloud-Umgebungen erheblich. Bei Layoutproblemen lässt sich
+    # der generierte HTML-String über ``st.write(html_inhalt)`` inspizieren oder in
+    # eine Datei schreiben, um ihn lokal in einem Browser zu prüfen.
+    pdf_puffer = BytesIO()
+    ergebnis = pisa.CreatePDF(
+        src=html_inhalt,
+        dest=pdf_puffer,
+        encoding="utf-8",
+    )
+
+    # Bei Fehlern liefert ``CreatePDF`` einen Status zurück. Wir fangen diesen explizit
+    # ab, damit Admins den Hinweis sofort sehen und ggf. anhand der Kommentare ein
+    # zielgerichtetes Debugging durchführen können.
+    if ergebnis.err:
         raise FeedbackVariationError(
-            "Unicode-Font nicht gefunden. Bitte installiere die Paketquelle "
-            "'ttf-dejavu' oder hinterlege den Font unter "
-            f"{_PDF_FONT_PATH}."
+            "PDF-Erstellung via xhtml2pdf fehlgeschlagen. Prüfe die Kommentare im Code für Debug-Hinweise."
         )
 
     # add_font ist idempotent – wir prüfen dennoch den Cache, um die Fehlermeldung
@@ -471,7 +534,7 @@ def fuehre_feedback_durchlaeufe_aus(
     fall: FeedbackCaseData,
     durchlaeufe: int,
     modi: Iterable[str],
-) -> Tuple[List[FeedbackRunResult], bytes]:
+) -> tuple[list[FeedbackRunResult], uuid.UUID]:
     """Startet mehrere Feedback-Berechnungen für denselben Fall.
 
     Args:
@@ -480,7 +543,8 @@ def fuehre_feedback_durchlaeufe_aus(
         modi: Iterable aus ``FEEDBACK_MODE_CHATGPT`` oder ``FEEDBACK_MODE_AMBOSS_CHATGPT``.
 
     Returns:
-        Liste aller Ergebnisse sowie die PDF-Bytes mit den Feedbacks (ohne Modus).
+        Alle berechneten Ergebnisse sowie die gemeinsame Laufgruppennummer, damit
+        anschließend separat ein PDF generiert werden kann.
     """
 
     if is_offline():
@@ -536,8 +600,15 @@ def fuehre_feedback_durchlaeufe_aus(
     if urspruenglicher_modus:
         st.session_state[SESSION_KEY_EFFECTIVE_MODE] = urspruenglicher_modus
 
-    pdf_bytes = _erstelle_pdf(laufgruppe, ergebnisse)
-    return ergebnisse, pdf_bytes
+    return ergebnisse, laufgruppe
+
+
+def erstelle_pdf_aus_ergebnissen(
+    laufgruppe: uuid.UUID, ergebnisse: List[FeedbackRunResult]
+) -> bytes:
+    """Stellt das HTML her und wandelt es anschließend in eine PDF-Datei um."""
+
+    return _erstelle_pdf(laufgruppe, ergebnisse)
 
 
 def speichere_durchlaeufe_in_supabase(ergebnisse: List[FeedbackRunResult]) -> None:
@@ -574,6 +645,7 @@ __all__ = [
     "FeedbackCaseData",
     "FeedbackRunResult",
     "FeedbackVariationError",
+    "erstelle_pdf_aus_ergebnissen",
     "fuehre_feedback_durchlaeufe_aus",
     "lade_feedback_fall",
     "speichere_durchlaeufe_in_supabase",
