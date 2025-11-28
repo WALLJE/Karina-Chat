@@ -3,4 +3,4 @@ openai
 openpyxl
 supabase
 cryptography
-fpdf2==2.7.9
+fpdf2

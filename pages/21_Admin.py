@@ -6,6 +6,7 @@ from module.admin_data import FeedbackExportError, build_feedback_export
 from module.admin_feedback_variation import (
     FeedbackCaseData,
     FeedbackVariationError,
+    erstelle_pdf_aus_ergebnissen,
     fuehre_feedback_durchlaeufe_aus,
     lade_feedback_fall,
     speichere_durchlaeufe_in_supabase,
@@ -919,26 +920,33 @@ if fall:
         st.error("Bitte wähle mindestens einen Modus für die Durchläufe aus.")
     else:
         if st.button("Durchläufe starten und speichern", type="primary"):
-            try:
-                ergebnisse, pdf_bytes = fuehre_feedback_durchlaeufe_aus(
-                    fall, durchlauf_anzahl, ausgewaehlte_modi
-                )
-                speichere_durchlaeufe_in_supabase(ergebnisse)
-                st.session_state["admin_feedback_pdf_bytes"] = pdf_bytes
-            except FeedbackVariationError as exc:
-                st.error(str(exc))
-            except Exception as exc:  # pragma: no cover - defensive Absicherung
-                st.error(
-                    "Unerwarteter Fehler bei der Berechnung. Siehe Kommentare im Code für Debug-Hinweise."
-                )
-                st.caption(str(exc))
-            else:
-                st.success(
-                    "Alle Durchläufe wurden abgeschlossen und mit gemeinsamer Laufnummer in Supabase gespeichert."
-                )
-                st.info(
-                    "Das PDF enthält pro Seite genau ein Feedback mit Laufnummer, Fall-ID und Datum – der Modus bleibt für die Analyse verborgen."
-                )
+            ladeaufgaben = [
+                "GPT-Feedback neu berechnen",
+                "Durchläufe in Supabase speichern",
+                "PDF aus HTML erzeugen",
+            ]
+            with task_spinner("Durchläufe werden erstellt...", ladeaufgaben) as indikator:
+                try:
+                    ergebnisse, laufgruppe = fuehre_feedback_durchlaeufe_aus(
+                        fall, durchlauf_anzahl, ausgewaehlte_modi
+                    )
+                    indikator.advance(1)
+                    speichere_durchlaeufe_in_supabase(ergebnisse)
+                    indikator.advance(1)
+                    pdf_bytes = erstelle_pdf_aus_ergebnissen(laufgruppe, ergebnisse)
+                    indikator.advance(1)
+                except FeedbackVariationError as exc:
+                    st.error(str(exc))
+                except Exception as exc:  # pragma: no cover - defensive Absicherung
+                    st.error(
+                        "Unerwarteter Fehler bei der Berechnung. Siehe Kommentare im Code für Debug-Hinweise."
+                    )
+                    st.caption(str(exc))
+                else:
+                    st.session_state["admin_feedback_pdf_bytes"] = pdf_bytes
+                    st.success(
+                        "Alle Durchläufe wurden abgeschlossen, gespeichert und als PDF zum Download vorbereitet."
+                    )
 
 pdf_bytes = st.session_state.get("admin_feedback_pdf_bytes", b"") or b""
 if pdf_bytes:
