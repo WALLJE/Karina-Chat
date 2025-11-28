@@ -1,7 +1,23 @@
-import streamlit as st
 import os
 import random
+from pathlib import Path
+
+import streamlit as st
 from PIL import Image
+
+
+# Der Logo-Pfad wird zentral definiert, damit bei einem ersten Seitenaufruf
+# bewusst immer dasselbe Bild erscheint. So sehen Nutzerinnen und Nutzer sofort
+# das Klinik-Branding, wenn noch kein patientenspezifisches Foto zugeordnet
+# werden konnte.
+STANDARD_LOGO_PFAD = Path(__file__).resolve().parents[1] / "pics" / "Logo_Klinik.png"
+
+# Die Zielbreite für das Sidebar-Bild wird etwas großzügiger gewählt, damit das
+# Klinik-Logo und spätere Patientenbilder den vorhandenen Platz besser nutzen
+# und in der Sidebar klar erkennbar sind. Über den einstellbaren Wert kann das
+# Erscheinungsbild bei Bedarf schnell angepasst werden, ohne die Logik weiter
+# zu verändern.
+SIDEBAR_BILD_BREITE = 220
 
 
 def show_sidebar():
@@ -58,9 +74,23 @@ def show_sidebar():
         if not valid_images and pic_dir != "pics":
             valid_images = lade_gueltige_bilder("pics")
 
+        if "patient_logo" not in st.session_state:
+            # Beim allerersten Aufruf setzen wir das Klinik-Logo als Platzhalter,
+            # damit kein zufälliges Bild erscheint und der Start klar erkennbar ist.
+            # Falls das Logo fehlen sollte, kann per Debugging-Hinweis
+            # ``st.sidebar.write(STANDARD_LOGO_PFAD)`` aktiviert werden, um den
+            # erwarteten Pfad zu prüfen.
+            if STANDARD_LOGO_PFAD.is_file():
+                st.session_state.patient_logo = str(STANDARD_LOGO_PFAD)
+        
         if valid_images:
+            # Sobald valide patientenspezifische Bilder vorhanden sind, ersetzen
+            # wir den Platzhalter, damit ein zum Szenario passendes Foto erscheint.
+            # Der Austausch erfolgt auch, wenn der bisherige Pfad nicht mehr im
+            # aktuellen Pool enthalten ist (z. B. nach einem Szenariowechsel).
             if (
                 "patient_logo" not in st.session_state
+                or st.session_state.patient_logo == str(STANDARD_LOGO_PFAD)
                 or st.session_state.patient_logo not in valid_images
             ):
                 st.session_state.patient_logo = random.choice(valid_images)
@@ -75,14 +105,20 @@ def show_sidebar():
                 # Hinweis für Debugging: Bei Bedarf kann die folgende Zeile aktiviert werden,
                 # um den aktuell verwendeten Bildpfad in der Sidebar auszugeben.
                 # st.sidebar.write("🧪 DEBUG: Verwendeter Bildpfad:", patientenbild)
-                bildplatzhalter.image(patientenbild, width=160)
+                # Die Bildbreite orientiert sich an `SIDEBAR_BILD_BREITE`, damit das Logo größer
+                # erscheint und die Sidebar optisch ausfüllt. Bei Änderungen an der Sidebar-Breite
+                # kann der Wert unkompliziert angepasst werden.
+                bildplatzhalter.image(
+                    patientenbild,
+                    width=SIDEBAR_BILD_BREITE,
+                )
             except Exception as e:
                 st.warning(f"⚠️ Bild konnte nicht geladen werden: {e}")
         else:
             # Sichtbarer, aber neutraler Platzhalter, damit die Bildfläche reserviert bleibt.
             bildplatzhalter.markdown(
                 """
-                <div style="width: 160px; height: 160px; border-radius: 12px; background-color: rgba(0, 0, 0, 0.05);"></div>
+                <div style="width: 100%; max-width: 240px; height: 160px; border-radius: 12px; background-color: rgba(0, 0, 0, 0.05);"></div>
                 """,
                 unsafe_allow_html=True,
             )
