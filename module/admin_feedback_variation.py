@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
+from pathlib import Path
 import re
 import textwrap
 import uuid
@@ -59,6 +60,12 @@ _OPTIONAL_FIELDS: Dict[str, str] = {
     "diagnostik_runden_gesamt": "diagnostik_runden_gesamt",
     "koerper_befund": "koerper_befund",
 }
+
+# Feste Schriftart mit Unicode-Unterstützung, damit Sonderzeichen wie "₂"
+# sauber gerendert werden. Sollte der Font auf dem System fehlen, wird eine
+# klare Fehlermeldung ausgegeben, damit Admins gezielt nachrüsten können.
+_PDF_FONT_NAME = "DejaVuSans"
+_PDF_FONT_PATH = Path("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf")
 
 
 class FeedbackVariationError(RuntimeError):
@@ -264,6 +271,39 @@ def _wrap_for_pdf(text: str, breite_zeichen: int = 95) -> str:
     return "\n".join(saubere_abschnitte)
 
 
+def _setze_unicode_font(pdf: FPDF, groesse: int = 12) -> None:
+    """Aktiviert eine Unicode-Schriftart, die auch Sonderzeichen rendern kann.
+
+    Der Fehler "Character ... is outside the range of characters supported by the"
+    " font used" tritt auf, wenn der Standard-Helvetica-Font auf ein nicht
+    unterstütztes Zeichen trifft (z. B. Tiefstellungen wie "₂"). Durch das
+    Hinterlegen eines TrueType-Fonts mit Unicode-Unterstützung (DejaVuSans) wird
+    dieser Engpass eliminiert. Falls der Font im Deployment fehlt, erhält die
+    Admin-Oberfläche eine klare Fehlermeldung. Für tiefere Analysen kann temporär
+    ``st.write(pdf.fonts)`` aktiviert werden, um den Font-Cache einzusehen.
+    """
+
+    if not _PDF_FONT_PATH.exists():
+        raise FeedbackVariationError(
+            "Unicode-Font nicht gefunden. Bitte installiere die Paketquelle "
+            "'ttf-dejavu' oder hinterlege den Font unter "
+            f"{_PDF_FONT_PATH}."
+        )
+
+    # add_font ist idempotent – wir prüfen dennoch den Cache, um die Fehlermeldung
+    # "Font already added" zu vermeiden und die Logs sauber zu halten.
+    if _PDF_FONT_NAME not in pdf.fonts:
+        try:
+            pdf.add_font(_PDF_FONT_NAME, "", str(_PDF_FONT_PATH), uni=True)
+        except RuntimeError as exc:
+            raise FeedbackVariationError(
+                "Unicode-Font konnte nicht geladen werden. Bitte prüfe den Pfad "
+                "und die Dateiberechtigungen."
+            ) from exc
+
+    pdf.set_font(_PDF_FONT_NAME, size=groesse)
+
+
 def _erstelle_pdf(laufgruppe: uuid.UUID, ergebnisse: List[FeedbackRunResult]) -> bytes:
     """Erzeugt ein PDF, in dem jedes Feedback auf einer eigenen Seite steht."""
 
@@ -286,20 +326,25 @@ def _erstelle_pdf(laufgruppe: uuid.UUID, ergebnisse: List[FeedbackRunResult]) ->
 
     for ergebnis in ergebnisse:
         pdf.add_page()
-        pdf.set_font("Helvetica", size=12)
+        # Unicode-fähige Schrift aktivieren, damit Sonderzeichen wie "₂" oder
+        # mathematische Symbole nicht zum Abbruch führen.
+        _setze_unicode_font(pdf, groesse=12)
         pdf.multi_cell(zellenbreite, 8, _wrap_for_pdf(titel))
         pdf.ln(2)
         pdf.multi_cell(zellenbreite, 8, _wrap_for_pdf(f"Fall-ID: {ergebnis.feedback_id}"))
         pdf.multi_cell(zellenbreite, 8, _wrap_for_pdf(f"Datum: {datetime.now():%d.%m.%Y}"))
         pdf.multi_cell(zellenbreite, 8, _wrap_for_pdf(f"Durchlauf: {ergebnis.lauf_index}"))
         pdf.ln(4)
-        pdf.set_font("Helvetica", size=11)
+        _setze_unicode_font(pdf, groesse=11)
         pdf.multi_cell(zellenbreite, 6, _wrap_for_pdf(f"Szenario: {ergebnis.szenario or 'unbekannt'}"))
         pdf.ln(2)
         pdf.multi_cell(zellenbreite, 6, _wrap_for_pdf(ergebnis.feedback_text))
 
-    # Kodierung mit Ersatzzeichen verhindert Abbrüche bei seltenen Symbolen.
-    return pdf.output(dest="S").encode("latin-1", errors="replace")
+    # Rückgabe erfolgt als Bytes. ``output(dest="S")`` liefert einen
+    # latin-1-kodierten String; das anschließende ``encode`` konvertiert ihn in
+    # echte Bytes ohne Zeichenaustausch. Bei Bedarf kann ``st.write(pdf.pages)``
+    # aktiviert werden, um den Rohinhalt zu inspizieren.
+    return pdf.output(dest="S").encode("latin-1")
 
 
 def fuehre_feedback_durchlaeufe_aus(
