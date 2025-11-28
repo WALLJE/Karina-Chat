@@ -15,6 +15,10 @@ from pathlib import Path
 import uuid
 from typing import Dict, Iterable, List
 
+# Hinweis: Zusätzliche Standardbibliotheken wie ``io`` werden bewusst nur
+# eingebunden, wenn sie tatsächlich gebraucht werden. Der Code bleibt so für
+# Admins übersichtlich, ohne unnötige Abhängigkeiten aufzubauen.
+
 import streamlit as st
 from supabase import Client, create_client
 from xhtml2pdf import pisa
@@ -173,18 +177,14 @@ def lade_feedback_fall(fall_id: int) -> FeedbackCaseData:
 def _extrahiere_user_verlauf(chatverlauf: str, patientenname: str) -> str:
     """Filtert den gespeicherten Chatverlauf auf Nutzer:innen-Beiträge.
 
-    Der ursprüngliche Export aus ``module.gpt_feedback`` markiert nur die
-    erste Zeile eines User-Posts mit dem Präfix ``"Du:"``. Mehrzeilige
-    Nachrichten enthalten daher Fortsetzungszeilen ohne Präfix, die im alten
-    Parsing-Prozess fälschlich verworfen wurden. Hier wird der zuletzt
-    erkannte Sprecher gemerkt, sodass alle Folgezeilen korrekt der aktuellen
-    Nutzereingabe zugeschlagen werden. Patientenantworten werden weiterhin
-    konsequent ignoriert.
+    Der ursprüngliche Export aus ``module.gpt_feedback`` markiert Nutzerfragen
+    mit dem Präfix ``"Du:"`` und versieht alle übrigen Zeilen mit dem
+    jeweils verwendeten Patientennamen. Diese Funktion streicht daher alle
+    Zeilen, die nicht eindeutig als Nutzereingabe erkennbar sind. So wird beim
+    erneuten Feedback-Lauf derselbe Input wie im Live-Betrieb genutzt.
 
-    Für Debugging kann der Rückgabewert über ``st.write`` inspiziert werden.
-    Zusätzlich lässt sich bei Bedarf in den Schleifen unten ein temporäres
-    ``st.write(zeile, aktueller_sprecher)`` einfügen, um das Verhalten bei
-    unbekannten Präfixen nachzuvollziehen.
+    Für Debugging kann der Rückgabewert über ``st.write`` inspiziert werden,
+    falls in historischen Datensätzen ungewöhnliche Präfixe auftauchen.
     """
 
     if not chatverlauf:
@@ -192,50 +192,27 @@ def _extrahiere_user_verlauf(chatverlauf: str, patientenname: str) -> str:
 
     nutzerzeilen: List[str] = []
     patientenname = patientenname.strip()
-    aktueller_sprecher = ""
 
     for zeile in chatverlauf.splitlines():
-        bereinigt = zeile.rstrip()
-
-        # Leere Zeilen werden nur übernommen, wenn zuvor bereits eine
-        # Nutzereingabe erkannt wurde. Dadurch bleiben manuelle Absatzwechsel
-        # in mehrzeiligen Fragen erhalten, während rein dekorative Leerzeilen
-        # ohne Kontext ignoriert werden.
-        if not bereinigt.strip():
-            if aktueller_sprecher == "user":
-                nutzerzeilen.append("")
+        bereinigt = zeile.strip()
+        if not bereinigt:
             continue
 
-        sprecher, trenner, inhalt = bereinigt.strip().partition(":")
-        hat_praefix = bool(trenner)
+        sprecher, trenner, inhalt = bereinigt.partition(":")
+        if not trenner:
+            # Falls alte Datensätze kein Präfix haben, hilft eine temporäre
+            # ``st.write(bereinigt)``-Ausgabe, um ein passendes Muster zu
+            # ergänzen. Standardmäßig wird diese Zeile übersprungen, damit
+            # keine Patienten- oder Systemtexte in den Prompt geraten.
+            continue
 
-        if hat_praefix:
-            sprecher_label = sprecher.strip()
-            sprecher_klein = sprecher_label.lower()
-
-            if sprecher_klein in {"du", "user", "studierende", "studierender"}:
-                aktueller_sprecher = "user"
-            elif patientenname and sprecher_label == patientenname:
-                # Patientenantworten setzen den Sprecher bewusst um, damit
-                # nachfolgende Zeilen ohne Präfix nicht fälschlich als
-                # Nutzereingabe interpretiert werden.
-                aktueller_sprecher = "patient"
-            else:
-                # Unbekannter Sprecher: Der aktuelle Kontext wird gelöscht, um
-                # versehentliche Übernahmen zu vermeiden. Bei Bedarf kann hier
-                # temporär ein ``st.write`` gesetzt werden, um das Rohformat zu
-                # inspizieren.
-                aktueller_sprecher = ""
-
-            inhalt_text = inhalt.strip()
-        else:
-            # Keine neue Sprecherangabe: Wir setzen auf den zuletzt gemerkten
-            # Kontext. So werden Fortsetzungszeilen mehrzeiliger Nutzereingaben
-            # zuverlässig mitgespeichert.
-            inhalt_text = bereinigt.strip()
-
-        if aktueller_sprecher == "user" and inhalt_text:
-            nutzerzeilen.append(inhalt_text)
+        sprecher_klein = sprecher.strip().lower()
+        if sprecher_klein in {"du", "user", "studierende", "studierender"}:
+            nutzerzeilen.append(inhalt.strip())
+        elif patientenname and sprecher.strip() == patientenname:
+            # Patientenantworten werden bewusst ignoriert, damit der Prompt
+            # unverändert nur die Nutzereingaben enthält.
+            continue
 
     return "\n".join(nutzerzeilen).strip()
 
@@ -446,7 +423,111 @@ def _erstelle_pdf(laufgruppe: uuid.UUID, ergebnisse: List[FeedbackRunResult]) ->
             "PDF-Erstellung via xhtml2pdf fehlgeschlagen. Prüfe die Kommentare im Code für Debug-Hinweise."
         )
 
-    return pdf_puffer.getvalue()
+    # add_font ist idempotent – wir prüfen dennoch den Cache, um die Fehlermeldung
+    # "Font already added" zu vermeiden und die Logs sauber zu halten.
+    if _PDF_FONT_NAME not in pdf.fonts:
+        try:
+            pdf.add_font(_PDF_FONT_NAME, "", str(_PDF_FONT_PATH), uni=True)
+        except RuntimeError as exc:
+            raise FeedbackVariationError(
+                "Unicode-Font konnte nicht geladen werden. Bitte prüfe den Pfad "
+                "und die Dateiberechtigungen."
+            ) from exc
+
+    pdf.set_font(_PDF_FONT_NAME, size=groesse)
+
+
+def _konvertiere_pdf_output_zu_bytes(roh_output: object) -> bytes:
+    """Wandelt den Rückgabewert von ``pdf.output`` stabil in echte Bytes um.
+
+    fpdf/fpdf2 liefern je nach Version unterschiedliche Typen zurück
+    (``bytearray``, ``bytes`` oder – in sehr alten Varianten – ``str``).
+    Diese Funktion normalisiert alle bekannten Varianten auf ``bytes`` und
+    dokumentiert den beobachteten Typ in der Fehlermeldung, falls etwas
+    Unerwartetes auftaucht. So lassen sich Versions- oder Umgebungsprobleme
+    schneller eingrenzen, ohne dass ein stiller Attribut-Fehler auftritt.
+    """
+
+    # Neuere fpdf2-Versionen nutzen ``bytearray``; die Bytes-Repräsentation
+    # bleibt unverändert erhalten und kann verlustfrei gecastet werden.
+    if isinstance(roh_output, bytearray):
+        return bytes(roh_output)
+
+    # Falls fpdf bereits ``bytes`` liefert, kann das Ergebnis direkt
+    # weitergereicht werden – kein erneutes Encoding notwendig.
+    if isinstance(roh_output, bytes):
+        return roh_output
+
+    # Manche Python-Distributionen geben hier eine ``memoryview`` zurück,
+    # die explizit in Bytes überführt werden muss. Über ``st.write`` lässt
+    # sich der Typ bei Bedarf inspizieren, um den Fehler einzugrenzen.
+    if isinstance(roh_output, memoryview):  # type: ignore[name-defined]
+        return roh_output.tobytes()
+
+    # fpdf1 gab an dieser Stelle einen latin-1-kodierten ``str`` zurück.
+    # Wir übernehmen dieses Mapping bewusst, damit historische Deployments
+    # weiterhin funktionieren. Sollte ein Zeichen nicht abbildbar sein,
+    # darf der Encoder eine klare Exception werfen, damit Admins den
+    # fehlerhaften Inhalt identifizieren können.
+    if isinstance(roh_output, str):
+        return roh_output.encode("latin-1")
+
+    # Alles andere ist unerwartet. Der Typ wird in der Fehlermeldung
+    # genannt, damit sofort erkennbar ist, ob etwa eine inkompatible
+    # fpdf-Version oder ein Wrapper im Spiel ist.
+    raise FeedbackVariationError(
+        "Unerwarteter Rückgabetyp beim PDF-Export. "
+        f"Erhalten: {type(roh_output).__name__}. Bitte fpdf-Version und "
+        "Parameter `dest='S'` prüfen. Bei Bedarf temporär "
+        "`st.write(type(roh_output))` aktivieren, um den Typ im Deployment "
+        "sichtbar zu machen."
+    )
+
+
+def _erstelle_pdf(laufgruppe: uuid.UUID, ergebnisse: List[FeedbackRunResult]) -> bytes:
+    """Erzeugt ein PDF, in dem jedes Feedback auf einer eigenen Seite steht."""
+
+    pdf = FPDF(format="A4")
+    # Breite Ränder plus automatischer Seitenumbruch reduzieren die Gefahr,
+    # dass untrennbare Wörter den verfügbaren Platz überschreiten. Sollte es
+    # dennoch klemmen, kann testweise der Margin erhöht oder der Text über
+    # ``st.write`` inspiziert werden (siehe Debug-Hinweise oben).
+    pdf.set_left_margin(15)
+    pdf.set_right_margin(15)
+    pdf.set_auto_page_break(auto=True, margin=15)
+
+    # Explizite Breitenberechnung in Millimetern: Dadurch wird vermieden, dass
+    # sich ein verschobener X-Offset aus vorigen Zellen auf nachfolgende
+    # Breitenberechnungen auswirkt. Der Wert orientiert sich an A4 mit 15 mm
+    # Rand: 210 mm - 15 mm - 15 mm = 180 mm.
+    zellenbreite = pdf.w - pdf.l_margin - pdf.r_margin
+
+    titel = f"Feedback-Lauf {laufgruppe}"  # Modus wird bewusst nicht ausgegeben.
+
+    for ergebnis in ergebnisse:
+        pdf.add_page()
+        # Unicode-fähige Schrift aktivieren, damit Sonderzeichen wie "₂" oder
+        # mathematische Symbole nicht zum Abbruch führen.
+        _setze_unicode_font(pdf, groesse=12)
+        pdf.multi_cell(zellenbreite, 8, _wrap_for_pdf(titel))
+        pdf.ln(2)
+        pdf.multi_cell(zellenbreite, 8, _wrap_for_pdf(f"Fall-ID: {ergebnis.feedback_id}"))
+        pdf.multi_cell(zellenbreite, 8, _wrap_for_pdf(f"Datum: {datetime.now():%d.%m.%Y}"))
+        pdf.multi_cell(zellenbreite, 8, _wrap_for_pdf(f"Durchlauf: {ergebnis.lauf_index}"))
+        pdf.ln(4)
+        _setze_unicode_font(pdf, groesse=11)
+        pdf.multi_cell(zellenbreite, 6, _wrap_for_pdf(f"Szenario: {ergebnis.szenario or 'unbekannt'}"))
+        pdf.ln(2)
+        pdf.multi_cell(zellenbreite, 6, _wrap_for_pdf(ergebnis.feedback_text))
+
+    # Rückgabe erfolgt als Bytes. fpdf2 liefert bei ``dest="S"`` seit Version
+    # 2.7 standardmäßig ein ``bytearray``; ältere Versionen liefern ``bytes``
+    # oder ``str``. Die Hilfsfunktion kümmert sich um die Normalisierung und
+    # liefert bei neuen, unbekannten Typen eine aussagekräftige Fehlermeldung.
+    # Für Debugging kann testweise ``st.write(type(roh_output))`` aktiviert
+    # werden, um den Rückgabetyp im konkreten Deployment sichtbar zu machen.
+    roh_output = pdf.output(dest="S")
+    return _konvertiere_pdf_output_zu_bytes(roh_output)
 
 
 def fuehre_feedback_durchlaeufe_aus(
