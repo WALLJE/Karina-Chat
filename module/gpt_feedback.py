@@ -40,12 +40,21 @@ def speichere_gpt_feedback_in_supabase():
 
     alle_befunde = befunde + weitere_befunde
 
+    # Sammlung aller zu speichernden Felder für Supabase. Alle Schlüssel
+    # spiegeln die Tabellenspalten von ``feedback_gpt`` wider, sodass Admins
+    # die Fälle später unverändert wiederverwenden können. Zusätzliche
+    # Debug-Ausgaben (z. B. ``st.write(gpt_row)``) können bei Bedarf aktiviert
+    # werden, um fehlerhafte oder fehlende Werte schnell zu erkennen.
     gpt_row = {
         "datum": jetzt.strftime("%Y-%m-%d"),
         "uhrzeit": jetzt.strftime("%H:%M:%S"),
         "bearbeitungsdauer_min": dauer_min,
         "szenario": st.session_state.get("diagnose_szenario", ""),
         "name": st.session_state.get("patient_name", ""),
+        # Geschlecht wird nun explizit gespeichert, damit die Admin-Auswertung
+        # fehlende Angaben nicht mehr als "unbekannt" behandeln muss. Die
+        # Kodierung entspricht den Kurzformen aus der Fallverwaltung (m/w/d/n).
+        "geschlecht": str(st.session_state.get("patient_gender", "")).strip(),
         "alter": int(st.session_state.get("patient_age", 0)),
         "beruf": st.session_state.get("patient_job", ""),
         "verhalten": st.session_state.get("patient_verhalten_memo", "unbekannt"),
@@ -56,6 +65,14 @@ def speichere_gpt_feedback_in_supabase():
         "gpt_feedback": st.session_state.get("final_feedback", ""),
         "chatverlauf": verlauf,
         "befunde": alle_befunde,
+        # Gesamtanzahl der diagnostischen Runden wird als Zahl persistiert. Bei
+        # nicht gesetztem Session-State fällt der Wert auf 1 zurück, damit die
+        # ursprüngliche Logik (mindestens eine Runde) gewahrt bleibt.
+        "diagnostik_runden_gesamt": int(st.session_state.get("diagnostik_runden_gesamt", 1) or 1),
+        # Zusammenfassung der körperlichen Untersuchung. Bleibt leer, wenn kein
+        # Befund eingegeben wurde. Für Debugging lässt sich oberhalb ein
+        # ``st.write(st.session_state.get("koerper_befund"))`` ergänzen.
+        "koerper_befund": st.session_state.get("koerper_befund", ""),
         "prompt_tokens_sum": int(prompt_sum),
         "completion_tokens_sum": int(completion_sum),
         "total_tokens_sum": int(total_sum),
