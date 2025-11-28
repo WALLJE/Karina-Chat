@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
+import re
 import textwrap
 import uuid
 from typing import Dict, Iterable, List, Tuple
@@ -205,18 +206,45 @@ def _setze_feedback_modus(modus: str) -> None:
     st.session_state[SESSION_KEY_EFFECTIVE_MODE] = modus
 
 
+def _splitte_lange_tokens(text: str, max_tokenlaenge: int = 60) -> str:
+    """Zerschneidet extrem lange Wörter, damit ``multi_cell`` nicht scheitert.
+
+    Die FPDF-Fehlermeldung "Not enough horizontal space to render a single
+    character" tritt auf, wenn ein einzelnes, untrennbares Token breiter ist als
+    der verfügbare Zellenraum. Diese Hilfsfunktion flicht nach ``max_tokenlaenge``
+    Zeichen Leerzeichen ein, sodass FPDF das Wort sauber umbrechen kann. Die
+    originale Zeichenfolge bleibt dabei visuell gut lesbar, ein möglicher
+    Minimalverlust (fehlende Silbentrennung) ist für die Auswertung unerheblich.
+    """
+
+    def _teile_token(token: str) -> str:
+        if len(token) <= max_tokenlaenge:
+            return token
+        # Die Wortteile werden mit Leerzeichen verbunden, damit FPDF einen
+        # Umbruchpunkt erkennt. Bei Bedarf kann das Limit über den Parameter
+        # ``max_tokenlaenge`` variiert werden.
+        return " ".join(
+            token[i : i + max_tokenlaenge]
+            for i in range(0, len(token), max_tokenlaenge)
+        )
+
+    segmente = re.split(r"(\s+)", text)
+    return "".join(_teile_token(segment) if segment and not segment.isspace() else segment for segment in segmente)
+
+
 def _wrap_for_pdf(text: str, breite_zeichen: int = 95) -> str:
     """Formatiert Text für ``multi_cell`` und bricht lange Wörter um.
 
-    FPDF2 wirft bei extrem langen, nicht trennbaren Wörtern oder Links die
-    Fehlermeldung "Not enough horizontal space to render a single character".
-    Wir fügen daher einen defensiven Zeilenumbruch hinzu und ersetzen
-    Rückgabewerte durch druckbare Strings. Bei Bedarf lässt sich hier über
-    Debug-Ausgaben nachvollziehen, welcher Text verarbeitet wird.
+    Neben dem klassischen Zeilenumbruch per ``textwrap.fill`` werden extrem
+    lange Tokens vorab künstlich getrennt. Das verhindert zuverlässig den
+    bekannten FPDF-Abbruch. Für Debugging kann temporär ``st.write(text)``
+    aufgerufen werden, um zu prüfen, welcher Text hier ankommt.
     """
 
     if not text:
         return ""
+
+    text = _splitte_lange_tokens(str(text))
 
     def _umbruch(block: str) -> str:
         return textwrap.fill(
@@ -226,8 +254,8 @@ def _wrap_for_pdf(text: str, breite_zeichen: int = 95) -> str:
             break_on_hyphens=False,
         )
 
-    saubere_abschnitte = []
-    for abschnitt in str(text).replace("\r\n", "\n").replace("\r", "\n").split("\n"):
+    saubere_abschnitte: List[str] = []
+    for abschnitt in text.replace("\r\n", "\n").replace("\r", "\n").split("\n"):
         if not abschnitt.strip():
             saubere_abschnitte.append("")
             continue
@@ -248,21 +276,27 @@ def _erstelle_pdf(laufgruppe: uuid.UUID, ergebnisse: List[FeedbackRunResult]) ->
     pdf.set_right_margin(15)
     pdf.set_auto_page_break(auto=True, margin=15)
 
+    # Explizite Breitenberechnung in Millimetern: Dadurch wird vermieden, dass
+    # sich ein verschobener X-Offset aus vorigen Zellen auf nachfolgende
+    # Breitenberechnungen auswirkt. Der Wert orientiert sich an A4 mit 15 mm
+    # Rand: 210 mm - 15 mm - 15 mm = 180 mm.
+    zellenbreite = pdf.w - pdf.l_margin - pdf.r_margin
+
     titel = f"Feedback-Lauf {laufgruppe}"  # Modus wird bewusst nicht ausgegeben.
 
     for ergebnis in ergebnisse:
         pdf.add_page()
         pdf.set_font("Helvetica", size=12)
-        pdf.multi_cell(0, 8, _wrap_for_pdf(titel))
+        pdf.multi_cell(zellenbreite, 8, _wrap_for_pdf(titel))
         pdf.ln(2)
-        pdf.multi_cell(0, 8, _wrap_for_pdf(f"Fall-ID: {ergebnis.feedback_id}"))
-        pdf.multi_cell(0, 8, _wrap_for_pdf(f"Datum: {datetime.now():%d.%m.%Y}"))
-        pdf.multi_cell(0, 8, _wrap_for_pdf(f"Durchlauf: {ergebnis.lauf_index}"))
+        pdf.multi_cell(zellenbreite, 8, _wrap_for_pdf(f"Fall-ID: {ergebnis.feedback_id}"))
+        pdf.multi_cell(zellenbreite, 8, _wrap_for_pdf(f"Datum: {datetime.now():%d.%m.%Y}"))
+        pdf.multi_cell(zellenbreite, 8, _wrap_for_pdf(f"Durchlauf: {ergebnis.lauf_index}"))
         pdf.ln(4)
         pdf.set_font("Helvetica", size=11)
-        pdf.multi_cell(0, 6, _wrap_for_pdf(f"Szenario: {ergebnis.szenario or 'unbekannt'}"))
+        pdf.multi_cell(zellenbreite, 6, _wrap_for_pdf(f"Szenario: {ergebnis.szenario or 'unbekannt'}"))
         pdf.ln(2)
-        pdf.multi_cell(0, 6, _wrap_for_pdf(ergebnis.feedback_text))
+        pdf.multi_cell(zellenbreite, 6, _wrap_for_pdf(ergebnis.feedback_text))
 
     # Kodierung mit Ersatzzeichen verhindert Abbrüche bei seltenen Symbolen.
     return pdf.output(dest="S").encode("latin-1", errors="replace")
