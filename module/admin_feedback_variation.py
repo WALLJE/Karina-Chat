@@ -9,16 +9,14 @@ verändern keine Nutzungswege im regulären Betrieb.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
+from html import escape
 from pathlib import Path
-import re
-import textwrap
 import uuid
-from typing import Dict, Iterable, List, Tuple
+from typing import Dict, Iterable, List
 
 import streamlit as st
-from fpdf import FPDF
 from supabase import Client, create_client
+from weasyprint import CSS, HTML
 
 from feedbackmodul import feedback_erzeugen
 from module.feedback_mode import (
@@ -61,11 +59,11 @@ _OPTIONAL_FIELDS: Dict[str, str] = {
     "koerper_befund": "koerper_befund",
 }
 
-# Feste Schriftart mit Unicode-Unterstützung, damit Sonderzeichen wie "₂"
-# sauber gerendert werden. Sollte der Font auf dem System fehlen, wird eine
-# klare Fehlermeldung ausgegeben, damit Admins gezielt nachrüsten können.
-_PDF_FONT_NAME = "DejaVuSans"
-_PDF_FONT_PATH = Path("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf")
+# Pfad zum optionalen Logo oder anderen statischen Ressourcen. Das Template
+# ist so aufgebaut, dass auch ohne zusätzliche Assets ein valides PDF entsteht.
+# Für Debugging kann hier ein Logo hinterlegt und im Template eingebunden
+# werden – die entsprechende CSS-Regel ist kommentiert vorbereitet.
+_STATIC_ASSETS_DIR = Path("pics")
 
 
 class FeedbackVariationError(RuntimeError):
@@ -174,14 +172,18 @@ def lade_feedback_fall(fall_id: int) -> FeedbackCaseData:
 def _extrahiere_user_verlauf(chatverlauf: str, patientenname: str) -> str:
     """Filtert den gespeicherten Chatverlauf auf Nutzer:innen-Beiträge.
 
-    Der ursprüngliche Export aus ``module.gpt_feedback`` markiert Nutzerfragen
-    mit dem Präfix ``"Du:"`` und versieht alle übrigen Zeilen mit dem
-    jeweils verwendeten Patientennamen. Diese Funktion streicht daher alle
-    Zeilen, die nicht eindeutig als Nutzereingabe erkennbar sind. So wird beim
-    erneuten Feedback-Lauf derselbe Input wie im Live-Betrieb genutzt.
+    Der ursprüngliche Export aus ``module.gpt_feedback`` markiert nur die
+    erste Zeile eines User-Posts mit dem Präfix ``"Du:"``. Mehrzeilige
+    Nachrichten enthalten daher Fortsetzungszeilen ohne Präfix, die im alten
+    Parsing-Prozess fälschlich verworfen wurden. Hier wird der zuletzt
+    erkannte Sprecher gemerkt, sodass alle Folgezeilen korrekt der aktuellen
+    Nutzereingabe zugeschlagen werden. Patientenantworten werden weiterhin
+    konsequent ignoriert.
 
-    Für Debugging kann der Rückgabewert über ``st.write`` inspiziert werden,
-    falls in historischen Datensätzen ungewöhnliche Präfixe auftauchen.
+    Für Debugging kann der Rückgabewert über ``st.write`` inspiziert werden.
+    Zusätzlich lässt sich bei Bedarf in den Schleifen unten ein temporäres
+    ``st.write(zeile, aktueller_sprecher)`` einfügen, um das Verhalten bei
+    unbekannten Präfixen nachzuvollziehen.
     """
 
     if not chatverlauf:
@@ -189,27 +191,50 @@ def _extrahiere_user_verlauf(chatverlauf: str, patientenname: str) -> str:
 
     nutzerzeilen: List[str] = []
     patientenname = patientenname.strip()
+    aktueller_sprecher = ""
 
     for zeile in chatverlauf.splitlines():
-        bereinigt = zeile.strip()
-        if not bereinigt:
+        bereinigt = zeile.rstrip()
+
+        # Leere Zeilen werden nur übernommen, wenn zuvor bereits eine
+        # Nutzereingabe erkannt wurde. Dadurch bleiben manuelle Absatzwechsel
+        # in mehrzeiligen Fragen erhalten, während rein dekorative Leerzeilen
+        # ohne Kontext ignoriert werden.
+        if not bereinigt.strip():
+            if aktueller_sprecher == "user":
+                nutzerzeilen.append("")
             continue
 
-        sprecher, trenner, inhalt = bereinigt.partition(":")
-        if not trenner:
-            # Falls alte Datensätze kein Präfix haben, hilft eine temporäre
-            # ``st.write(bereinigt)``-Ausgabe, um ein passendes Muster zu
-            # ergänzen. Standardmäßig wird diese Zeile übersprungen, damit
-            # keine Patienten- oder Systemtexte in den Prompt geraten.
-            continue
+        sprecher, trenner, inhalt = bereinigt.strip().partition(":")
+        hat_praefix = bool(trenner)
 
-        sprecher_klein = sprecher.strip().lower()
-        if sprecher_klein in {"du", "user", "studierende", "studierender"}:
-            nutzerzeilen.append(inhalt.strip())
-        elif patientenname and sprecher.strip() == patientenname:
-            # Patientenantworten werden bewusst ignoriert, damit der Prompt
-            # unverändert nur die Nutzereingaben enthält.
-            continue
+        if hat_praefix:
+            sprecher_label = sprecher.strip()
+            sprecher_klein = sprecher_label.lower()
+
+            if sprecher_klein in {"du", "user", "studierende", "studierender"}:
+                aktueller_sprecher = "user"
+            elif patientenname and sprecher_label == patientenname:
+                # Patientenantworten setzen den Sprecher bewusst um, damit
+                # nachfolgende Zeilen ohne Präfix nicht fälschlich als
+                # Nutzereingabe interpretiert werden.
+                aktueller_sprecher = "patient"
+            else:
+                # Unbekannter Sprecher: Der aktuelle Kontext wird gelöscht, um
+                # versehentliche Übernahmen zu vermeiden. Bei Bedarf kann hier
+                # temporär ein ``st.write`` gesetzt werden, um das Rohformat zu
+                # inspizieren.
+                aktueller_sprecher = ""
+
+            inhalt_text = inhalt.strip()
+        else:
+            # Keine neue Sprecherangabe: Wir setzen auf den zuletzt gemerkten
+            # Kontext. So werden Fortsetzungszeilen mehrzeiliger Nutzereingaben
+            # zuverlässig mitgespeichert.
+            inhalt_text = bereinigt.strip()
+
+        if aktueller_sprecher == "user" and inhalt_text:
+            nutzerzeilen.append(inhalt_text)
 
     return "\n".join(nutzerzeilen).strip()
 
@@ -278,166 +303,138 @@ def _setze_feedback_modus(modus: str) -> None:
     reset_random_mode()
     st.session_state[SESSION_KEY_EFFECTIVE_MODE] = modus
 
+def _erstelle_html_dokument(laufgruppe: uuid.UUID, ergebnisse: List[FeedbackRunResult]) -> str:
+    """Baut ein HTML-Template, das später verlustfrei in PDF konvertiert wird.
 
-def _splitte_lange_tokens(text: str, max_tokenlaenge: int = 60) -> str:
-    """Zerschneidet extrem lange Wörter, damit ``multi_cell`` nicht scheitert.
-
-    Die FPDF-Fehlermeldung "Not enough horizontal space to render a single
-    character" tritt auf, wenn ein einzelnes, untrennbares Token breiter ist als
-    der verfügbare Zellenraum. Diese Hilfsfunktion flicht nach ``max_tokenlaenge``
-    Zeichen Leerzeichen ein, sodass FPDF das Wort sauber umbrechen kann. Die
-    originale Zeichenfolge bleibt dabei visuell gut lesbar, ein möglicher
-    Minimalverlust (fehlende Silbentrennung) ist für die Auswertung unerheblich.
+    Das Layout nutzt ausschließlich Standard-CSS und vermeidet Pixel-genaue
+    Positionierungen. Tabellen und Flex-Container sorgen für stabile Umbrüche,
+    ohne auf manuelle Breitenberechnungen angewiesen zu sein. Für Debugging kann
+    der Rückgabewert temporär über ``st.write(html)`` ausgegeben werden, um
+    Rendering-Probleme in WeasyPrint nachzustellen.
     """
 
-    def _teile_token(token: str) -> str:
-        if len(token) <= max_tokenlaenge:
-            return token
-        # Die Wortteile werden mit Leerzeichen verbunden, damit FPDF einen
-        # Umbruchpunkt erkennt. Bei Bedarf kann das Limit über den Parameter
-        # ``max_tokenlaenge`` variiert werden.
-        return " ".join(
-            token[i : i + max_tokenlaenge]
-            for i in range(0, len(token), max_tokenlaenge)
+    kopfzeile = f"Feedback-Lauf {laufgruppe}"  # Modus bleibt bewusst verborgen.
+    abschnitte: List[str] = []
+
+    for ergebnis in ergebnisse:
+        datum_text = escape(ergebnis.fall_datum or "kein Datum in Supabase hinterlegt")
+        feedback_text = escape(ergebnis.feedback_text).replace("\n", "<br/>")
+        szenario_text = escape(ergebnis.szenario or "unbekannt")
+        fehlende_variablen_text = (
+            f"<p class='hinweis'>Fehlende Variablen: {escape(', '.join(sorted(set(ergebnis.fehlende_variablen))))}</p>"
+            if ergebnis.fehlende_variablen
+            else ""
+        )
+        abschnitte.append(
+            f"""
+            <section class='feedback-block'>
+              <header>
+                <div class='meta'>
+                  <div><strong>Fall-ID:</strong> {ergebnis.feedback_id}</div>
+                  <div><strong>Datum:</strong> {datum_text}</div>
+                  <div><strong>Durchlauf:</strong> {ergebnis.lauf_index}</div>
+                </div>
+                <div class='szenario'><strong>Szenario:</strong> {szenario_text}</div>
+              </header>
+              <article>
+                <p>{feedback_text}</p>
+                {fehlende_variablen_text}
+              </article>
+            </section>
+            """
         )
 
-    segmente = re.split(r"(\s+)", text)
-    return "".join(_teile_token(segment) if segment and not segment.isspace() else segment for segment in segmente)
-
-
-def _wrap_for_pdf(text: str, breite_zeichen: int = 95) -> str:
-    """Formatiert Text für ``multi_cell`` und bricht lange Wörter um.
-
-    Neben dem klassischen Zeilenumbruch per ``textwrap.fill`` werden extrem
-    lange Tokens vorab künstlich getrennt. Das verhindert zuverlässig den
-    bekannten FPDF-Abbruch. Für Debugging kann temporär ``st.write(text)``
-    aufgerufen werden, um zu prüfen, welcher Text hier ankommt.
+    abschnitt_html = "".join(abschnitte)
+    stylesheet = f"""
+        @page {{
+            size: A4;
+            margin: 20mm 15mm;
+        }}
+        body {{
+            font-family: 'DejaVu Sans', 'Helvetica', sans-serif;
+            color: #1f2937;
+            line-height: 1.5;
+            font-size: 12pt;
+        }}
+        h1 {{
+            font-size: 16pt;
+            margin-bottom: 12px;
+        }}
+        .feedback-block {{
+            page-break-inside: avoid;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            padding: 12px 14px;
+            margin-bottom: 18px;
+            background: #f9fafb;
+        }}
+        header {{
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-bottom: 10px;
+        }}
+        .meta {{
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+        }}
+        .szenario {{
+            font-style: italic;
+            color: #374151;
+        }}
+        article p {{
+            margin: 0 0 8px 0;
+            white-space: pre-wrap;
+        }}
+        .hinweis {{
+            font-size: 10pt;
+            color: #6b7280;
+        }}
     """
 
-    if not text:
-        return ""
-
-    text = _splitte_lange_tokens(str(text))
-
-    def _umbruch(block: str) -> str:
-        return textwrap.fill(
-            block.strip(),
-            width=breite_zeichen,
-            break_long_words=True,
-            break_on_hyphens=False,
-        )
-
-    saubere_abschnitte: List[str] = []
-    for abschnitt in text.replace("\r\n", "\n").replace("\r", "\n").split("\n"):
-        if not abschnitt.strip():
-            saubere_abschnitte.append("")
-            continue
-        saubere_abschnitte.append(_umbruch(abschnitt))
-
-    return "\n".join(saubere_abschnitte)
-
-
-def _setze_unicode_font(pdf: FPDF, groesse: int = 12) -> None:
-    """Aktiviert eine Unicode-Schriftart, die auch Sonderzeichen rendern kann.
-
-    Der Fehler "Character ... is outside the range of characters supported by the"
-    " font used" tritt auf, wenn der Standard-Helvetica-Font auf ein nicht
-    unterstütztes Zeichen trifft (z. B. Tiefstellungen wie "₂"). Durch das
-    Hinterlegen eines TrueType-Fonts mit Unicode-Unterstützung (DejaVuSans) wird
-    dieser Engpass eliminiert. Falls der Font im Deployment fehlt, erhält die
-    Admin-Oberfläche eine klare Fehlermeldung. Für tiefere Analysen kann temporär
-    ``st.write(pdf.fonts)`` aktiviert werden, um den Font-Cache einzusehen.
+    return f"""
+    <!DOCTYPE html>
+    <html lang='de'>
+      <head>
+        <meta charset='utf-8' />
+        <title>Feedback-Lauf {laufgruppe}</title>
+        <style>{stylesheet}</style>
+      </head>
+      <body>
+        <h1>{kopfzeile}</h1>
+        {abschnitt_html}
+      </body>
+    </html>
     """
-
-    if not _PDF_FONT_PATH.exists():
-        raise FeedbackVariationError(
-            "Unicode-Font nicht gefunden. Bitte installiere die Paketquelle "
-            "'ttf-dejavu' oder hinterlege den Font unter "
-            f"{_PDF_FONT_PATH}."
-        )
-
-    # add_font ist idempotent – wir prüfen dennoch den Cache, um die Fehlermeldung
-    # "Font already added" zu vermeiden und die Logs sauber zu halten.
-    if _PDF_FONT_NAME not in pdf.fonts:
-        try:
-            pdf.add_font(_PDF_FONT_NAME, "", str(_PDF_FONT_PATH), uni=True)
-        except RuntimeError as exc:
-            raise FeedbackVariationError(
-                "Unicode-Font konnte nicht geladen werden. Bitte prüfe den Pfad "
-                "und die Dateiberechtigungen."
-            ) from exc
-
-    pdf.set_font(_PDF_FONT_NAME, size=groesse)
 
 
 def _erstelle_pdf(laufgruppe: uuid.UUID, ergebnisse: List[FeedbackRunResult]) -> bytes:
-    """Erzeugt ein PDF, in dem jedes Feedback auf einer eigenen Seite steht."""
+    """Wandelt das HTML-Template per WeasyPrint in ein PDF um."""
 
-    pdf = FPDF(format="A4")
-    # Breite Ränder plus automatischer Seitenumbruch reduzieren die Gefahr,
-    # dass untrennbare Wörter den verfügbaren Platz überschreiten. Sollte es
-    # dennoch klemmen, kann testweise der Margin erhöht oder der Text über
-    # ``st.write`` inspiziert werden (siehe Debug-Hinweise oben).
-    pdf.set_left_margin(15)
-    pdf.set_right_margin(15)
-    pdf.set_auto_page_break(auto=True, margin=15)
-
-    # Explizite Breitenberechnung in Millimetern: Dadurch wird vermieden, dass
-    # sich ein verschobener X-Offset aus vorigen Zellen auf nachfolgende
-    # Breitenberechnungen auswirkt. Der Wert orientiert sich an A4 mit 15 mm
-    # Rand: 210 mm - 15 mm - 15 mm = 180 mm.
-    zellenbreite = pdf.w - pdf.l_margin - pdf.r_margin
-
-    titel = f"Feedback-Lauf {laufgruppe}"  # Modus wird bewusst nicht ausgegeben.
-
-    for ergebnis in ergebnisse:
-        pdf.add_page()
-        # Unicode-fähige Schrift aktivieren, damit Sonderzeichen wie "₂" oder
-        # mathematische Symbole nicht zum Abbruch führen.
-        _setze_unicode_font(pdf, groesse=12)
-        pdf.multi_cell(zellenbreite, 8, _wrap_for_pdf(titel))
-        pdf.ln(2)
-        pdf.multi_cell(zellenbreite, 8, _wrap_for_pdf(f"Fall-ID: {ergebnis.feedback_id}"))
-        pdf.multi_cell(zellenbreite, 8, _wrap_for_pdf(f"Datum: {datetime.now():%d.%m.%Y}"))
-        pdf.multi_cell(zellenbreite, 8, _wrap_for_pdf(f"Durchlauf: {ergebnis.lauf_index}"))
-        pdf.ln(4)
-        _setze_unicode_font(pdf, groesse=11)
-        pdf.multi_cell(zellenbreite, 6, _wrap_for_pdf(f"Szenario: {ergebnis.szenario or 'unbekannt'}"))
-        pdf.ln(2)
-        pdf.multi_cell(zellenbreite, 6, _wrap_for_pdf(ergebnis.feedback_text))
-
-    # Rückgabe erfolgt als Bytes. fpdf2 liefert bei ``dest="S"`` seit Version
-    # 2.7 standardmäßig ein ``bytearray``. Falls in älteren Umgebungen noch ein
-    # ``bytes``- oder ``str``-Objekt zurückkommt, wandeln wir das Ergebnis
-    # defensiv um und geben eine klare Fehlermeldung aus, statt stumm eine
-    # AttributeError zu produzieren. Für Debugging kann testweise
-    # ``st.write(type(roh_output), len(roh_output))`` aktiviert werden, um den
-    # Rückgabetyp im konkreten Deployment sichtbar zu machen.
-    roh_output = pdf.output(dest="S")
-
-    if isinstance(roh_output, bytearray):
-        return bytes(roh_output)
-
-    if isinstance(roh_output, bytes):
-        return roh_output
-
-    if isinstance(roh_output, str):
-        # fpdf1 gab hier einen latin-1-kodierten String zurück. Wir übernehmen
-        # dieses Mapping explizit, damit historische Deployments weiterhin
-        # funktionieren, und lassen bei nicht abbildbaren Zeichen bewusst einen
-        # Fehler zu, statt still etwas abzuschneiden.
-        return roh_output.encode("latin-1")
-
-    raise FeedbackVariationError(
-        "Unerwarteter Rückgabetyp beim PDF-Export. Bitte fpdf-Version prüfen."
-    )
+    html_inhalt = _erstelle_html_dokument(laufgruppe, ergebnisse)
+    try:
+        # Für detailierte Layout-Debugs kann die Ausgabe mit ``st.write(html_inhalt)``
+        # inspiziert oder als separate Datei gespeichert werden. WeasyPrint rendert
+        # das HTML serverseitig ohne Browserabhängigkeiten.
+        css = CSS(string="""
+            @font-face {
+                font-family: 'DejaVu Sans';
+                src: local('DejaVu Sans'), local('DejaVuSans');
+            }
+        """)
+        return HTML(string=html_inhalt, base_url=str(_STATIC_ASSETS_DIR.resolve())).write_pdf(stylesheets=[css])
+    except Exception as exc:  # pragma: no cover - Renderer-Spezifika schwer testbar
+        raise FeedbackVariationError(
+            "PDF-Erstellung via WeasyPrint fehlgeschlagen. Bitte siehe die Kommentare im Code für Debug-Hinweise."
+        ) from exc
 
 
 def fuehre_feedback_durchlaeufe_aus(
     fall: FeedbackCaseData,
     durchlaeufe: int,
     modi: Iterable[str],
-) -> Tuple[List[FeedbackRunResult], bytes]:
+) -> tuple[list[FeedbackRunResult], uuid.UUID]:
     """Startet mehrere Feedback-Berechnungen für denselben Fall.
 
     Args:
@@ -446,7 +443,8 @@ def fuehre_feedback_durchlaeufe_aus(
         modi: Iterable aus ``FEEDBACK_MODE_CHATGPT`` oder ``FEEDBACK_MODE_AMBOSS_CHATGPT``.
 
     Returns:
-        Liste aller Ergebnisse sowie die PDF-Bytes mit den Feedbacks (ohne Modus).
+        Alle berechneten Ergebnisse sowie die gemeinsame Laufgruppennummer, damit
+        anschließend separat ein PDF generiert werden kann.
     """
 
     if is_offline():
@@ -502,8 +500,15 @@ def fuehre_feedback_durchlaeufe_aus(
     if urspruenglicher_modus:
         st.session_state[SESSION_KEY_EFFECTIVE_MODE] = urspruenglicher_modus
 
-    pdf_bytes = _erstelle_pdf(laufgruppe, ergebnisse)
-    return ergebnisse, pdf_bytes
+    return ergebnisse, laufgruppe
+
+
+def erstelle_pdf_aus_ergebnissen(
+    laufgruppe: uuid.UUID, ergebnisse: List[FeedbackRunResult]
+) -> bytes:
+    """Stellt das HTML her und wandelt es anschließend in eine PDF-Datei um."""
+
+    return _erstelle_pdf(laufgruppe, ergebnisse)
 
 
 def speichere_durchlaeufe_in_supabase(ergebnisse: List[FeedbackRunResult]) -> None:
@@ -540,6 +545,7 @@ __all__ = [
     "FeedbackCaseData",
     "FeedbackRunResult",
     "FeedbackVariationError",
+    "erstelle_pdf_aus_ergebnissen",
     "fuehre_feedback_durchlaeufe_aus",
     "lade_feedback_fall",
     "speichere_durchlaeufe_in_supabase",
