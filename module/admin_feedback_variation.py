@@ -3,21 +3,23 @@
 Die Funktionen in diesem Modul sind bewusst umfangreich kommentiert, damit
 Administrierende die einzelnen Schritte nachvollziehen und bei Bedarf
 anpassen können. Alle Abläufe sind strikt auf den Admin-Modus beschränkt und
-verändern keine Nutzungswege im regulären Betrieb.
+verändern keine Nutzungswege im regulären Betrieb. Die Variationen der GPT-
+Feedbacks werden ausschließlich in Supabase gespeichert; zusätzliche Ausgaben
+oder herunterladbare Dateien wurden bewusst entfernt, um den Code schlank und
+zielgerichtet zu halten.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
-from pathlib import Path
-import re
-import textwrap
 import uuid
-from typing import Dict, Iterable, List, Tuple
+from typing import Dict, Iterable, List
+
+# Hinweis: Zusätzliche Standardbibliotheken wie ``io`` werden bewusst nur
+# eingebunden, wenn sie tatsächlich gebraucht werden. Der Code bleibt so für
+# Admins übersichtlich, ohne unnötige Abhängigkeiten aufzubauen.
 
 import streamlit as st
-from fpdf import FPDF
 from supabase import Client, create_client
 
 from feedbackmodul import feedback_erzeugen
@@ -60,13 +62,6 @@ _OPTIONAL_FIELDS: Dict[str, str] = {
     "diagnostik_runden_gesamt": "diagnostik_runden_gesamt",
     "koerper_befund": "koerper_befund",
 }
-
-# Feste Schriftart mit Unicode-Unterstützung, damit Sonderzeichen wie "₂"
-# sauber gerendert werden. Sollte der Font auf dem System fehlen, wird eine
-# klare Fehlermeldung ausgegeben, damit Admins gezielt nachrüsten können.
-_PDF_FONT_NAME = "DejaVuSans"
-_PDF_FONT_PATH = Path("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf")
-
 
 class FeedbackVariationError(RuntimeError):
     """Spezifische Exception für Fehler im Evaluationsablauf."""
@@ -171,6 +166,49 @@ def lade_feedback_fall(fall_id: int) -> FeedbackCaseData:
     )
 
 
+def _extrahiere_user_verlauf(chatverlauf: str, patientenname: str) -> str:
+    """Filtert den gespeicherten Chatverlauf auf Nutzer:innen-Beiträge.
+
+    Der ursprüngliche Export aus ``module.gpt_feedback`` markiert Nutzerfragen
+    mit dem Präfix ``"Du:"`` und versieht alle übrigen Zeilen mit dem
+    jeweils verwendeten Patientennamen. Diese Funktion streicht daher alle
+    Zeilen, die nicht eindeutig als Nutzereingabe erkennbar sind. So wird beim
+    erneuten Feedback-Lauf derselbe Input wie im Live-Betrieb genutzt.
+
+    Für Debugging kann der Rückgabewert über ``st.write`` inspiziert werden,
+    falls in historischen Datensätzen ungewöhnliche Präfixe auftauchen.
+    """
+
+    if not chatverlauf:
+        return ""
+
+    nutzerzeilen: List[str] = []
+    patientenname = patientenname.strip()
+
+    for zeile in chatverlauf.splitlines():
+        bereinigt = zeile.strip()
+        if not bereinigt:
+            continue
+
+        sprecher, trenner, inhalt = bereinigt.partition(":")
+        if not trenner:
+            # Falls alte Datensätze kein Präfix haben, hilft eine temporäre
+            # ``st.write(bereinigt)``-Ausgabe, um ein passendes Muster zu
+            # ergänzen. Standardmäßig wird diese Zeile übersprungen, damit
+            # keine Patienten- oder Systemtexte in den Prompt geraten.
+            continue
+
+        sprecher_klein = sprecher.strip().lower()
+        if sprecher_klein in {"du", "user", "studierende", "studierender"}:
+            nutzerzeilen.append(inhalt.strip())
+        elif patientenname and sprecher.strip() == patientenname:
+            # Patientenantworten werden bewusst ignoriert, damit der Prompt
+            # unverändert nur die Nutzereingaben enthält.
+            continue
+
+    return "\n".join(nutzerzeilen).strip()
+
+
 def _uebernehme_in_session_state(rohwerte: Dict[str, object]) -> None:
     """Überträgt die geladenen Felder in den Session-State.
 
@@ -180,8 +218,28 @@ def _uebernehme_in_session_state(rohwerte: Dict[str, object]) -> None:
     temporär ``st.write(rohwerte)`` eingebaut wird.
     """
 
+    patientenname = str(rohwerte.get("name", "")).strip() or "Patient"
+    chatverlauf_roh = str(rohwerte.get("chatverlauf", "")).strip()
+    user_chatverlauf = _extrahiere_user_verlauf(chatverlauf_roh, patientenname)
+
+    # Falls keine Nutzerzeilen erkannt werden, wird der Verlauf bewusst NICHT
+    # automatisch ergänzt, damit der Prompt nicht versehentlich Patientenant-
+    # worten enthält. Über eine temporäre ``st.write(chatverlauf_roh)``-
+    # Ausgabe können Admins das Rohformat analysieren und bei Bedarf das
+    # Präfix-Set in ``_extrahiere_user_verlauf`` erweitern. Ein expliziter
+    # Hinweis macht auf die leere Eingabe aufmerksam, sodass der Datensatz
+    # vor dem erneuten Feedbacklauf bereinigt werden kann.
+    if not user_chatverlauf and chatverlauf_roh:
+        st.warning(
+            "⚠️ Im gespeicherten Chatverlauf wurden keine eindeutigen Nutzer:innen-Zeilen gefunden. "
+            "Bitte Präfixe prüfen und ggf. anpassen."
+        )
+
     for spaltenname, state_key in _REQUIRED_FIELDS.items():
-        st.session_state[state_key] = rohwerte.get(spaltenname, "") or ""
+        wert = rohwerte.get(spaltenname, "") or ""
+        if spaltenname == "chatverlauf":
+            wert = user_chatverlauf
+        st.session_state[state_key] = wert
 
     # Historische Keys aus dem normalen Feedback-Modul werden zusätzlich
     # gepflegt, damit andere Hilfsfunktionen weiterhin funktionieren, falls sie
@@ -198,8 +256,11 @@ def _uebernehme_in_session_state(rohwerte: Dict[str, object]) -> None:
 
     # Damit der Gesprächsverlauf vom Feedback-Prompt erkannt wird, wird er als
     # einzige Nutzer-Nachricht in ``st.session_state.messages`` hinterlegt.
-    chatverlauf = str(rohwerte.get("chatverlauf", "")).strip()
-    st.session_state["messages"] = [{"role": "user", "content": chatverlauf}] if chatverlauf else []
+    st.session_state["messages"] = [
+        {"role": "user", "content": abschnitt}
+        for abschnitt in user_chatverlauf.split("\n")
+        if abschnitt.strip()
+    ]
 
     # Für die erneute Berechnung wird das finale Feedback bewusst entfernt.
     st.session_state.pop("final_feedback", None)
@@ -213,145 +274,11 @@ def _setze_feedback_modus(modus: str) -> None:
     st.session_state[SESSION_KEY_EFFECTIVE_MODE] = modus
 
 
-def _splitte_lange_tokens(text: str, max_tokenlaenge: int = 60) -> str:
-    """Zerschneidet extrem lange Wörter, damit ``multi_cell`` nicht scheitert.
-
-    Die FPDF-Fehlermeldung "Not enough horizontal space to render a single
-    character" tritt auf, wenn ein einzelnes, untrennbares Token breiter ist als
-    der verfügbare Zellenraum. Diese Hilfsfunktion flicht nach ``max_tokenlaenge``
-    Zeichen Leerzeichen ein, sodass FPDF das Wort sauber umbrechen kann. Die
-    originale Zeichenfolge bleibt dabei visuell gut lesbar, ein möglicher
-    Minimalverlust (fehlende Silbentrennung) ist für die Auswertung unerheblich.
-    """
-
-    def _teile_token(token: str) -> str:
-        if len(token) <= max_tokenlaenge:
-            return token
-        # Die Wortteile werden mit Leerzeichen verbunden, damit FPDF einen
-        # Umbruchpunkt erkennt. Bei Bedarf kann das Limit über den Parameter
-        # ``max_tokenlaenge`` variiert werden.
-        return " ".join(
-            token[i : i + max_tokenlaenge]
-            for i in range(0, len(token), max_tokenlaenge)
-        )
-
-    segmente = re.split(r"(\s+)", text)
-    return "".join(_teile_token(segment) if segment and not segment.isspace() else segment for segment in segmente)
-
-
-def _wrap_for_pdf(text: str, breite_zeichen: int = 95) -> str:
-    """Formatiert Text für ``multi_cell`` und bricht lange Wörter um.
-
-    Neben dem klassischen Zeilenumbruch per ``textwrap.fill`` werden extrem
-    lange Tokens vorab künstlich getrennt. Das verhindert zuverlässig den
-    bekannten FPDF-Abbruch. Für Debugging kann temporär ``st.write(text)``
-    aufgerufen werden, um zu prüfen, welcher Text hier ankommt.
-    """
-
-    if not text:
-        return ""
-
-    text = _splitte_lange_tokens(str(text))
-
-    def _umbruch(block: str) -> str:
-        return textwrap.fill(
-            block.strip(),
-            width=breite_zeichen,
-            break_long_words=True,
-            break_on_hyphens=False,
-        )
-
-    saubere_abschnitte: List[str] = []
-    for abschnitt in text.replace("\r\n", "\n").replace("\r", "\n").split("\n"):
-        if not abschnitt.strip():
-            saubere_abschnitte.append("")
-            continue
-        saubere_abschnitte.append(_umbruch(abschnitt))
-
-    return "\n".join(saubere_abschnitte)
-
-
-def _setze_unicode_font(pdf: FPDF, groesse: int = 12) -> None:
-    """Aktiviert eine Unicode-Schriftart, die auch Sonderzeichen rendern kann.
-
-    Der Fehler "Character ... is outside the range of characters supported by the"
-    " font used" tritt auf, wenn der Standard-Helvetica-Font auf ein nicht
-    unterstütztes Zeichen trifft (z. B. Tiefstellungen wie "₂"). Durch das
-    Hinterlegen eines TrueType-Fonts mit Unicode-Unterstützung (DejaVuSans) wird
-    dieser Engpass eliminiert. Falls der Font im Deployment fehlt, erhält die
-    Admin-Oberfläche eine klare Fehlermeldung. Für tiefere Analysen kann temporär
-    ``st.write(pdf.fonts)`` aktiviert werden, um den Font-Cache einzusehen.
-    """
-
-    if not _PDF_FONT_PATH.exists():
-        raise FeedbackVariationError(
-            "Unicode-Font nicht gefunden. Bitte installiere die Paketquelle "
-            "'ttf-dejavu' oder hinterlege den Font unter "
-            f"{_PDF_FONT_PATH}."
-        )
-
-    # add_font ist idempotent – wir prüfen dennoch den Cache, um die Fehlermeldung
-    # "Font already added" zu vermeiden und die Logs sauber zu halten.
-    if _PDF_FONT_NAME not in pdf.fonts:
-        try:
-            pdf.add_font(_PDF_FONT_NAME, "", str(_PDF_FONT_PATH), uni=True)
-        except RuntimeError as exc:
-            raise FeedbackVariationError(
-                "Unicode-Font konnte nicht geladen werden. Bitte prüfe den Pfad "
-                "und die Dateiberechtigungen."
-            ) from exc
-
-    pdf.set_font(_PDF_FONT_NAME, size=groesse)
-
-
-def _erstelle_pdf(laufgruppe: uuid.UUID, ergebnisse: List[FeedbackRunResult]) -> bytes:
-    """Erzeugt ein PDF, in dem jedes Feedback auf einer eigenen Seite steht."""
-
-    pdf = FPDF(format="A4")
-    # Breite Ränder plus automatischer Seitenumbruch reduzieren die Gefahr,
-    # dass untrennbare Wörter den verfügbaren Platz überschreiten. Sollte es
-    # dennoch klemmen, kann testweise der Margin erhöht oder der Text über
-    # ``st.write`` inspiziert werden (siehe Debug-Hinweise oben).
-    pdf.set_left_margin(15)
-    pdf.set_right_margin(15)
-    pdf.set_auto_page_break(auto=True, margin=15)
-
-    # Explizite Breitenberechnung in Millimetern: Dadurch wird vermieden, dass
-    # sich ein verschobener X-Offset aus vorigen Zellen auf nachfolgende
-    # Breitenberechnungen auswirkt. Der Wert orientiert sich an A4 mit 15 mm
-    # Rand: 210 mm - 15 mm - 15 mm = 180 mm.
-    zellenbreite = pdf.w - pdf.l_margin - pdf.r_margin
-
-    titel = f"Feedback-Lauf {laufgruppe}"  # Modus wird bewusst nicht ausgegeben.
-
-    for ergebnis in ergebnisse:
-        pdf.add_page()
-        # Unicode-fähige Schrift aktivieren, damit Sonderzeichen wie "₂" oder
-        # mathematische Symbole nicht zum Abbruch führen.
-        _setze_unicode_font(pdf, groesse=12)
-        pdf.multi_cell(zellenbreite, 8, _wrap_for_pdf(titel))
-        pdf.ln(2)
-        pdf.multi_cell(zellenbreite, 8, _wrap_for_pdf(f"Fall-ID: {ergebnis.feedback_id}"))
-        pdf.multi_cell(zellenbreite, 8, _wrap_for_pdf(f"Datum: {datetime.now():%d.%m.%Y}"))
-        pdf.multi_cell(zellenbreite, 8, _wrap_for_pdf(f"Durchlauf: {ergebnis.lauf_index}"))
-        pdf.ln(4)
-        _setze_unicode_font(pdf, groesse=11)
-        pdf.multi_cell(zellenbreite, 6, _wrap_for_pdf(f"Szenario: {ergebnis.szenario or 'unbekannt'}"))
-        pdf.ln(2)
-        pdf.multi_cell(zellenbreite, 6, _wrap_for_pdf(ergebnis.feedback_text))
-
-    # Rückgabe erfolgt als Bytes. ``output(dest="S")`` liefert einen
-    # latin-1-kodierten String; das anschließende ``encode`` konvertiert ihn in
-    # echte Bytes ohne Zeichenaustausch. Bei Bedarf kann ``st.write(pdf.pages)``
-    # aktiviert werden, um den Rohinhalt zu inspizieren.
-    return pdf.output(dest="S").encode("latin-1")
-
-
 def fuehre_feedback_durchlaeufe_aus(
     fall: FeedbackCaseData,
     durchlaeufe: int,
     modi: Iterable[str],
-) -> Tuple[List[FeedbackRunResult], bytes]:
+) -> List[FeedbackRunResult]:
     """Startet mehrere Feedback-Berechnungen für denselben Fall.
 
     Args:
@@ -360,7 +287,7 @@ def fuehre_feedback_durchlaeufe_aus(
         modi: Iterable aus ``FEEDBACK_MODE_CHATGPT`` oder ``FEEDBACK_MODE_AMBOSS_CHATGPT``.
 
     Returns:
-        Liste aller Ergebnisse sowie die PDF-Bytes mit den Feedbacks (ohne Modus).
+        Liste aller Ergebnisse; die Speicherung erfolgt separat über Supabase.
     """
 
     if is_offline():
@@ -416,8 +343,7 @@ def fuehre_feedback_durchlaeufe_aus(
     if urspruenglicher_modus:
         st.session_state[SESSION_KEY_EFFECTIVE_MODE] = urspruenglicher_modus
 
-    pdf_bytes = _erstelle_pdf(laufgruppe, ergebnisse)
-    return ergebnisse, pdf_bytes
+    return ergebnisse
 
 
 def speichere_durchlaeufe_in_supabase(ergebnisse: List[FeedbackRunResult]) -> None:
