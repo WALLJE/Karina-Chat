@@ -16,6 +16,10 @@ import textwrap
 import uuid
 from typing import Dict, Iterable, List, Tuple
 
+# Hinweis: Zusätzliche Standardbibliotheken wie ``io`` werden bewusst nur
+# eingebunden, wenn sie tatsächlich gebraucht werden. Der Code bleibt so für
+# Admins übersichtlich, ohne unnötige Abhängigkeiten aufzubauen.
+
 import streamlit as st
 from fpdf import FPDF
 from supabase import Client, create_client
@@ -171,6 +175,49 @@ def lade_feedback_fall(fall_id: int) -> FeedbackCaseData:
     )
 
 
+def _extrahiere_user_verlauf(chatverlauf: str, patientenname: str) -> str:
+    """Filtert den gespeicherten Chatverlauf auf Nutzer:innen-Beiträge.
+
+    Der ursprüngliche Export aus ``module.gpt_feedback`` markiert Nutzerfragen
+    mit dem Präfix ``"Du:"`` und versieht alle übrigen Zeilen mit dem
+    jeweils verwendeten Patientennamen. Diese Funktion streicht daher alle
+    Zeilen, die nicht eindeutig als Nutzereingabe erkennbar sind. So wird beim
+    erneuten Feedback-Lauf derselbe Input wie im Live-Betrieb genutzt.
+
+    Für Debugging kann der Rückgabewert über ``st.write`` inspiziert werden,
+    falls in historischen Datensätzen ungewöhnliche Präfixe auftauchen.
+    """
+
+    if not chatverlauf:
+        return ""
+
+    nutzerzeilen: List[str] = []
+    patientenname = patientenname.strip()
+
+    for zeile in chatverlauf.splitlines():
+        bereinigt = zeile.strip()
+        if not bereinigt:
+            continue
+
+        sprecher, trenner, inhalt = bereinigt.partition(":")
+        if not trenner:
+            # Falls alte Datensätze kein Präfix haben, hilft eine temporäre
+            # ``st.write(bereinigt)``-Ausgabe, um ein passendes Muster zu
+            # ergänzen. Standardmäßig wird diese Zeile übersprungen, damit
+            # keine Patienten- oder Systemtexte in den Prompt geraten.
+            continue
+
+        sprecher_klein = sprecher.strip().lower()
+        if sprecher_klein in {"du", "user", "studierende", "studierender"}:
+            nutzerzeilen.append(inhalt.strip())
+        elif patientenname and sprecher.strip() == patientenname:
+            # Patientenantworten werden bewusst ignoriert, damit der Prompt
+            # unverändert nur die Nutzereingaben enthält.
+            continue
+
+    return "\n".join(nutzerzeilen).strip()
+
+
 def _uebernehme_in_session_state(rohwerte: Dict[str, object]) -> None:
     """Überträgt die geladenen Felder in den Session-State.
 
@@ -180,8 +227,28 @@ def _uebernehme_in_session_state(rohwerte: Dict[str, object]) -> None:
     temporär ``st.write(rohwerte)`` eingebaut wird.
     """
 
+    patientenname = str(rohwerte.get("name", "")).strip() or "Patient"
+    chatverlauf_roh = str(rohwerte.get("chatverlauf", "")).strip()
+    user_chatverlauf = _extrahiere_user_verlauf(chatverlauf_roh, patientenname)
+
+    # Falls keine Nutzerzeilen erkannt werden, wird der Verlauf bewusst NICHT
+    # automatisch ergänzt, damit der Prompt nicht versehentlich Patientenant-
+    # worten enthält. Über eine temporäre ``st.write(chatverlauf_roh)``-
+    # Ausgabe können Admins das Rohformat analysieren und bei Bedarf das
+    # Präfix-Set in ``_extrahiere_user_verlauf`` erweitern. Ein expliziter
+    # Hinweis macht auf die leere Eingabe aufmerksam, sodass der Datensatz
+    # vor dem erneuten Feedbacklauf bereinigt werden kann.
+    if not user_chatverlauf and chatverlauf_roh:
+        st.warning(
+            "⚠️ Im gespeicherten Chatverlauf wurden keine eindeutigen Nutzer:innen-Zeilen gefunden. "
+            "Bitte Präfixe prüfen und ggf. anpassen."
+        )
+
     for spaltenname, state_key in _REQUIRED_FIELDS.items():
-        st.session_state[state_key] = rohwerte.get(spaltenname, "") or ""
+        wert = rohwerte.get(spaltenname, "") or ""
+        if spaltenname == "chatverlauf":
+            wert = user_chatverlauf
+        st.session_state[state_key] = wert
 
     # Historische Keys aus dem normalen Feedback-Modul werden zusätzlich
     # gepflegt, damit andere Hilfsfunktionen weiterhin funktionieren, falls sie
@@ -198,8 +265,11 @@ def _uebernehme_in_session_state(rohwerte: Dict[str, object]) -> None:
 
     # Damit der Gesprächsverlauf vom Feedback-Prompt erkannt wird, wird er als
     # einzige Nutzer-Nachricht in ``st.session_state.messages`` hinterlegt.
-    chatverlauf = str(rohwerte.get("chatverlauf", "")).strip()
-    st.session_state["messages"] = [{"role": "user", "content": chatverlauf}] if chatverlauf else []
+    st.session_state["messages"] = [
+        {"role": "user", "content": abschnitt}
+        for abschnitt in user_chatverlauf.split("\n")
+        if abschnitt.strip()
+    ]
 
     # Für die erneute Berechnung wird das finale Feedback bewusst entfernt.
     st.session_state.pop("final_feedback", None)
@@ -304,6 +374,53 @@ def _setze_unicode_font(pdf: FPDF, groesse: int = 12) -> None:
     pdf.set_font(_PDF_FONT_NAME, size=groesse)
 
 
+def _konvertiere_pdf_output_zu_bytes(roh_output: object) -> bytes:
+    """Wandelt den Rückgabewert von ``pdf.output`` stabil in echte Bytes um.
+
+    fpdf/fpdf2 liefern je nach Version unterschiedliche Typen zurück
+    (``bytearray``, ``bytes`` oder – in sehr alten Varianten – ``str``).
+    Diese Funktion normalisiert alle bekannten Varianten auf ``bytes`` und
+    dokumentiert den beobachteten Typ in der Fehlermeldung, falls etwas
+    Unerwartetes auftaucht. So lassen sich Versions- oder Umgebungsprobleme
+    schneller eingrenzen, ohne dass ein stiller Attribut-Fehler auftritt.
+    """
+
+    # Neuere fpdf2-Versionen nutzen ``bytearray``; die Bytes-Repräsentation
+    # bleibt unverändert erhalten und kann verlustfrei gecastet werden.
+    if isinstance(roh_output, bytearray):
+        return bytes(roh_output)
+
+    # Falls fpdf bereits ``bytes`` liefert, kann das Ergebnis direkt
+    # weitergereicht werden – kein erneutes Encoding notwendig.
+    if isinstance(roh_output, bytes):
+        return roh_output
+
+    # Manche Python-Distributionen geben hier eine ``memoryview`` zurück,
+    # die explizit in Bytes überführt werden muss. Über ``st.write`` lässt
+    # sich der Typ bei Bedarf inspizieren, um den Fehler einzugrenzen.
+    if isinstance(roh_output, memoryview):  # type: ignore[name-defined]
+        return roh_output.tobytes()
+
+    # fpdf1 gab an dieser Stelle einen latin-1-kodierten ``str`` zurück.
+    # Wir übernehmen dieses Mapping bewusst, damit historische Deployments
+    # weiterhin funktionieren. Sollte ein Zeichen nicht abbildbar sein,
+    # darf der Encoder eine klare Exception werfen, damit Admins den
+    # fehlerhaften Inhalt identifizieren können.
+    if isinstance(roh_output, str):
+        return roh_output.encode("latin-1")
+
+    # Alles andere ist unerwartet. Der Typ wird in der Fehlermeldung
+    # genannt, damit sofort erkennbar ist, ob etwa eine inkompatible
+    # fpdf-Version oder ein Wrapper im Spiel ist.
+    raise FeedbackVariationError(
+        "Unerwarteter Rückgabetyp beim PDF-Export. "
+        f"Erhalten: {type(roh_output).__name__}. Bitte fpdf-Version und "
+        "Parameter `dest='S'` prüfen. Bei Bedarf temporär "
+        "`st.write(type(roh_output))` aktivieren, um den Typ im Deployment "
+        "sichtbar zu machen."
+    )
+
+
 def _erstelle_pdf(laufgruppe: uuid.UUID, ergebnisse: List[FeedbackRunResult]) -> bytes:
     """Erzeugt ein PDF, in dem jedes Feedback auf einer eigenen Seite steht."""
 
@@ -340,11 +457,14 @@ def _erstelle_pdf(laufgruppe: uuid.UUID, ergebnisse: List[FeedbackRunResult]) ->
         pdf.ln(2)
         pdf.multi_cell(zellenbreite, 6, _wrap_for_pdf(ergebnis.feedback_text))
 
-    # Rückgabe erfolgt als Bytes. ``output(dest="S")`` liefert einen
-    # latin-1-kodierten String; das anschließende ``encode`` konvertiert ihn in
-    # echte Bytes ohne Zeichenaustausch. Bei Bedarf kann ``st.write(pdf.pages)``
-    # aktiviert werden, um den Rohinhalt zu inspizieren.
-    return pdf.output(dest="S").encode("latin-1")
+    # Rückgabe erfolgt als Bytes. fpdf2 liefert bei ``dest="S"`` seit Version
+    # 2.7 standardmäßig ein ``bytearray``; ältere Versionen liefern ``bytes``
+    # oder ``str``. Die Hilfsfunktion kümmert sich um die Normalisierung und
+    # liefert bei neuen, unbekannten Typen eine aussagekräftige Fehlermeldung.
+    # Für Debugging kann testweise ``st.write(type(roh_output))`` aktiviert
+    # werden, um den Rückgabetyp im konkreten Deployment sichtbar zu machen.
+    roh_output = pdf.output(dest="S")
+    return _konvertiere_pdf_output_zu_bytes(roh_output)
 
 
 def fuehre_feedback_durchlaeufe_aus(
