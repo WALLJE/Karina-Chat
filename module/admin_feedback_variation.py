@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
+import textwrap
 import uuid
 from typing import Dict, Iterable, List, Tuple
 
@@ -204,27 +205,67 @@ def _setze_feedback_modus(modus: str) -> None:
     st.session_state[SESSION_KEY_EFFECTIVE_MODE] = modus
 
 
+def _wrap_for_pdf(text: str, breite_zeichen: int = 95) -> str:
+    """Formatiert Text für ``multi_cell`` und bricht lange Wörter um.
+
+    FPDF2 wirft bei extrem langen, nicht trennbaren Wörtern oder Links die
+    Fehlermeldung "Not enough horizontal space to render a single character".
+    Wir fügen daher einen defensiven Zeilenumbruch hinzu und ersetzen
+    Rückgabewerte durch druckbare Strings. Bei Bedarf lässt sich hier über
+    Debug-Ausgaben nachvollziehen, welcher Text verarbeitet wird.
+    """
+
+    if not text:
+        return ""
+
+    def _umbruch(block: str) -> str:
+        return textwrap.fill(
+            block.strip(),
+            width=breite_zeichen,
+            break_long_words=True,
+            break_on_hyphens=False,
+        )
+
+    saubere_abschnitte = []
+    for abschnitt in str(text).replace("\r\n", "\n").replace("\r", "\n").split("\n"):
+        if not abschnitt.strip():
+            saubere_abschnitte.append("")
+            continue
+        saubere_abschnitte.append(_umbruch(abschnitt))
+
+    return "\n".join(saubere_abschnitte)
+
+
 def _erstelle_pdf(laufgruppe: uuid.UUID, ergebnisse: List[FeedbackRunResult]) -> bytes:
     """Erzeugt ein PDF, in dem jedes Feedback auf einer eigenen Seite steht."""
 
-    pdf = FPDF()
+    pdf = FPDF(format="A4")
+    # Breite Ränder plus automatischer Seitenumbruch reduzieren die Gefahr,
+    # dass untrennbare Wörter den verfügbaren Platz überschreiten. Sollte es
+    # dennoch klemmen, kann testweise der Margin erhöht oder der Text über
+    # ``st.write`` inspiziert werden (siehe Debug-Hinweise oben).
+    pdf.set_left_margin(15)
+    pdf.set_right_margin(15)
+    pdf.set_auto_page_break(auto=True, margin=15)
+
     titel = f"Feedback-Lauf {laufgruppe}"  # Modus wird bewusst nicht ausgegeben.
 
     for ergebnis in ergebnisse:
         pdf.add_page()
-        pdf.set_font("Arial", size=12)
-        pdf.multi_cell(0, 8, titel)
+        pdf.set_font("Helvetica", size=12)
+        pdf.multi_cell(0, 8, _wrap_for_pdf(titel))
         pdf.ln(2)
-        pdf.multi_cell(0, 8, f"Fall-ID: {ergebnis.feedback_id}")
-        pdf.multi_cell(0, 8, f"Datum: {datetime.now():%d.%m.%Y}")
-        pdf.multi_cell(0, 8, f"Durchlauf: {ergebnis.lauf_index}")
+        pdf.multi_cell(0, 8, _wrap_for_pdf(f"Fall-ID: {ergebnis.feedback_id}"))
+        pdf.multi_cell(0, 8, _wrap_for_pdf(f"Datum: {datetime.now():%d.%m.%Y}"))
+        pdf.multi_cell(0, 8, _wrap_for_pdf(f"Durchlauf: {ergebnis.lauf_index}"))
         pdf.ln(4)
-        pdf.set_font("Arial", size=11)
-        pdf.multi_cell(0, 6, f"Szenario: {ergebnis.szenario or 'unbekannt'}")
+        pdf.set_font("Helvetica", size=11)
+        pdf.multi_cell(0, 6, _wrap_for_pdf(f"Szenario: {ergebnis.szenario or 'unbekannt'}"))
         pdf.ln(2)
-        pdf.multi_cell(0, 6, ergebnis.feedback_text)
+        pdf.multi_cell(0, 6, _wrap_for_pdf(ergebnis.feedback_text))
 
-    return pdf.output(dest="S").encode("latin-1")
+    # Kodierung mit Ersatzzeichen verhindert Abbrüche bei seltenen Symbolen.
+    return pdf.output(dest="S").encode("latin-1", errors="replace")
 
 
 def fuehre_feedback_durchlaeufe_aus(
