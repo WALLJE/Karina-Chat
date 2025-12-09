@@ -81,6 +81,15 @@ def student_feedback():
         [-2, -1, 0, 1, 2],
         horizontal=True,
     )
+    # Zusätzliche Nachfrage bei Extremwerten, um gezielt Verbesserungswünsche zu sammeln.
+    if f5 == -2:
+        st.info(
+            "❗Der Fall war für Sie deutlich zu leicht. Was würden Sie verbessern, damit die Aufgabe anspruchsvoller wird?"
+        )
+    elif f5 == 2:
+        st.info(
+            "❗Der Fall war für Sie deutlich zu schwer. Was würden Sie verbessern, damit die Aufgabe fairer und verständlicher wird?"
+        )
 
     f7 = st.selectbox(
         "In welchem Semester befinden Sie sich aktuell?",
