@@ -6,7 +6,6 @@ from module.admin_data import FeedbackExportError, build_feedback_export
 from module.admin_feedback_variation import (
     FeedbackCaseData,
     FeedbackVariationError,
-    erstelle_pdf_aus_ergebnissen,
     fuehre_feedback_durchlaeufe_aus,
     lade_feedback_fall,
     speichere_durchlaeufe_in_supabase,
