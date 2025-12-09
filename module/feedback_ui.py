@@ -55,12 +55,12 @@ def student_feedback():
     f1 = st.radio("1. Wie realistisch war das Fallbeispiel?", [1, 2, 3, 4, 5, 6], horizontal=True)
     # Ab Note 4 wird nun direkt nach konkreten Verbesserungen gefragt, um frühzeitig Optimierungspotenzial zu erkennen.
     if f1 >= 4:
-        st.info("❗Vielen Dank für die kritische Rückmeldung. Erklären Sie gern Ihre Bewertung im Freitext unten konkreter.")
+        st.info("❗Vielen Dank für die kritische Rückmeldung: Sie halten das Fallbeispiel nicht für realistisch. Erklären Sie gern Ihre Bewertung im Freitext unten konkreter.")
 
     f2 = st.radio("2. Wie hilfreich war die Simulation für das Training der Anamnese?", [1, 2, 3, 4, 5, 6], horizontal=True)
     # Die Nachfrage wird bewusst ab Note 4 eingeblendet, damit auch mittlere Bewertungen genauer begründet werden können.
     if f2 >= 4:
-        st.info("❗Was hätten Sie sich beim Anamnese-Training anders gewünscht? Bitte erläutern Sie unten, damit wir Ihr Feedback besser verstehen und die App anpassen können.")
+        st.info("❗Sie scheinen die Simuation nicht für hilfreich zu erachten. Was hätten Sie sich beim Anamnese-Training anders gewünscht? Bitte erläutern Sie unten, damit wir Ihr Feedback besser verstehen und die App anpassen können.")
 
     f3 = st.radio("3. Wie verständlich und relevant war das automatische Feedback?", [1, 2, 3, 4, 5, 6], horizontal=True)
     # Auch hier wird bereits ab Note 4 nachgehakt, um Stolpersteine frühzeitig zu identifizieren.
