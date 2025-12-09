@@ -17,11 +17,13 @@ from typing import Dict, Iterable, List
 
 # Hinweis: Zusätzliche Standardbibliotheken wie ``io`` werden bewusst nur
 # eingebunden, wenn sie tatsächlich gebraucht werden. Der Code bleibt so für
-# Admins übersichtlich, ohne unnötige Abhängigkeiten aufzubauen.
+# Admins übersichtlich, ohne unnötige Abhängigkeiten aufzubauen. Ein früherer
+# PDF-Export wurde entfernt, weil er nicht mehr genutzt wird und hier zum
+# Syntaxfehler führte; falls erneut Bedarf entsteht, kann eine eigene
+# Export-Funktion mit ausführlicher Validierung separat ergänzt werden.
 
 import streamlit as st
 from supabase import Client, create_client
-from xhtml2pdf import pisa
 
 from feedbackmodul import feedback_erzeugen
 from module.feedback_mode import (
@@ -274,9 +276,6 @@ def _setze_feedback_modus(modus: str) -> None:
     reset_random_mode()
     st.session_state[SESSION_KEY_EFFECTIVE_MODE] = modus
 
-def _erstelle_html_dokument(laufgruppe: uuid.UUID, ergebnisse: List[FeedbackRunResult]) -> str:
-    """Baut ein HTML-Template, das später verlustfrei in PDF konvertiert wird.
-
 def fuehre_feedback_durchlaeufe_aus(
     fall: FeedbackCaseData,
     durchlaeufe: int,
@@ -383,7 +382,6 @@ __all__ = [
     "FeedbackCaseData",
     "FeedbackRunResult",
     "FeedbackVariationError",
-    "erstelle_pdf_aus_ergebnissen",
     "fuehre_feedback_durchlaeufe_aus",
     "lade_feedback_fall",
     "speichere_durchlaeufe_in_supabase",
