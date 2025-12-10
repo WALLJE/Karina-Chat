@@ -53,22 +53,43 @@ def student_feedback():
     st.markdown("Bitte bewerten Sie die folgenden Aspekte auf einer Schulnoten-Skala von 1 (sehr gut) bis 6 (ungenügend):")
 
     f1 = st.radio("1. Wie realistisch war das Fallbeispiel?", [1, 2, 3, 4, 5, 6], horizontal=True)
-    if f1 in [5, 6]:
-        st.info("❗Vielen Dank für die kritische Rückmeldung. Erklären Sie gern Ihre Bewertung im Freitext unten konkreter.")
+    # Ab Note 4 wird nun direkt nach konkreten Verbesserungen gefragt, um frühzeitig Optimierungspotenzial zu erkennen.
+    if f1 >= 4:
+        st.info("❗Vielen Dank für die kritische Rückmeldung: Sie halten das Fallbeispiel nicht für realistisch. Erklären Sie gern Ihre Bewertung im Freitext unten konkreter.")
 
     f2 = st.radio("2. Wie hilfreich war die Simulation für das Training der Anamnese?", [1, 2, 3, 4, 5, 6], horizontal=True)
-    if f2 in [5, 6]:
-        st.info("❗Was hätten Sie sich beim Anamnese-Training anders gewünscht? Bitte erläutern Sie unten, damit wir Ihr Feedback besser verstehen und die App anpassen können.")
+    # Die Nachfrage wird bewusst ab Note 4 eingeblendet, damit auch mittlere Bewertungen genauer begründet werden können.
+    if f2 >= 4:
+        st.info("❗Sie scheinen die Simuation nicht für hilfreich zu erachten. Was hätten Sie sich beim Anamnese-Training anders gewünscht? Bitte erläutern Sie unten, damit wir Ihr Feedback besser verstehen und die App anpassen können.")
 
     f3 = st.radio("3. Wie verständlich und relevant war das automatische Feedback?", [1, 2, 3, 4, 5, 6], horizontal=True)
-    if f3 in [5, 6]:
+    # Auch hier wird bereits ab Note 4 nachgehakt, um Stolpersteine frühzeitig zu identifizieren.
+    if f3 >= 4:
         st.info("❗Sie sind mit dem Feedback unzufrieden. Wir möchten gern besser werden. Beschreiben Sie deswegen bitte im folgenden Freitext warum.")
 
     f4 = st.radio("4. Wie bewerten Sie den didaktischen Gesamtwert der Simulation?", [1, 2, 3, 4, 5, 6], horizontal=True)
-    if f4 in [5, 6]:
+    # Mittlere bis schlechte Bewertungen (ab 4) sollen direkt erläutert werden, damit wir gezielt nachschärfen können.
+    if f4 >= 4:
         st.info("❗Was hat aus Ihrer Sicht den didaktischen Wert eingeschränkt? Bitte erläutern Sie uns Ihre Kritik.")
 
-    f5 = st.radio("5. Wie schwierig fanden Sie den Fall? *1 = sehr einfach, 6 = sehr schwer*", [1, 2, 3, 4, 5, 6], horizontal=True)
+    # Die Skala zur Fallschwere wurde auf -2 bis +2 umgestellt, um Über- und Unterforderung klar abbilden zu können.
+    st.markdown(
+        "**Fallschwere-Skala:** -2 = deutlich zu leicht, -1 = eher zu leicht, 0 = genau passend, +1 = eher zu schwer, +2 = deutlich zu schwer."
+    )
+    f5 = st.radio(
+        "5. Wie schwierig fanden Sie den Fall? *-2 = zu leicht, 0 = passend, +2 = zu schwer*",
+        [-2, -1, 0, 1, 2],
+        horizontal=True,
+    )
+    # Zusätzliche Nachfrage bei Extremwerten, um gezielt Verbesserungswünsche zu sammeln.
+    if f5 == -2:
+        st.info(
+            "❗Der Fall war für Sie deutlich zu leicht. Was würden Sie verbessern, damit die Aufgabe anspruchsvoller wird?"
+        )
+    elif f5 == 2:
+        st.info(
+            "❗Der Fall war für Sie deutlich zu schwer. Was würden Sie verbessern, damit die Aufgabe fairer und verständlicher wird?"
+        )
 
     f7 = st.selectbox(
         "In welchem Semester befinden Sie sich aktuell?",

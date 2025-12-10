@@ -3,6 +3,13 @@ from datetime import timezone
 import streamlit as st
 
 from module.admin_data import FeedbackExportError, build_feedback_export
+from module.admin_feedback_variation import (
+    FeedbackCaseData,
+    FeedbackVariationError,
+    fuehre_feedback_durchlaeufe_aus,
+    lade_feedback_fall,
+    speichere_durchlaeufe_in_supabase,
+)
 from module.sidebar import show_sidebar
 from module.footer import copyright_footer
 from module.offline import display_offline_banner, is_offline
@@ -834,3 +841,93 @@ else:
 
 if st.session_state.get("feedback_export_error"):
     st.error(st.session_state["feedback_export_error"])
+
+st.subheader("Feedback-Variabilität im Adminmodus")
+
+# Session-State-Defaults für den Evaluationsabschnitt, damit die Bedienelemente
+# auch nach einem Refresh konsistente Werte anzeigen.
+st.session_state.setdefault("admin_feedback_fall", None)
+
+st.write(
+    "Nutze diesen Abschnitt, um einen gespeicherten Feedback-Datensatz erneut durch GPT auszuwerten. "
+    "Alle benötigten Variablen werden automatisch aus Supabase geladen und ohne weitere Eingaben "
+    "an das Feedback weitergereicht. So lassen sich Variabilität und Konsistenz über mehrere Läufe "
+    "prüfen."
+)
+
+with st.expander("⚙️ Einstellungen für Feedback-Durchläufe"):
+    col_links, col_rechts = st.columns(2)
+    with col_links:
+        ausgewaehlte_id = st.number_input(
+            "ID aus 'feedback_gpt'", min_value=1, step=1, format="%d"
+        )
+        durchlauf_anzahl = st.slider(
+            "Anzahl der Durchläufe pro Modus",
+            min_value=1,
+            max_value=10,
+            value=3,
+            help=(
+                "Definiert, wie oft pro Modus ein neues Feedback für den gewählten Fall erstellt wird."
+            ),
+        )
+    with col_rechts:
+        modus_chatgpt = st.checkbox("ChatGPT-Modus nutzen", value=True)
+        modus_amboss = st.checkbox("ChatGPT+AMBOSS-Modus nutzen", value=False)
+        fehlermeldung = st.empty()
+
+    if st.button("Fall aus Supabase laden", type="primary"):
+        try:
+            fall = lade_feedback_fall(int(ausgewaehlte_id))
+        except FeedbackVariationError as exc:
+            st.session_state["admin_feedback_fall"] = None
+            fehlermeldung.error(str(exc))
+        else:
+            st.session_state["admin_feedback_fall"] = fall
+            fehlermeldung.empty()
+            st.success(
+                "Fall erfolgreich geladen. Alle benötigten Variablen wurden in den Session-State übernommen."
+            )
+
+fall: FeedbackCaseData | None = st.session_state.get("admin_feedback_fall")
+if fall:
+    st.markdown(
+        f"**Geladener Fall:** ID {fall.id} – Szenario: {fall.szenario or 'unbekannt'}"
+    )
+    if fall.datum:
+        st.caption(f"Erstellungsdatum in Supabase: {fall.datum}")
+
+    if fall.fehlende_felder:
+        st.warning(
+            "Folgende Variablen fehlen oder sind leer und werden daher neutral weitergereicht: "
+            + ", ".join(sorted(fall.fehlende_felder))
+        )
+    else:
+        st.info("Alle relevanten Variablen sind vollständig befüllt.")
+
+    ausgewaehlte_modi = [
+        modus
+        for modus, aktiv in [
+            (FEEDBACK_MODE_CHATGPT, modus_chatgpt),
+            (FEEDBACK_MODE_AMBOSS_CHATGPT, modus_amboss),
+        ]
+        if aktiv
+    ]
+
+    if not ausgewaehlte_modi:
+        st.error("Bitte wähle mindestens einen Modus für die Durchläufe aus.")
+    else:
+        if st.button("Durchläufe starten und speichern", type="primary"):
+            try:
+                ergebnisse = fuehre_feedback_durchlaeufe_aus(fall, durchlauf_anzahl, ausgewaehlte_modi)
+                speichere_durchlaeufe_in_supabase(ergebnisse)
+            except FeedbackVariationError as exc:
+                st.error(str(exc))
+            except Exception as exc:  # pragma: no cover - defensive Absicherung
+                st.error(
+                    "Unerwarteter Fehler bei der Berechnung. Siehe Kommentare im Code für Debug-Hinweise."
+                )
+                st.caption(str(exc))
+            else:
+                st.success(
+                    "Alle Durchläufe wurden abgeschlossen und mit gemeinsamer Laufnummer in Supabase gespeichert."
+                )
