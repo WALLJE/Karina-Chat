@@ -28,6 +28,13 @@ def show_sidebar():
         # st.markdown("### Patientin")
 
         def bestimme_bilder_ordner():
+            """
+            Liefert den Pfad zu einem alters- und geschlechtsspezifischen Unterordner.
+            
+            Ist noch kein Geschlecht/Alter gesetzt (z. B. direkt nach dem Start),
+            wird ``None`` zurückgegeben, damit kein zufälliges Bild ausgewählt wird
+            und das Klinik-Logo sichtbar bleibt.
+            """
             geschlecht = str(st.session_state.get("patient_gender", "")).strip().lower()
             try:
                 alter = int(st.session_state.get("patient_age", ""))
@@ -35,7 +42,7 @@ def show_sidebar():
                 alter = None
 
             if alter is None or geschlecht not in {"m", "w"}:
-                return "pics"
+                return None
 
             if geschlecht == "w":
                 if alter <= 30:
@@ -55,11 +62,20 @@ def show_sidebar():
             return os.path.join("pics", unterordner)
 
         def lade_gueltige_bilder(ordnerpfad):
+            """
+            Lädt nur valide PNG-Dateien aus dem gewünschten Ordner und filtert das
+            Klinik-Logo bewusst heraus, damit dieses niemals zufällig als Patienten-
+            bild ausgewählt wird.
+            """
             bilder = []
-            if os.path.isdir(ordnerpfad):
+            if ordnerpfad and os.path.isdir(ordnerpfad):
                 for eintrag in os.listdir(ordnerpfad):
                     if eintrag.lower().endswith(".png"):
                         pfad = os.path.join(ordnerpfad, eintrag)
+                        # Logo explizit überspringen, damit es nur als definierter
+                        # Startplatzhalter eingesetzt wird.
+                        if Path(pfad).name == STANDARD_LOGO_PFAD.name:
+                            continue
                         try:
                             with Image.open(pfad) as img:
                                 img.verify()
@@ -70,9 +86,6 @@ def show_sidebar():
 
         pic_dir = bestimme_bilder_ordner()
         valid_images = lade_gueltige_bilder(pic_dir)
-
-        if not valid_images and pic_dir != "pics":
-            valid_images = lade_gueltige_bilder("pics")
 
         if "patient_logo" not in st.session_state:
             # Beim allerersten Aufruf setzen wir das Klinik-Logo als Platzhalter,
