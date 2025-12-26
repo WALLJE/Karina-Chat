@@ -115,7 +115,9 @@ def _run_single_task(
 ) -> Tuple[FeedbackTask, str, Dict[str, int]]:
     """Führt einen einzelnen Modellaufruf aus und sammelt die Tokenwerte."""
 
-    model_name = task.model or getattr(client, "default_model", "gpt-4")
+    # Standardmäßig setzen wir auf ein ausgewogenes Modell, das klare,
+    # prüfungsnahe Rückmeldungen liefert, ohne unnötig hohe Kosten zu erzeugen.
+    model_name = task.model or getattr(client, "default_model", "gpt-4o")
     response = client.chat.completions.create(
         model=model_name,
         messages=list(messages),

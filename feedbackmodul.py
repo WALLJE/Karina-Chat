@@ -163,8 +163,11 @@ Zusätzliche Fachinformationen (AMBOSS):
     # Der Aufruf erfolgt bewusst sequentiell mit einem einzelnen Prompt. Bei
     # Fehlermeldungen kann der Prompt-Inhalt beispielsweise über `st.write` zur
     # Analyse ausgegeben werden.
+    # Das Abschlussfeedback enthält viele Prüfregeln und muss didaktisch
+    # konsistent bleiben. Dafür nutzen wir ein Modell mit höherer
+    # Instruktionsstabilität.
     response = client.chat.completions.create(
-        model="gpt-4",
+        model="gpt-4.1",
         messages=[{"role": "user", "content": prompt}],
         temperature=0.4,
     )
@@ -178,4 +181,3 @@ Zusätzliche Fachinformationen (AMBOSS):
     )
 
     return response.choices[0].message.content
-
