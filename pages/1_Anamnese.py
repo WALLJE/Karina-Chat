@@ -77,8 +77,11 @@ if submit_button and user_input:
                 # Vor jedem API-Kontakt stellen wir sicher, dass die Zähler existieren,
                 # damit mehrere Chatsitzungen sauber kumuliert werden können.
                 init_token_counters()
+                # Für patientennahe, dialogische Antworten ist ein kleines,
+                # natürlich klingendes Modell ausreichend und hält die Kosten
+                # bei vielen Gesprächsrunden niedrig.
                 response = client.chat.completions.create(
-                    model="gpt-4",
+                    model="gpt-4o-mini",
                     messages=st.session_state.messages,
                     temperature=0.6
                 )

@@ -30,8 +30,11 @@ Text:
 
     try:
         init_token_counters()
+        # Für reine Sprachkorrektur und Formatierung reicht ein kompaktes Modell.
+        # Dadurch sinken Kosten und Tokenverbrauch, während die Genauigkeit für
+        # orthografische Anpassungen erhalten bleibt.
         response = client.chat.completions.create(
-            model="gpt-4",
+            model="gpt-4o-mini",
             messages=[{"role": "user", "content": prompt}],
             temperature=0.3
         )

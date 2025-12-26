@@ -22,6 +22,14 @@ Der Karina-Chat unterstützt medizinische Ausbildungsszenarien, indem realistisc
 
 <!-- Tipp: Dieser Abschnitt kann bei Bedarf erweitert werden, falls neue Module hinzukommen. -->
 
+## Modellauswahl (optimiert für Genauigkeit, Datensparsamkeit und Kosten)
+- **Patientensimulation & Sprachkorrektur:** `gpt-4o-mini` für kurze, natürliche Antworten bei geringer Latenz.
+- **Körperliche Untersuchung & Diagnostik-Befunde:** `gpt-4o` für präzise, strukturierte Befundtexte mit guter Kostenkontrolle.
+- **Abschlussfeedback (Prüfer-Modul):** `gpt-4.1` für hohe Instruktionsstabilität bei regelreichen Feedback-Prompts.
+- **AMBOSS-Zusammenfassungen:** `gpt-4o-mini` für kompakte Verdichtung großer JSON-Payloads.
+
+Hinweis: Änderungen an der Modellauswahl erfolgen direkt in den jeweiligen Modulen. Für Debugging können Kommentare in den Dateien aktiviert werden (z. B. `st.write(prompt)`), damit Prompt und Antwortstruktur nachvollziehbar bleiben.
+
 ## Systemvoraussetzungen
 - Python 3.10 oder neuer
 - Virtuelle Umgebung (empfohlen)

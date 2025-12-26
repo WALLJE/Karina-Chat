@@ -24,8 +24,10 @@ Falls **Laborwerte** angefordert wurden, gib sie bitte **nur in folgender Tabell
 
 Gib die Befunde **strukturiert, sachlich und ohne Interpretation** wieder. Nenne **nicht das Diagnose-Szenario**. Ergänze keine nicht angeforderten Untersuchungen."""
     init_token_counters()
+    # Für strukturierte Diagnostik-Befunde ist ein präzises, aber kosteneffizientes
+    # Modell ausreichend und liefert konsistente Tabellenformate.
     response = client.chat.completions.create(
-        model="gpt-4",
+        model="gpt-4o",
         messages=[{"role": "user", "content": prompt}],
         temperature=0.4
     )

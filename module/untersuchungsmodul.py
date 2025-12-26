@@ -40,8 +40,10 @@ Formuliere neutral, präzise und sachlich – so, wie es in einem klinischen Unt
     # Vor dem API-Aufruf initialisieren wir die Token-Zähler, damit auch bei parallelen Aufrufen
     # keine leeren Strukturen entstehen und die Summen konsistent bleiben.
     init_token_counters()
+    # Für strukturierte, medizinische Befundtexte ist ein ausgewogenes Modell
+    # mit guter fachlicher Präzision sinnvoll, ohne unnötig hohe Kosten zu erzeugen.
     response = client.chat.completions.create(
-        model="gpt-4",
+        model="gpt-4o",
         messages=[{"role": "user", "content": prompt}],
         temperature=0.5
     )
@@ -97,8 +99,10 @@ Gib ausschließlich neue körperliche Untersuchungsbefunde an. Keine Diagnosen, 
 """
 
     init_token_counters()
+    # Auch hier genügt ein ausgewogenes Modell, da der Fokus auf klaren,
+    # stichpunktartigen Befunden liegt.
     response = client.chat.completions.create(
-        model="gpt-4",
+        model="gpt-4o",
         messages=[{"role": "user", "content": prompt}],
         temperature=0.4,
     )
