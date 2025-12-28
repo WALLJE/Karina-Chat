@@ -13,6 +13,7 @@ from module.offline import (
 from module.loading_indicator import task_spinner
 from module.supabase_content import SupabaseContentError
 from module.token_counter import init_token_counters, add_usage
+from module.gpt_timing import messe_gpt_aktion
 
 copyright_footer()
 show_sidebar()
@@ -80,10 +81,13 @@ if submit_button and user_input:
                 # Für patientennahe, dialogische Antworten ist ein kleines,
                 # natürlich klingendes Modell ausreichend und hält die Kosten
                 # bei vielen Gesprächsrunden niedrig.
-                response = client.chat.completions.create(
-                    model="gpt-4o-mini",
-                    messages=st.session_state.messages,
-                    temperature=0.6
+                response = messe_gpt_aktion(
+                    lambda: client.chat.completions.create(
+                        model="gpt-4o-mini",
+                        messages=st.session_state.messages,
+                        temperature=0.6,
+                    ),
+                    kontext="Anamnese-Chat",
                 )
                 # Die zurückgelieferten Token-Werte werden unmittelbar in die Session-Summen
                 # übernommen. "total_tokens" enthält zwar bereits die Summe des aktuellen Calls,

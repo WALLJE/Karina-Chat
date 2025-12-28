@@ -5,6 +5,7 @@ from module.offline import (
     is_offline,
 )
 from module.token_counter import init_token_counters, add_usage
+from module.gpt_timing import messe_gpt_aktion
 
 
 def generiere_koerperbefund(client, diagnose_szenario, diagnose_features, koerper_befund_tip):
@@ -42,10 +43,13 @@ Formuliere neutral, präzise und sachlich – so, wie es in einem klinischen Unt
     init_token_counters()
     # Für strukturierte, medizinische Befundtexte ist ein ausgewogenes Modell
     # mit guter fachlicher Präzision sinnvoll, ohne unnötig hohe Kosten zu erzeugen.
-    response = client.chat.completions.create(
-        model="gpt-4o",
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0.5
+    response = messe_gpt_aktion(
+        lambda: client.chat.completions.create(
+            model="gpt-4o",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.5,
+        ),
+        kontext="Körperbefund",
     )
     # Damit der Tokenverbrauch jederzeit nachvollziehbar bleibt, addieren wir ihn direkt.
     # Auch hier gilt: "total_tokens" beschreibt nur diesen einen Call; durch das fortlaufende
@@ -101,10 +105,13 @@ Gib ausschließlich neue körperliche Untersuchungsbefunde an. Keine Diagnosen, 
     init_token_counters()
     # Auch hier genügt ein ausgewogenes Modell, da der Fokus auf klaren,
     # stichpunktartigen Befunden liegt.
-    response = client.chat.completions.create(
-        model="gpt-4o",
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0.4,
+    response = messe_gpt_aktion(
+        lambda: client.chat.completions.create(
+            model="gpt-4o",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.4,
+        ),
+        kontext="Sonderuntersuchung",
     )
     add_usage(
         prompt_tokens=response.usage.prompt_tokens,

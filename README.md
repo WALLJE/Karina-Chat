@@ -173,17 +173,19 @@ create trigger set_patientenverhalten_updated_at
     - **Schema-Warnungen:** Wenn neue optionale Spalten wie `diagnostik_runden_gesamt` oder `koerper_befund` in Supabase noch fehlen, wird im Admin-UI eine Warnung eingeblendet. Die Speicherung läuft weiter, sobald die in diesem README dokumentierten SQL-Befehle ausgeführt wurden.
 
 #### Supabase-Tabelle `feedback_gpt` um fehlende Felder ergänzen
-Damit die oben genannten optionalen Kontextfelder dauerhaft mitgespeichert werden, sollten bestehende Installationen die Tabelle `feedback_gpt` in Supabase um drei Spalten erweitern. Der folgende SQL-Block kann unverändert in der Supabase-SQL-Konsole ausgeführt werden. Er fügt die Spalten hinzu (falls noch nicht vorhanden), setzt einen sinnvollen Default-Wert für die Anzahl der Diagnostikrunden und dokumentiert die Felder über Spaltenkommentare.
+Damit die oben genannten optionalen Kontextfelder dauerhaft mitgespeichert werden, sollten bestehende Installationen die Tabelle `feedback_gpt` in Supabase um vier Spalten erweitern. Der folgende SQL-Block kann unverändert in der Supabase-SQL-Konsole ausgeführt werden. Er fügt die Spalten hinzu (falls noch nicht vorhanden), setzt einen sinnvollen Default-Wert für die Anzahl der Diagnostikrunden und dokumentiert die Felder über Spaltenkommentare.
 
 ```sql
 alter table if exists public.feedback_gpt
     add column if not exists geschlecht text,
     add column if not exists diagnostik_runden_gesamt integer default 1,
-    add column if not exists koerper_befund text;
+    add column if not exists koerper_befund text,
+    add column if not exists gpt_aktionsdauer_gesamt_sek double precision;
 
 comment on column public.feedback_gpt.geschlecht is 'Kurzform m/w/d/n, wird aus patient_gender übernommen';
 comment on column public.feedback_gpt.diagnostik_runden_gesamt is 'Gesamtzahl der eingegebenen Diagnostikrunden (mindestens 1)';
 comment on column public.feedback_gpt.koerper_befund is 'Zusammenfassung der körperlichen Untersuchung';
+comment on column public.feedback_gpt.gpt_aktionsdauer_gesamt_sek is 'Kumulierte GPT-Laufzeit der Sitzung in Sekunden';
 
 update public.feedback_gpt
     set diagnostik_runden_gesamt = coalesce(diagnostik_runden_gesamt, 1)

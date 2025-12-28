@@ -1,4 +1,5 @@
 from module.token_counter import init_token_counters, add_usage
+from module.gpt_timing import messe_gpt_aktion
 from module.patient_language import get_patient_forms
 from module.offline import get_offline_befund, is_offline
 
@@ -26,10 +27,13 @@ Gib die Befunde **strukturiert, sachlich und ohne Interpretation** wieder. Nenne
     init_token_counters()
     # Für strukturierte Diagnostik-Befunde ist ein präzises, aber kosteneffizientes
     # Modell ausreichend und liefert konsistente Tabellenformate.
-    response = client.chat.completions.create(
-        model="gpt-4o",
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0.4
+    response = messe_gpt_aktion(
+        lambda: client.chat.completions.create(
+            model="gpt-4o",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.4,
+        ),
+        kontext="Diagnostik-Befund",
     )
     add_usage(
         prompt_tokens=response.usage.prompt_tokens,
