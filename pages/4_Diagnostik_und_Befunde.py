@@ -20,6 +20,11 @@ if "SYSTEM_PROMPT" not in st.session_state or "patient_name" not in st.session_s
 
 st.session_state.setdefault("befund_generating", False)
 st.session_state.setdefault("befund_generierung_gescheitert", False)
+# Initialisierung der Nutzereingaben für Diagnostik, damit spätere Zugriffe
+# (z.B. im Anzeige-Block) keinen Session-State-Fehler auslösen.
+# Debug-Hinweis: Falls unerwartete Werte angezeigt werden, kann dieser Key
+# temporär geleert werden, um die Datenquelle zu überprüfen.
+st.session_state.setdefault("user_diagnostics", "")
 
 
 def aktualisiere_kumulative_befunde_page(neuer_befund: str) -> None:
@@ -277,4 +282,3 @@ st.page_link(
 )
 
 copyright_footer()
-
