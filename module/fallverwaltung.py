@@ -96,6 +96,12 @@ _FALL_SESSION_KEYS: set[str] = {
     "feedback_row_id",
     "student_evaluation_done",
     "token_sums",
+    # Diagnose/Therapie-Edit-Modus erzeugt zusätzliche Session-Keys, die beim Fall-Reset
+    # entfernt werden müssen, damit bei neuen Fällen keine alten Edit-Daten hängen bleiben.
+    "diagnose_therapie_edit",
+    "diagnose_therapie_sync_edit",
+    "diagnose_therapie_edit_diag",
+    "diagnose_therapie_edit_therapie",
 }
 
 _FALL_SESSION_PREFIXES: tuple[str, ...] = (
