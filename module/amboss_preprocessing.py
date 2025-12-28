@@ -9,6 +9,7 @@ from typing import Any, Optional
 import streamlit as st
 
 from module.token_counter import add_usage, init_token_counters
+from module.gpt_timing import messe_gpt_aktion
 
 # Session-State-Schlüssel, unter denen die verdichteten Informationen abgelegt werden.
 _SUMMARY_KEY = "amboss_payload_summary"
@@ -91,10 +92,13 @@ def ensure_amboss_summary(
     )
 
     init_token_counters()
-    response = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0.2,
+    response = messe_gpt_aktion(
+        lambda: client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.2,
+        ),
+        kontext="AMBOSS-Summary",
     )
     add_usage(
         prompt_tokens=response.usage.prompt_tokens,
@@ -113,4 +117,3 @@ __all__ = [
     "ensure_amboss_summary",
     "get_cached_summary",
 ]
-

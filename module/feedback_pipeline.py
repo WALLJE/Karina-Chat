@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
+import time
 import json
 from typing import Dict, Iterable, List, Optional, Tuple, Union
 
@@ -11,6 +12,7 @@ import streamlit as st
 
 from module.feedback_tasks import FeedbackTask, get_default_feedback_tasks
 from module.token_counter import add_usage, init_token_counters
+from module.gpt_timing import add_gpt_duration, messe_gpt_aktion
 
 
 @dataclass
@@ -112,24 +114,26 @@ def _run_single_task(
     messages: Iterable[Dict[str, str]],
     *,
     temperature: float,
-) -> Tuple[FeedbackTask, str, Dict[str, int]]:
+) -> Tuple[FeedbackTask, str, Dict[str, int], float]:
     """Führt einen einzelnen Modellaufruf aus und sammelt die Tokenwerte."""
 
     # Standardmäßig setzen wir auf ein ausgewogenes Modell, das klare,
     # prüfungsnahe Rückmeldungen liefert, ohne unnötig hohe Kosten zu erzeugen.
     model_name = task.model or getattr(client, "default_model", "gpt-4o")
+    start = time.perf_counter()
     response = client.chat.completions.create(
         model=model_name,
         messages=list(messages),
         temperature=temperature,
     )
+    dauer = time.perf_counter() - start
     usage = {
         "prompt": int(getattr(response.usage, "prompt_tokens", 0) or 0),
         "completion": int(getattr(response.usage, "completion_tokens", 0) or 0),
         "total": int(getattr(response.usage, "total_tokens", 0) or 0),
     }
     content = response.choices[0].message.content
-    return task, content, usage
+    return task, content, usage, dauer
 
 
 def run_feedback_pipeline(
@@ -162,7 +166,7 @@ def run_feedback_pipeline(
 
         for future in as_completed(futures):
             task = futures[future]
-            result_task, content, usage = future.result()
+            result_task, content, usage, dauer = future.result()
             ergebnisse[result_task.identifier] = (result_task, content)
             # Die Token-Auswertung wird zentral im Hauptthread fortgeschrieben,
             # um Race-Conditions mit dem Streamlit-Session-State zu vermeiden.
@@ -171,6 +175,9 @@ def run_feedback_pipeline(
                 completion_tokens=usage["completion"],
                 total_tokens=usage["total"],
             )
+            # Die Laufzeit wird ebenfalls im Hauptthread addiert, damit der
+            # Session-State nicht von Background-Threads angefasst wird.
+            add_gpt_duration(dauer, kontext=result_task.identifier)
 
     sortierte_ergebnisse = [
         ergebnisse[task.identifier]
@@ -215,38 +222,41 @@ def preprocess_amboss_payload(
         if patient_alter not in (None, ""):
             patient_alter_text = str(patient_alter)
 
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {
-                    "role": "system",
-                    "content": (
-                        "Du extrahierst als medizinische:r Fachexpert:in die wichtigsten Fakten aus "
-                        "einem AMBOSS-JSON. Konzentriere dich auf anamnestische, diagnostische und "
-                        "therapeutische Kernaussagen. Ergänze besonders relevante "
-                        "Differentialdiagnosen und erkläre kurz, wie sie sich von der Hauptdiagnose "
-                        "abgrenzen lassen."
-                    ),
-                },
-                {
-                    "role": "user",
-                    "content": (
-                        "Szenario: "
-                        f"{diagnose_szenario or 'unbekannt'}\n"
-                        "Alter der simulierten Person: "
-                        f"{patient_alter_text}\n"
-                        "Bitte fasse folgende Aspekte strukturiert zusammen:\n"
-                        "1. Wichtigste anamnestische Hinweise.\n"
-                        "2. Diagnostische Schlüsselbefunde und geplante Schritte.\n"
-                        "3. Kernaussagen zur Therapie oder empfohlenen Maßnahmen.\n"
-                        "4. Entscheidende Differentialdiagnosen mit kurzer Abgrenzung.\n"
-                        "Nutze Stichpunkte oder kurze Absätze und verzichte auf Floskeln.\n\n"
-                        "JSON-Inhalt:\n"
-                        f"{json.dumps(payload, ensure_ascii=False)}"
-                    ),
-                },
-            ],
-            temperature=0.1,
+        response = messe_gpt_aktion(
+            lambda: client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {
+                        "role": "system",
+                        "content": (
+                            "Du extrahierst als medizinische:r Fachexpert:in die wichtigsten Fakten aus "
+                            "einem AMBOSS-JSON. Konzentriere dich auf anamnestische, diagnostische und "
+                            "therapeutische Kernaussagen. Ergänze besonders relevante "
+                            "Differentialdiagnosen und erkläre kurz, wie sie sich von der Hauptdiagnose "
+                            "abgrenzen lassen."
+                        ),
+                    },
+                    {
+                        "role": "user",
+                        "content": (
+                            "Szenario: "
+                            f"{diagnose_szenario or 'unbekannt'}\n"
+                            "Alter der simulierten Person: "
+                            f"{patient_alter_text}\n"
+                            "Bitte fasse folgende Aspekte strukturiert zusammen:\n"
+                            "1. Wichtigste anamnestische Hinweise.\n"
+                            "2. Diagnostische Schlüsselbefunde und geplante Schritte.\n"
+                            "3. Kernaussagen zur Therapie oder empfohlenen Maßnahmen.\n"
+                            "4. Entscheidende Differentialdiagnosen mit kurzer Abgrenzung.\n"
+                            "Nutze Stichpunkte oder kurze Absätze und verzichte auf Floskeln.\n\n"
+                            "JSON-Inhalt:\n"
+                            f"{json.dumps(payload, ensure_ascii=False)}"
+                        ),
+                    },
+                ],
+                temperature=0.1,
+            ),
+            kontext="AMBOSS-Preprocessing",
         )
     except Exception as exc:  # pragma: no cover - reine Laufzeitfehler
         st.warning(

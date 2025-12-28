@@ -14,6 +14,7 @@ from module.feedback_mode import (
     FEEDBACK_MODE_AMBOSS_CHATGPT,
     determine_feedback_mode,
 )
+from module.gpt_timing import messe_gpt_aktion
 
 # Mindestlänge in Zeichen, damit eine AMBOSS-Zusammenfassung als belastbar gilt.
 _MIN_AMBOSS_SUMMARY_CHARS = 200
@@ -166,10 +167,13 @@ Zusätzliche Fachinformationen (AMBOSS):
     # Das Abschlussfeedback enthält viele Prüfregeln und muss didaktisch
     # konsistent bleiben. Dafür nutzen wir ein Modell mit höherer
     # Instruktionsstabilität.
-    response = client.chat.completions.create(
-        model="gpt-4.1",
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0.4,
+    response = messe_gpt_aktion(
+        lambda: client.chat.completions.create(
+            model="gpt-4.1",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.4,
+        ),
+        kontext="Abschlussfeedback",
     )
 
     # Tokenverbrauch erfassen, um die Nutzung nachvollziehen zu können. Für

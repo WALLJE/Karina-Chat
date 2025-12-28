@@ -1,6 +1,7 @@
 import streamlit as st
 from module.token_counter import init_token_counters, add_usage
 from module.offline import get_offline_sprachcheck, is_offline
+from module.gpt_timing import messe_gpt_aktion
 
 def sprach_check(text_input, client):
     if not text_input.strip():
@@ -33,10 +34,13 @@ Text:
         # Für reine Sprachkorrektur und Formatierung reicht ein kompaktes Modell.
         # Dadurch sinken Kosten und Tokenverbrauch, während die Genauigkeit für
         # orthografische Anpassungen erhalten bleibt.
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.3
+        response = messe_gpt_aktion(
+            lambda: client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.3,
+            ),
+            kontext="Sprachcheck",
         )
         korrigiert = response.choices[0].message.content.strip()
         # korrigiert = korrigiert.replace("- ", "• ") # zerschiesst das Format.

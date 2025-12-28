@@ -102,6 +102,12 @@ def speichere_gpt_feedback_in_supabase():
             # Zusammenfassung der körperlichen Untersuchung. Bleibt leer, wenn
             # kein Befund eingegeben wurde.
             "koerper_befund": st.session_state.get("koerper_befund", ""),
+            # Kumulierte Laufzeit aller GPT-Aktionen in Sekunden. Diese Summe
+            # basiert auf jedem einzelnen Modellaufruf in der Sitzung.
+            "gpt_aktionsdauer_gesamt_sek": round(
+                float(st.session_state.get("gpt_aktionsdauer_gesamt_sek", 0.0)),
+                2,
+            ),
         }
 
         for spaltenname, wert in optionale_spalten.items():
