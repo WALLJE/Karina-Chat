@@ -14,12 +14,18 @@ st.subheader("Diagnose und Therapie")
 # Falls aktiv, werden die Eingabefelder mit den bereits gespeicherten Werten vorbelegt,
 # damit die Nutzer:innen ihre Diagnose/Therapie gezielt ergänzen oder korrigieren können.
 st.session_state.setdefault("diagnose_therapie_edit", False)
+# Synchronisations-Flag, das beim Wechsel in den Bearbeitungsmodus gesetzt wird.
+# Es sorgt dafür, dass die Widget-States *vor* dem Rendern der Eingabefelder
+# zuverlässig mit den aktuell korrigierten Werten befüllt werden.
+st.session_state.setdefault("diagnose_therapie_sync_edit", False)
 # Synchronisations-Keys für die Eingabefelder, damit nach der sprachlichen Korrektur
 # die aktualisierten Inhalte sicher in den Widgets angezeigt werden.
 # Hinweis zum Debugging: Bei unerwarteten Vorbelegungen können diese Keys gezielt
 # gelöscht werden (z.B. per st.session_state.pop(...)), um das Verhalten zu prüfen.
-st.session_state.setdefault("diagnose_therapie_edit_diag", st.session_state.get("final_diagnose", ""))
-st.session_state.setdefault("diagnose_therapie_edit_therapie", st.session_state.get("therapie_vorschlag", ""))
+if "diagnose_therapie_edit_diag" not in st.session_state:
+    st.session_state["diagnose_therapie_edit_diag"] = st.session_state.get("final_diagnose", "")
+if "diagnose_therapie_edit_therapie" not in st.session_state:
+    st.session_state["diagnose_therapie_edit_therapie"] = st.session_state.get("therapie_vorschlag", "")
 
 # Voraussetzung: Befunde vorhanden
 if "befunde" not in st.session_state:
@@ -38,24 +44,28 @@ if (
     # Button, um gezielt zur Eingabe zurückzukehren und die bestehenden Inhalte zu bearbeiten.
     if st.button("✏️ Diagnose/Therapie überarbeiten oder ergänzen"):
         st.session_state.diagnose_therapie_edit = True
-        # Beim Wechsel in den Bearbeitungsmodus die Widget-States explizit
-        # auf die aktuell gespeicherten Werte setzen, damit die Korrekturen
-        # nicht durch veraltete Widget-Inhalte überschrieben werden.
-        st.session_state.diagnose_therapie_edit_diag = st.session_state.get("final_diagnose", "")
-        st.session_state.diagnose_therapie_edit_therapie = st.session_state.get("therapie_vorschlag", "")
+        # Synchronisation anfordern, damit die Widget-States im *nächsten* Lauf
+        # vor dem Rendern der Eingabefelder auf die aktuell gespeicherten Werte
+        # gesetzt werden können (Streamlit erlaubt keine Änderung nach Instanziierung).
+        st.session_state.diagnose_therapie_sync_edit = True
         st.rerun()
 else:
+    # Synchronisation der Eingabefelder *vor* deren Instanziierung.
+    # Damit wird sichergestellt, dass die korrigierten Inhalte tatsächlich in den
+    # Widgets landen und keine veralteten Eingaben überschreiben.
+    if st.session_state.get("diagnose_therapie_sync_edit"):
+        st.session_state["diagnose_therapie_edit_diag"] = st.session_state.get("final_diagnose", "")
+        st.session_state["diagnose_therapie_edit_therapie"] = st.session_state.get("therapie_vorschlag", "")
+        st.session_state["diagnose_therapie_sync_edit"] = False
     with st.form("diagnose_therapie_formular"):
         # Vorbelegung der Texteingaben, wenn bereits Werte vorhanden sind.
         # Dies ermöglicht ein schnelles Nachschärfen der Inhalte ohne erneute Eingabe.
         input_diag = st.text_input(
             "Ihre endgültige Diagnose:",
-            value=st.session_state.get("final_diagnose", ""),
             key="diagnose_therapie_edit_diag",
         )
         input_therapie = st.text_area(
             "Ihr Therapiekonzept:",
-            value=st.session_state.get("therapie_vorschlag", ""),
             key="diagnose_therapie_edit_therapie",
         )
         submitted_final = st.form_submit_button("✅ Senden")
@@ -64,11 +74,6 @@ else:
         client = st.session_state.get("openai_client")
         st.session_state.final_diagnose = sprach_check(input_diag, client)
         st.session_state.therapie_vorschlag = sprach_check(input_therapie, client)
-        # Nach der Korrektur die Widget-States mit den korrigierten Texten
-        # synchronisieren, damit beim nächsten Bearbeiten die richtigen Werte
-        # angezeigt werden und kein Rückfall auf alte Eingaben passiert.
-        st.session_state.diagnose_therapie_edit_diag = st.session_state.final_diagnose
-        st.session_state.diagnose_therapie_edit_therapie = st.session_state.therapie_vorschlag
         # Nach dem Speichern wieder in die Anzeigeansicht wechseln.
         st.session_state.diagnose_therapie_edit = False
         if is_offline():
