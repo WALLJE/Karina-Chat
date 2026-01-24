@@ -1,6 +1,8 @@
+from datetime import datetime
+from typing import Optional
+
 import streamlit as st
 from supabase import create_client
-from datetime import datetime
 # import json
 from module.token_counter import init_token_counters, get_token_sums
 from module.offline import is_offline
@@ -90,23 +92,24 @@ def speichere_gpt_feedback_in_supabase():
         "Client": st.session_state.get("feedback_mode", "ChatGPT"),
     }
 
-    def _bereinige_setting_wert(raw_value: str) -> str:
+    def _bereinige_setting_wert(raw_value: Optional[str]) -> Optional[str]:
         """Bereinigt fehlerhafte Platzhalterwerte für das Versorgungssetting.
 
         Hintergrund: In der Supabase-Auswertung wurden vereinzelt der String
         ``"EMPTY"`` oder Leerzeichen gespeichert. Damit das Feedback korrekt
-        bewertet wird, normalisieren wir diese Werte hier auf einen leeren
-        String. Für Debugging kann bei Bedarf zusätzlich `st.write(raw_value)`
-        aktiviert werden, um die Quelle eines unerwarteten Werts zu prüfen.
+        bewertet wird, normalisieren wir diese Werte hier auf ``None`` (NULL
+        in Supabase). Für Debugging kann bei Bedarf zusätzlich
+        `st.write(raw_value)` aktiviert werden, um die Quelle eines unerwarteten
+        Werts zu prüfen.
         """
-        st.write(raw_value)
+
         if raw_value is None:
-            return ""
+            return None
         value_clean = str(raw_value).strip()
         if not value_clean:
-            return ""
+            return None
         if value_clean.upper() == "EMPTY":
-            return ""
+            return None
         return value_clean
 
     try:
@@ -138,6 +141,10 @@ def speichere_gpt_feedback_in_supabase():
             ),
         }
 
+        # Debug-Hinweis: Falls in Supabase weiterhin "EMPTY" auftaucht, kann hier
+        # temporär `st.write(optionale_spalten)` aktiviert werden. So lässt sich
+        # prüfen, ob die Werte bereits im Session-State oder erst beim Insert
+        # verfälscht werden.
         for spaltenname, wert in optionale_spalten.items():
             if _spalte_verfuegbar(supabase, spaltenname):
                 gpt_row[spaltenname] = wert
