@@ -98,7 +98,7 @@ else:
         if bestehendes_setting in setting_optionen_final:
             default_index = setting_optionen_final.index(bestehendes_setting)
             ######
-            st.write("Setting", therapie_setting_final)
+            st.write(therapie_setting_final)
             ######
         else:
             # Streamlit ignoriert den Index, wenn ein ungültiger Session-State-Wert
