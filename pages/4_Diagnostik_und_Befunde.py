@@ -128,7 +128,7 @@ if "koerper_befund" in st.session_state:
                     # temporär st.write(bestehendes_setting) aktiviert werden.
                     # Debug-Hinweis (beschriftet): Zeigt den fehlerhaften
                     # Session-State-Wert vor dem Entfernen an.
-                    st.write("Debug Seite 4 > Ungültiges Setting verdacht:", bestehendes_setting)
+                    # st.write("Debug Seite 4 > Ungültiges Setting verdacht:", bestehendes_setting)
                     st.session_state.pop("therapie_setting_verdacht", None)
                     default_index = 0
                 setting_verdacht = st.radio(
@@ -145,8 +145,8 @@ if "koerper_befund" in st.session_state:
                 # aktuelle Auswahl direkt im UI zu sehen.
                 # Debug-Hinweis (beschriftet): Aktivieren, um Auswahl und
                 # Session-State nach dem Radio eindeutig zu prüfen.
-                st.write("Debug Seite 4 > Auswahl verdacht (Radio):", setting_verdacht)
-                st.write("Debug Seite 4 > Session verdacht (nach Radio):", st.session_state.get("therapie_setting_verdacht"))
+                # st.write("Debug Seite 4 > Auswahl verdacht (Radio):", setting_verdacht)
+                # st.write("Debug Seite 4 > Session verdacht (nach Radio):", st.session_state.get("therapie_setting_verdacht"))
                 if setting_verdacht.startswith("ambulant"):
                     st.info(
                         "💡 **Hinweis zur Diagnostik (ambulant):** "
