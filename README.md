@@ -196,6 +196,18 @@ update public.feedback_gpt
     where diagnostik_runden_gesamt is null;
 ```
 
+#### SQL nur für die zwei neuen Versorgungssettings
+Falls ausschließlich die zwei neuen Spalten ergänzt werden sollen, kann der folgende, schlanke SQL-Block genutzt werden. Er entspricht genau den neuen Variablen und enthält die passenden Spaltenkommentare.
+
+```sql
+alter table if exists public.feedback_gpt
+    add column if not exists therapie_setting_verdacht text,
+    add column if not exists therapie_setting_final text;
+
+comment on column public.feedback_gpt.therapie_setting_verdacht is 'Versorgungssetting nach Verdachtsdiagnose (ambulant vs. Einweisung)';
+comment on column public.feedback_gpt.therapie_setting_final is 'Finales Therapiesetting inkl. Facharztoption';
+```
+
 *Hinweis:* Falls bestehende Datensätze für `geschlecht` oder `koerper_befund` nachgetragen werden sollen, können diese Felder in Supabase manuell befüllt werden. Die Anwendung verwendet die Werte automatisch beim nächsten Laden der Fälle im Admin-Modus.
 
 #### Supabase-Tabelle für GPT-Feedback-Durchläufe

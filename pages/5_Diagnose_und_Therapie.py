@@ -19,9 +19,11 @@ st.session_state.setdefault("diagnose_therapie_edit", False)
 # zuverlässig mit den aktuell korrigierten Werten befüllt werden.
 st.session_state.setdefault("diagnose_therapie_sync_edit", False)
 # Das finale Therapiesetting wird hier als eigenständiger Kontext gepflegt.
+# Wir nutzen eine gültige Default-Option, damit das Radio-Widget keinen
+# ungültigen Session-State-Wert verarbeitet.
 # Debugging-Hinweis: Bei inkonsistenten UI-Zuständen kann dieser Key gezielt
 # geleert werden, um die Auswahl neu zu erzwingen.
-st.session_state.setdefault("therapie_setting_final", "")
+st.session_state.setdefault("therapie_setting_final", "Einweisung Notaufnahme")
 # Synchronisations-Keys für die Eingabefelder, damit nach der sprachlichen Korrektur
 # die aktualisierten Inhalte sicher in den Widgets angezeigt werden.
 # Hinweis zum Debugging: Bei unerwarteten Vorbelegungen können diese Keys gezielt

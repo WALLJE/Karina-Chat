@@ -26,9 +26,11 @@ st.session_state.setdefault("befund_generierung_gescheitert", False)
 # temporär geleert werden, um die Datenquelle zu überprüfen.
 st.session_state.setdefault("user_diagnostics", "")
 # Das Versorgungssetting zur Verdachtsdiagnose wird direkt im Diagnostik-Teil
-# erfasst. Wir initialisieren es hier, damit spätere Zugriffe keine KeyError
-# auslösen und Debugging (z. B. über st.session_state.pop(...)) leicht bleibt.
-st.session_state.setdefault("therapie_setting_verdacht", "")
+# erfasst. Wir initialisieren es hier mit einer gültigen Option, damit
+# Streamlit bei der ersten Darstellung keinen ungültigen Default erhält.
+# Debugging-Hinweis: Bei Bedarf kann der Key gezielt entfernt werden, um die
+# Auswahl neu aufzubauen (z. B. via st.session_state.pop(...)).
+st.session_state.setdefault("therapie_setting_verdacht", "Einweisung Notaufnahme")
 
 
 def aktualisiere_kumulative_befunde_page(neuer_befund: str) -> None:
@@ -120,6 +122,10 @@ if "koerper_befund" in st.session_state:
                     if bestehendes_setting in setting_optionen_verdacht:
                         default_index = setting_optionen_verdacht.index(bestehendes_setting)
                     else:
+                        # Streamlit wirft einen Fehler, wenn ein Session-State-Wert
+                        # nicht zu den Optionen passt. Für Debugging kann hier
+                        # temporär st.write(bestehendes_setting) aktiviert werden.
+                        st.session_state.pop("therapie_setting_verdacht", None)
                         default_index = 0
                     setting_verdacht = st.radio(
                         "Wie soll die Behandlung nach der Verdachtsdiagnose fortgeführt werden?",
