@@ -102,6 +102,11 @@ def speichere_gpt_feedback_in_supabase():
             # Zusammenfassung der körperlichen Untersuchung. Bleibt leer, wenn
             # kein Befund eingegeben wurde.
             "koerper_befund": st.session_state.get("koerper_befund", ""),
+            # Versorgungssetting zur Verdachtsdiagnose. Dieses Feld hilft später
+            # bei der Auswertung, ob ambulant/stationär korrekt eingeschätzt wurde.
+            "therapie_setting_verdacht": st.session_state.get("therapie_setting_verdacht", ""),
+            # Finales Therapiesetting, inklusive möglicher Facharzt-Option.
+            "therapie_setting_final": st.session_state.get("therapie_setting_final", ""),
             # Kumulierte Laufzeit aller GPT-Aktionen in Sekunden. Diese Summe
             # basiert auf jedem einzelnen Modellaufruf in der Sitzung.
             "gpt_aktionsdauer_gesamt_sek": round(

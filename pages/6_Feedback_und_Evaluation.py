@@ -58,6 +58,10 @@ if not feedback_text:
         if msg["role"] == "user"
     ])
     anzahl_termine = st.session_state.get("diagnostik_runden_gesamt", 1)
+    # Versorgungssetting wird für das Feedback separat übergeben, damit
+    # ambulante und stationäre Kontexte korrekt bewertet werden können.
+    therapie_setting_verdacht = st.session_state.get("therapie_setting_verdacht", "")
+    therapie_setting_final = st.session_state.get("therapie_setting_final", "")
 
     if is_offline():
         feedback = feedback_erzeugen(
@@ -71,7 +75,9 @@ if not feedback_text:
             user_verlauf,
             anzahl_termine,
             diagnose_szenario,
-            st.session_state.get("amboss_result"),
+            therapie_setting_verdacht=therapie_setting_verdacht,
+            therapie_setting_final=therapie_setting_final,
+            amboss_payload=st.session_state.get("amboss_result"),
             patient_alter=st.session_state.get("patient_age"),
         )
     else:
@@ -101,7 +107,9 @@ if not feedback_text:
                 user_verlauf,
                 anzahl_termine,
                 diagnose_szenario,
-                st.session_state.get("amboss_result"),
+                therapie_setting_verdacht=therapie_setting_verdacht,
+                therapie_setting_final=therapie_setting_final,
+                amboss_payload=st.session_state.get("amboss_result"),
                 patient_alter=st.session_state.get("patient_age"),
                 status_updater=status_updater,
             )
@@ -119,7 +127,9 @@ if not feedback_text:
                     user_verlauf,
                     anzahl_termine,
                     diagnose_szenario,
-                    st.session_state.get("amboss_result"),
+                    therapie_setting_verdacht=therapie_setting_verdacht,
+                    therapie_setting_final=therapie_setting_final,
+                    amboss_payload=st.session_state.get("amboss_result"),
                     patient_alter=st.session_state.get("patient_age"),
                 )
 

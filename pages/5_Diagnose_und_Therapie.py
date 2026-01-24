@@ -18,6 +18,12 @@ st.session_state.setdefault("diagnose_therapie_edit", False)
 # Es sorgt dafür, dass die Widget-States *vor* dem Rendern der Eingabefelder
 # zuverlässig mit den aktuell korrigierten Werten befüllt werden.
 st.session_state.setdefault("diagnose_therapie_sync_edit", False)
+# Das finale Therapiesetting wird hier als eigenständiger Kontext gepflegt.
+# Wir nutzen eine gültige Default-Option, damit das Radio-Widget keinen
+# ungültigen Session-State-Wert verarbeitet.
+# Debugging-Hinweis: Bei inkonsistenten UI-Zuständen kann dieser Key gezielt
+# geleert werden, um die Auswahl neu zu erzwingen.
+st.session_state.setdefault("therapie_setting_final", "Einweisung Notaufnahme")
 # Synchronisations-Keys für die Eingabefelder, damit nach der sprachlichen Korrektur
 # die aktualisierten Inhalte sicher in den Widgets angezeigt werden.
 # Hinweis zum Debugging: Bei unerwarteten Vorbelegungen können diese Keys gezielt
@@ -37,10 +43,21 @@ if "befunde" not in st.session_state:
 if (
     st.session_state.get("final_diagnose", "").strip()
     and st.session_state.get("therapie_vorschlag", "").strip()
+    and st.session_state.get("therapie_setting_final", "").strip()
     and not st.session_state.get("diagnose_therapie_edit")
 ):
     st.markdown(f"**Ihre Diagnose:**  \n{st.session_state.final_diagnose}")
     st.markdown(f"**Therapiekonzept:**  \n{st.session_state.therapie_vorschlag}")
+    st.markdown(
+        f"**Therapiesetting (final):**  \n{st.session_state.therapie_setting_final}"
+    )
+    # Wenn das Setting eine Einweisung verlangt, erläutern wir den Rollenwechsel.
+    if st.session_state.therapie_setting_final in {"Einweisung Notaufnahme", "Einweisung elektiv"}:
+        st.info(
+            "ℹ️ **Rollenwechsel:** Die Versorgung erfolgt im Krankenhaus/Notaufnahme. "
+            "Ab jetzt beziehen sich Diagnostik- und Therapieentscheidungen auf "
+            "dieses Setting – Sie übernehmen die Rolle in der Klinik."
+        )
     # Button, um gezielt zur Eingabe zurückzukehren und die bestehenden Inhalte zu bearbeiten.
     if st.button("✏️ Diagnose/Therapie überarbeiten oder ergänzen"):
         st.session_state.diagnose_therapie_edit = True
@@ -68,12 +85,42 @@ else:
             "Ihr Therapiekonzept:",
             key="diagnose_therapie_edit_therapie",
         )
+        # Das finale Therapiesetting wird hier neu bewertet. Der zusätzliche
+        # Facharzt-Termin ist bewusst nur im finalen Setting enthalten.
+        setting_optionen_final = [
+            "Einweisung Notaufnahme",
+            "Einweisung elektiv",
+            "ambulant (zeitnahe Wiedervorstellung)",
+            "ambulant (Vorstellung im nächsten Quartal)",
+            "Vorstellung Facharzt (Termin in 2 Monaten)",
+        ]
+        bestehendes_setting = st.session_state.get("therapie_setting_final", "")
+        if bestehendes_setting in setting_optionen_final:
+            default_index = setting_optionen_final.index(bestehendes_setting)
+        else:
+            default_index = 0
+        setting_final = st.radio(
+            "Wie soll die Therapie endgültig fortgeführt werden?",
+            options=setting_optionen_final,
+            index=default_index,
+            key="therapie_setting_final",
+        )
+        # Wenn eine Einweisung gewählt wird, erklären wir den Rollenwechsel
+        # direkt im Formular, damit die Studierenden den Kontext früh verstehen.
+        if setting_final in {"Einweisung Notaufnahme", "Einweisung elektiv"}:
+            st.info(
+                "ℹ️ **Rollenwechsel:** Die weitere Versorgung erfolgt im Krankenhaus/Notaufnahme. "
+                "Bitte richten Sie Diagnostik- und Therapievorschläge konsequent an diesem Setting aus."
+            )
         submitted_final = st.form_submit_button("✅ Senden")
 
     if submitted_final:
         client = st.session_state.get("openai_client")
         st.session_state.final_diagnose = sprach_check(input_diag, client)
         st.session_state.therapie_vorschlag = sprach_check(input_therapie, client)
+        # Das finale Setting wird separat gespeichert, um es im Feedback
+        # und in der Supabase-Persistenz auswerten zu können.
+        st.session_state.therapie_setting_final = setting_final
         # Nach dem Speichern wieder in die Anzeigeansicht wechseln.
         st.session_state.diagnose_therapie_edit = False
         if is_offline():
@@ -91,7 +138,8 @@ st.page_link(
     icon="📝",
     disabled=not (
         st.session_state.get("final_diagnose", "").strip() and
-        st.session_state.get("therapie_vorschlag", "").strip()
+        st.session_state.get("therapie_vorschlag", "").strip() and
+        st.session_state.get("therapie_setting_final", "").strip()
     )
 )
 
