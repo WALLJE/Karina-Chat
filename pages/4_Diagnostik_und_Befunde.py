@@ -138,10 +138,8 @@ if "koerper_befund" in st.session_state:
                 # sich automatisch an, sobald ein anderes Setting angeklickt
                 # wird. So ist die Einordnung vor der Diagnostik-Eingabe klar.
                 # Debug-Hinweis: Bei Unklarheiten kann hier temporär
-                #########
-                st.write(setting_verdacht) 
-            
-                # aktiviert werden.
+                # `st.write(setting_verdacht)` aktiviert werden, um die
+                # aktuelle Auswahl direkt im UI zu sehen.
                 if setting_verdacht.startswith("ambulant"):
                     st.info(
                         "💡 **Hinweis zur Diagnostik (ambulant):** "

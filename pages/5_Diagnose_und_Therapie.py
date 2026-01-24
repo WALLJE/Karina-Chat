@@ -67,6 +67,42 @@ else:
         st.session_state["diagnose_therapie_edit_diag"] = st.session_state.get("final_diagnose", "")
         st.session_state["diagnose_therapie_edit_therapie"] = st.session_state.get("therapie_vorschlag", "")
         st.session_state["diagnose_therapie_sync_edit"] = False
+    # Das finale Therapiesetting wird außerhalb des Formulars gepflegt, damit
+    # Änderungen sofort im Session-State landen und beim Wechsel zur Feedback-
+    # Seite zuverlässig verfügbar sind. Dadurch entfällt die Abhängigkeit von
+    # einem zusätzlichen Form-Submit.
+    setting_optionen_final = [
+        "Einweisung Notaufnahme",
+        "Einweisung elektiv",
+        "ambulant (zeitnahe Wiedervorstellung)",
+        "ambulant (Vorstellung im nächsten Quartal)",
+        "Vorstellung Facharzt (Termin in 2 Monaten)",
+    ]
+    bestehendes_setting = st.session_state.get("therapie_setting_final", "")
+    if bestehendes_setting in setting_optionen_final:
+        default_index = setting_optionen_final.index(bestehendes_setting)
+    else:
+        # Streamlit ignoriert den Index, wenn ein ungültiger Session-State-Wert
+        # vorhanden ist. Wir entfernen den Key deshalb vor dem Rendern.
+        # Debugging-Hinweis: Bei Bedarf kann hier temporär
+        # `st.write(bestehendes_setting)` aktiviert werden, um den Wert zu prüfen.
+        st.session_state.pop("therapie_setting_final", None)
+        default_index = 0
+    setting_final = st.radio(
+        "Wie soll die Therapie endgültig fortgeführt werden?",
+        options=setting_optionen_final,
+        index=default_index,
+        key="therapie_setting_final",
+    )
+    # Debug-Hinweis: Bei Bedarf kann hier `st.write(setting_final)` aktiviert werden,
+    # um die aktuelle Auswahl sofort sichtbar zu machen.
+    # Kurzer didaktischer Hinweis: Das Setting kann hier noch einmal
+    # hinterfragt und bei Bedarf angepasst werden, bevor das Feedback läuft.
+    st.info(
+        "💡 **Hinweis:** Prüfen Sie Ihr Vorgehen noch einmal und passen Sie das "
+        "Versorgungssetting bei Bedarf an – Sie dürfen Ihre Einschätzung "
+        "hier bewusst revidieren."
+    )
     with st.form("diagnose_therapie_formular"):
         # Vorbelegung der Texteingaben, wenn bereits Werte vorhanden sind.
         # Dies ermöglicht ein schnelles Nachschärfen der Inhalte ohne erneute Eingabe.
@@ -77,44 +113,6 @@ else:
         input_therapie = st.text_area(
             "Ihr Therapiekonzept:",
             key="diagnose_therapie_edit_therapie",
-        )
-        # Kurzer didaktischer Hinweis: Das Setting kann hier noch einmal
-        # hinterfragt und bei Bedarf angepasst werden, bevor das Feedback läuft.
-        st.info(
-            "💡 **Hinweis:** Prüfen Sie Ihr Vorgehen noch einmal und passen Sie das "
-            "Versorgungssetting bei Bedarf an – Sie dürfen Ihre Einschätzung "
-            "hier bewusst revidieren."
-        )
-        # Das finale Therapiesetting wird hier neu bewertet. Der zusätzliche
-        # Facharzt-Termin ist bewusst nur im finalen Setting enthalten.
-        setting_optionen_final = [
-            "Einweisung Notaufnahme",
-            "Einweisung elektiv",
-            "ambulant (zeitnahe Wiedervorstellung)",
-            "ambulant (Vorstellung im nächsten Quartal)",
-            "Vorstellung Facharzt (Termin in 2 Monaten)",
-        ]
-        bestehendes_setting = st.session_state.get("therapie_setting_final", "")
-        if bestehendes_setting in setting_optionen_final:
-            default_index = setting_optionen_final.index(bestehendes_setting)
-            ######
-            st.write(bestehendes_setting)
-            ######
-        else:
-            # Streamlit ignoriert den Index, wenn ein ungültiger Session-State-Wert
-            # vorhanden ist. Wir entfernen den Key deshalb vor dem Rendern.
-            # Debugging-Hinweis: Bei Bedarf kann hier temporär 
-            #############
-            st.write(bestehendes_setting)
-            ########
-            # aktiviert werden, um den fehlerhaften Wert zu prüfen.
-            st.session_state.pop("therapie_setting_final", None)
-            default_index = 0
-        setting_final = st.radio(
-            "Wie soll die Therapie endgültig fortgeführt werden?",
-            options=setting_optionen_final,
-            index=default_index,
-            key="therapie_setting_final",
         )
         submitted_final = st.form_submit_button("✅ Senden")
 
