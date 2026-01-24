@@ -167,24 +167,28 @@ create trigger set_patientenverhalten_updated_at
 - **Anpassung:** Schwellenwerte für automatische Bewertungen lassen sich konfigurieren, um unterschiedliche Ausbildungsniveaus zu berücksichtigen.
 - **Frühe Modusbestimmung:** Der aktive Feedback-Modus wird bereits beim Start festgelegt, damit der Adminbereich sofort den tatsächlichen Status ausweist.
 - **Variabilitätsanalyse:** Im Adminbereich können gespeicherte Feedback-Fälle aus der Supabase-Tabelle `feedback_gpt` per ID geladen und mehrfach neu berechnet werden. Die Einstellungen erlauben, eine frei wählbare Anzahl von Durchläufen im ChatGPT- oder im kombinierten ChatGPT+AMBOSS-Modus zu starten. Alle benötigten Variablen werden automatisch aus dem Datensatz übernommen; fehlende Felder werden als Hinweis ausgegeben und neutral an den Prompt weitergereicht. Die Ergebnisse landen in einer eigenen Supabase-Tabelle (siehe unten) und bleiben dort vollständig erhalten; ein PDF-Export wurde bewusst entfernt, damit nur die Datenbank als Quelle für Auswertungen dient.
-    - **Hinweis bei fehlenden Feldern:** Die Admin-Seite kennzeichnet leere Pflichtfelder (`szenario`, `chatverlauf`, `diagnostik`, `befunde`, `verdachtsdiagnosen`, `finale_diagnose`, `therapie`) sowie fehlende optionale Kontextangaben (`geschlecht`, `alter`, `diagnostik_runden_gesamt`, `koerper_befund`). Alle fehlenden Werte werden gespeichert, sodass spätere Auswertungen die Datengrundlage nachvollziehen können.
+    - **Hinweis bei fehlenden Feldern:** Die Admin-Seite kennzeichnet leere Pflichtfelder (`szenario`, `chatverlauf`, `diagnostik`, `befunde`, `verdachtsdiagnosen`, `finale_diagnose`, `therapie`) sowie fehlende optionale Kontextangaben (`geschlecht`, `alter`, `diagnostik_runden_gesamt`, `koerper_befund`, `therapie_setting_verdacht`, `therapie_setting_final`). Alle fehlenden Werte werden gespeichert, sodass spätere Auswertungen die Datengrundlage nachvollziehen können.
     - **Keine stillen Fallbacks:** Wird im gespeicherten Chatverlauf kein klarer Nutzer:innen-Beitrag erkannt (z. B. fehlendes Präfix „Du:“), übernimmt der Admin-Reload den Verlauf bewusst NICHT. Stattdessen erscheint ein Warnhinweis, und der Rohverlauf kann bei Bedarf über kommentierte `st.write`-Ausgaben analysiert werden, um die Präfixliste anzupassen.
     - **Keine PDF-Ausgabe:** Die erneuten Feedback-Durchläufe werden ausschließlich in Supabase protokolliert. Dadurch entfallen Fehlerquellen rund um den PDF-Export (Fonts, Rückgabetypen, Zeilenumbrüche). Wenn Analyse-Teams eine Datei benötigen, können sie die Daten aus der Tabelle `feedback_gpt_variationen` exportieren und bei Bedarf eigenständig formatieren.
     - **Schema-Warnungen:** Wenn neue optionale Spalten wie `diagnostik_runden_gesamt` oder `koerper_befund` in Supabase noch fehlen, wird im Admin-UI eine Warnung eingeblendet. Die Speicherung läuft weiter, sobald die in diesem README dokumentierten SQL-Befehle ausgeführt wurden.
 
 #### Supabase-Tabelle `feedback_gpt` um fehlende Felder ergänzen
-Damit die oben genannten optionalen Kontextfelder dauerhaft mitgespeichert werden, sollten bestehende Installationen die Tabelle `feedback_gpt` in Supabase um vier Spalten erweitern. Der folgende SQL-Block kann unverändert in der Supabase-SQL-Konsole ausgeführt werden. Er fügt die Spalten hinzu (falls noch nicht vorhanden), setzt einen sinnvollen Default-Wert für die Anzahl der Diagnostikrunden und dokumentiert die Felder über Spaltenkommentare.
+Damit die oben genannten optionalen Kontextfelder dauerhaft mitgespeichert werden, sollten bestehende Installationen die Tabelle `feedback_gpt` in Supabase um zusätzliche Spalten erweitern. Der folgende SQL-Block kann unverändert in der Supabase-SQL-Konsole ausgeführt werden. Er fügt die Spalten hinzu (falls noch nicht vorhanden), setzt einen sinnvollen Default-Wert für die Anzahl der Diagnostikrunden und dokumentiert die Felder über Spaltenkommentare.
 
 ```sql
 alter table if exists public.feedback_gpt
     add column if not exists geschlecht text,
     add column if not exists diagnostik_runden_gesamt integer default 1,
     add column if not exists koerper_befund text,
+    add column if not exists therapie_setting_verdacht text,
+    add column if not exists therapie_setting_final text,
     add column if not exists gpt_aktionsdauer_gesamt_sek double precision;
 
 comment on column public.feedback_gpt.geschlecht is 'Kurzform m/w/d/n, wird aus patient_gender übernommen';
 comment on column public.feedback_gpt.diagnostik_runden_gesamt is 'Gesamtzahl der eingegebenen Diagnostikrunden (mindestens 1)';
 comment on column public.feedback_gpt.koerper_befund is 'Zusammenfassung der körperlichen Untersuchung';
+comment on column public.feedback_gpt.therapie_setting_verdacht is 'Versorgungssetting nach Verdachtsdiagnose (ambulant vs. Einweisung)';
+comment on column public.feedback_gpt.therapie_setting_final is 'Finales Therapiesetting inkl. Facharztoption';
 comment on column public.feedback_gpt.gpt_aktionsdauer_gesamt_sek is 'Kumulierte GPT-Laufzeit der Sitzung in Sekunden';
 
 update public.feedback_gpt
