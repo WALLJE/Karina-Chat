@@ -142,27 +142,25 @@ if "koerper_befund" in st.session_state:
                 if setting_verdacht.startswith("ambulant"):
                     st.info(
                         "💡 **Hinweis zur Diagnostik (ambulant):** "
-                        "Die diagnostischen Möglichkeiten sind **nicht limitiert**, "
-                        "aber zusätzliche Anforderungen sind nur bei **neuen Terminen** möglich. "
-                        "Bitte planen Sie daher die Anzahl und Reihenfolge der Untersuchungen "
-                        "realistisch (Zeitfaktor)."
+                        "Die diagnostischen Möglichkeiten in diesem Schritt sind **nicht limitiert**, "
+                        "eventuell weitere Anforderungen sind nur bei **neuen Terminen** möglich. "
+                        "Weitere Untersuchungen können Sie in einem nächsten Schritt anfordern, wenn gewünscht."
                     )
                 else:
                     st.info(
                         "💡 **Hinweis zur Diagnostik (Einweisung/Notaufnahme):** "
-                        "Es können bereits vor der stationären Aufnahme oder "
+                        "Es können hier bereits vor der stationären Aufnahme oder "
                         "Notfalleinweisung kurzfristig praktikable Untersuchungen "
                         "angefordert werden. Achten Sie darauf, dass diese Maßnahmen "
-                        "zeitnah und im Setting umsetzbar sind. Im Feedback wird "
-                        "geprüft, ob die erste Diagnostik vor der Aufnahme sinnvoll "
-                        "und kurzfristig praktikabel war. "
+                        "zeitnah ambulant umsetzbar sind."
                         "ℹ️ **Rollenwechsel:** Die weitere Versorgung erfolgt im "
-                        "Krankenhaus/Notaufnahme. Bitte richten Sie Diagnostik- und "
+                        "Krankenhaus/Notaufnahme, Sie übernehmen im nächsten Schritt "
+                        "die Behandlung im Krankenhaus. Bitte richten Sie Diagnostik- und "
                         "Therapievorschläge konsequent an diesem Setting aus."
                     )
-                st.markdown(
-                    "**Hinweis zur Einordnung:** Die folgenden Maßnahmen werden im "
-                    "Kontext des oben gewählten Versorgungssettings bewertet."
+                # st.markdown(
+                #    "**Hinweis zur Einordnung:** Die folgenden Maßnahmen werden im "
+                #    "Kontext des oben gewählten Versorgungssettings bewertet."
                 )
                 with st.form("differentialdiagnosen_diagnostik_formular"):
                     ddx_input2 = st.text_area(
