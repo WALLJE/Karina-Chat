@@ -98,6 +98,11 @@ else:
         if bestehendes_setting in setting_optionen_final:
             default_index = setting_optionen_final.index(bestehendes_setting)
         else:
+            # Streamlit ignoriert den Index, wenn ein ungültiger Session-State-Wert
+            # vorhanden ist. Wir entfernen den Key deshalb vor dem Rendern.
+            # Debugging-Hinweis: Bei Bedarf kann hier temporär st.write(...)
+            # aktiviert werden, um den fehlerhaften Wert zu prüfen.
+            st.session_state.pop("therapie_setting_final", None)
             default_index = 0
         setting_final = st.radio(
             "Wie soll die Therapie endgültig fortgeführt werden?",

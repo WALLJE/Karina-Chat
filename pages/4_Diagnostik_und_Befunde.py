@@ -133,16 +133,33 @@ if "koerper_befund" in st.session_state:
                         index=default_index,
                         key="therapie_setting_verdacht",
                     )
-                    # Für ambulante Settings geben wir den Hinweis zu Diagnostikrunden.
-                    # Im stationären/Notaufnahme-Setting entfällt er bewusst.
+                    # Der Hinweis wird direkt nach der Auswahl angezeigt und passt
+                    # sich automatisch an, sobald ein anderes Setting angeklickt
+                    # wird. So ist die Einordnung vor der Diagnostik-Eingabe klar.
+                    # Debug-Hinweis: Bei Unklarheiten kann hier temporär
+                    # st.write(setting_verdacht) aktiviert werden.
                     if setting_verdacht.startswith("ambulant"):
                         st.info(
-                            "💡 **Hinweis zu Diagnostikrunden (ambulant):** "
+                            "💡 **Hinweis zur Diagnostik (ambulant):** "
                             "Die diagnostischen Möglichkeiten sind **nicht limitiert**, "
                             "aber zusätzliche Anforderungen sind nur bei **neuen Terminen** möglich. "
                             "Bitte planen Sie daher die Anzahl und Reihenfolge der Untersuchungen "
                             "realistisch (Zeitfaktor)."
                         )
+                    else:
+                        st.info(
+                            "💡 **Hinweis zur Diagnostik (Einweisung/Notaufnahme):** "
+                            "Es können bereits vor der stationären Aufnahme oder "
+                            "Notfalleinweisung kurzfristig praktikable Untersuchungen "
+                            "angefordert werden. Achten Sie darauf, dass diese Maßnahmen "
+                            "zeitnah und im Setting umsetzbar sind. Im Feedback wird "
+                            "geprüft, ob die erste Diagnostik vor der Aufnahme sinnvoll "
+                            "und kurzfristig praktikabel war."
+                        )
+                    st.markdown(
+                        "**Hinweis zur Einordnung:** Die folgenden Maßnahmen werden im "
+                        "Kontext des oben gewählten Versorgungssettings bewertet."
+                    )
                     diag_input2 = st.text_area("Welche konkreten diagnostischen Maßnahmen möchten Sie vorschlagen?", key="diag_input2")
                     submitted_diag = st.form_submit_button("✅ Eingaben speichern")
         
@@ -150,9 +167,13 @@ if "koerper_befund" in st.session_state:
                     from sprachmodul import sprach_check
                     client = st.session_state.get("openai_client")
                     st.session_state.user_ddx2 = sprach_check(ddx_input2, client)
-                    # Das Versorgungssetting wird separat gespeichert, damit es
-                    # später im Feedback und in Supabase berücksichtigt werden kann.
-                    st.session_state.therapie_setting_verdacht = setting_verdacht
+                    # Das Versorgungssetting stammt direkt aus dem Radio-Widget.
+                    # Wichtig: Nach der Widget-Initialisierung darf der Key nicht
+                    # erneut gesetzt werden, sonst bricht Streamlit mit einem
+                    # "cannot be modified"-Fehler ab. Debug-Hinweis: Falls ein
+                    # ungültiger Wert auftaucht, kann der Key per
+                    # st.session_state.pop("therapie_setting_verdacht", None)
+                    # gelöscht und die Seite neu geladen werden.
                     st.session_state.user_diagnostics = sprach_check(diag_input2, client)
                     starte_automatische_befundgenerierung_page(client)
 
