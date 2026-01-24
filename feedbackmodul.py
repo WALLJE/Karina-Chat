@@ -118,11 +118,16 @@ def feedback_erzeugen(
     # Platzhalterwerte werden vereinheitlicht, damit beide Settings sicher
     # im Prompt landen und nicht als "NULL" angezeigt werden.
     # Debug-Hinweis: Falls weiterhin Platzhalter auftauchen, kann hier
-    # temporär ``st.write(therapie_setting_verdacht, therapie_setting_final)``
+    # temporär ``
+    #######
+    st.write(therapie_setting_verdacht, therapie_setting_final)
+    ########
     # aktiviert werden, um die Session-State-Quelle zu prüfen.
     therapie_setting_verdacht = _bereinige_setting_wert(therapie_setting_verdacht)
     therapie_setting_final = _bereinige_setting_wert(therapie_setting_final)
-
+    ######
+    st.write(therapie_setting_verdacht, therapie_setting_final)
+    #######
     # Im Offline-Modus wird eine vorbereitete Rückfallantwort genutzt. Weitere
     # Fallbacks sind bewusst nicht vorhanden, um das Verhalten transparent zu
     # halten.
