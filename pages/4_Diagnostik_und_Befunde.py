@@ -161,7 +161,7 @@ if "koerper_befund" in st.session_state:
                 # st.markdown(
                 #    "**Hinweis zur Einordnung:** Die folgenden Maßnahmen werden im "
                 #    "Kontext des oben gewählten Versorgungssettings bewertet."
-                )
+                # )
                 with st.form("differentialdiagnosen_diagnostik_formular"):
                     ddx_input2 = st.text_area(
                         "Welche drei Differentialdiagnosen halten Sie nach Anamnese und Untersuchung für möglich?",
