@@ -77,8 +77,17 @@ def feedback_erzeugen(
     user_verlauf,
     anzahl_termine,
     diagnose_szenario,
+    therapie_setting_verdacht="",
+    therapie_setting_final="",
+    amboss_payload=None,
+    patient_alter=None,
+    status_updater=None,
 ):
     """Generiert das Abschlussfeedback anhand eines einzigen konsistenten Prompts."""
+    # Hinweis: Die Parameter ``amboss_payload``, ``patient_alter`` und
+    # ``status_updater`` werden aktuell nicht im Prompt verwendet, bleiben aber
+    # als Schnittstelle für Admin-Ansichten erhalten. Für Debugging kann ein
+    # späteres Logging hier ergänzt werden.
 
     # Der Modus entscheidet, ob zusätzlich AMBOSS-Ergebnisse in die Bewertung
     # einbezogen werden dürfen. Bei Bedarf kann hier zur Fehlersuche der Modus
@@ -89,7 +98,11 @@ def feedback_erzeugen(
     # Fallbacks sind bewusst nicht vorhanden, um das Verhalten transparent zu
     # halten.
     if is_offline():
-        return get_offline_feedback(diagnose_szenario)
+        return get_offline_feedback(
+            diagnose_szenario,
+            therapie_setting_verdacht=therapie_setting_verdacht,
+            therapie_setting_final=therapie_setting_final,
+        )
 
     patient_forms = get_patient_forms()
 
@@ -129,6 +142,10 @@ Erhobene Differentialdiagnosen (Nutzerangaben):
 Geplante diagnostische Maßnahmen (Nutzerangaben):
 {diagnostik_eingaben}
 
+Versorgungssetting:
+- Verdacht: {therapie_setting_verdacht or "Keine Angabe."}
+- Final: {therapie_setting_final or "Keine Angabe."}
+
 Finale Diagnose (Nutzereingabe):
 {final_diagnose}
 
@@ -149,6 +166,9 @@ Nenne vorab das zugrunde liegende Szenario. Gib an, ob die Diagnose richtig gest
 6. Ist das Therapiekonzept leitliniengerecht, plausibel und auf die Diagnose abgestimmt?
 
 **Berücksichtige und kommentiere zusätzlich**:
+- Erkläre, wie sich das gewählte Versorgungssetting (ambulant vs. Einweisung) auf die Diagnostik-Strategie auswirkt.
+- Wenn ein stationäres oder Notaufnahme-Setting gewählt wurde, **bewerte die Diagnostikrunden nicht negativ** – sie gelten dort als eigene Versorgungsstufe.
+- Wenn ein ambulantes Setting gewählt wurde, **bewerte die Diagnostikrunden explizit** im Sinne von Termin- und Zeitfaktoren, ohne die Diagnostik an sich zu limitieren.
 - ökologische Aspekte (z. B. überflüssige Diagnostik, zuviele Anforderungen, zuviele Termine, CO₂-Bilanz, Strahlenbelastung bei CT oder Röntgen, Ressourcenverbrauch).
 - ökonomische Sinnhaftigkeit (Kosten-Nutzen-Verhältnis)
 - Beachte und begründe auch, warum zuwenig Diagnostik unwirtschaftlich und nicht nachhaltig sein kann.
