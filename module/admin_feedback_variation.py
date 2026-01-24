@@ -64,6 +64,10 @@ _OPTIONAL_FIELDS: Dict[str, str] = {
     "alter": "patient_age",
     "diagnostik_runden_gesamt": "diagnostik_runden_gesamt",
     "koerper_befund": "koerper_befund",
+    # Versorgungssettings werden separat gespeichert, damit der Admin-Reload
+    # die Kontextwechsel (ambulant vs. stationär) nachvollziehen kann.
+    "therapie_setting_verdacht": "therapie_setting_verdacht",
+    "therapie_setting_final": "therapie_setting_final",
 }
 
 class FeedbackVariationError(RuntimeError):
@@ -321,6 +325,8 @@ def fuehre_feedback_durchlaeufe_aus(
                 st.session_state.get("user_verlauf", ""),
                 int(st.session_state.get("diagnostik_runden_gesamt", 1) or 1),
                 st.session_state.get("diagnose_szenario", fall.szenario),
+                st.session_state.get("therapie_setting_verdacht", ""),
+                st.session_state.get("therapie_setting_final", ""),
             )
 
             ergebnisse.append(

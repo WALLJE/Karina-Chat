@@ -25,6 +25,12 @@ st.session_state.setdefault("befund_generierung_gescheitert", False)
 # Debug-Hinweis: Falls unerwartete Werte angezeigt werden, kann dieser Key
 # temporär geleert werden, um die Datenquelle zu überprüfen.
 st.session_state.setdefault("user_diagnostics", "")
+# Das Versorgungssetting zur Verdachtsdiagnose wird direkt im Diagnostik-Teil
+# erfasst. Wir initialisieren es hier mit einer gültigen Option, damit
+# Streamlit bei der ersten Darstellung keinen ungültigen Default erhält.
+# Debugging-Hinweis: Bei Bedarf kann der Key gezielt entfernt werden, um die
+# Auswahl neu aufzubauen (z. B. via st.session_state.pop(...)).
+st.session_state.setdefault("therapie_setting_verdacht", "Einweisung Notaufnahme")
 
 
 def aktualisiere_kumulative_befunde_page(neuer_befund: str) -> None:
@@ -99,6 +105,61 @@ if "koerper_befund" in st.session_state:
         if "user_ddx2" not in st.session_state:
                 with st.form("differentialdiagnosen_diagnostik_formular"):
                     ddx_input2 = st.text_area("Welche drei Differentialdiagnosen halten Sie nach Anamnese und Untersuchung für möglich?", key="ddx_input2")
+                    # Hinweis: Das Versorgungssetting soll nach den DDx und vor der
+                    # konkreten Diagnostik erfragt werden. Dadurch überlegen die
+                    # Studierenden früh, ob die weitere Abklärung ambulant oder
+                    # stationär/notfallmäßig erfolgen soll.
+                    setting_optionen_verdacht = [
+                        "Einweisung Notaufnahme",
+                        "Einweisung elektiv",
+                        "ambulant (zeitnahe Wiedervorstellung)",
+                        "ambulant (Vorstellung im nächsten Quartal)",
+                    ]
+                    bestehendes_setting = st.session_state.get("therapie_setting_verdacht", "")
+                    # Debugging-Hinweis: Wenn ein unerwarteter Wert auftaucht, kann
+                    # das Setting temporär aus dem Session-State entfernt werden,
+                    # um die Auswahl erneut zu erzwingen.
+                    if bestehendes_setting in setting_optionen_verdacht:
+                        default_index = setting_optionen_verdacht.index(bestehendes_setting)
+                    else:
+                        # Streamlit wirft einen Fehler, wenn ein Session-State-Wert
+                        # nicht zu den Optionen passt. Für Debugging kann hier
+                        # temporär st.write(bestehendes_setting) aktiviert werden.
+                        st.session_state.pop("therapie_setting_verdacht", None)
+                        default_index = 0
+                    setting_verdacht = st.radio(
+                        "Wie soll die Behandlung nach der Verdachtsdiagnose fortgeführt werden?",
+                        options=setting_optionen_verdacht,
+                        index=default_index,
+                        key="therapie_setting_verdacht",
+                    )
+                    # Der Hinweis wird direkt nach der Auswahl angezeigt und passt
+                    # sich automatisch an, sobald ein anderes Setting angeklickt
+                    # wird. So ist die Einordnung vor der Diagnostik-Eingabe klar.
+                    # Debug-Hinweis: Bei Unklarheiten kann hier temporär
+                    # st.write(setting_verdacht) aktiviert werden.
+                    if setting_verdacht.startswith("ambulant"):
+                        st.info(
+                            "💡 **Hinweis zur Diagnostik (ambulant):** "
+                            "Die diagnostischen Möglichkeiten sind **nicht limitiert**, "
+                            "aber zusätzliche Anforderungen sind nur bei **neuen Terminen** möglich. "
+                            "Bitte planen Sie daher die Anzahl und Reihenfolge der Untersuchungen "
+                            "realistisch (Zeitfaktor)."
+                        )
+                    else:
+                        st.info(
+                            "💡 **Hinweis zur Diagnostik (Einweisung/Notaufnahme):** "
+                            "Es können bereits vor der stationären Aufnahme oder "
+                            "Notfalleinweisung kurzfristig praktikable Untersuchungen "
+                            "angefordert werden. Achten Sie darauf, dass diese Maßnahmen "
+                            "zeitnah und im Setting umsetzbar sind. Im Feedback wird "
+                            "geprüft, ob die erste Diagnostik vor der Aufnahme sinnvoll "
+                            "und kurzfristig praktikabel war."
+                        )
+                    st.markdown(
+                        "**Hinweis zur Einordnung:** Die folgenden Maßnahmen werden im "
+                        "Kontext des oben gewählten Versorgungssettings bewertet."
+                    )
                     diag_input2 = st.text_area("Welche konkreten diagnostischen Maßnahmen möchten Sie vorschlagen?", key="diag_input2")
                     submitted_diag = st.form_submit_button("✅ Eingaben speichern")
         
@@ -106,11 +167,23 @@ if "koerper_befund" in st.session_state:
                     from sprachmodul import sprach_check
                     client = st.session_state.get("openai_client")
                     st.session_state.user_ddx2 = sprach_check(ddx_input2, client)
+                    # Das Versorgungssetting stammt direkt aus dem Radio-Widget.
+                    # Wichtig: Nach der Widget-Initialisierung darf der Key nicht
+                    # erneut gesetzt werden, sonst bricht Streamlit mit einem
+                    # "cannot be modified"-Fehler ab. Debug-Hinweis: Falls ein
+                    # ungültiger Wert auftaucht, kann der Key per
+                    # st.session_state.pop("therapie_setting_verdacht", None)
+                    # gelöscht und die Seite neu geladen werden.
                     st.session_state.user_diagnostics = sprach_check(diag_input2, client)
                     starte_automatische_befundgenerierung_page(client)
 
         else:
                 st.markdown(f"**Differentialdiagnosen:**  \n{st.session_state.user_ddx2}")
+                # Das Setting der Verdachtsdiagnose wird im Verlauf sichtbar
+                # angezeigt, damit der Kontext erhalten bleibt.
+                st.markdown(
+                    f"**Versorgungssetting (Verdacht):**  \n{st.session_state.get('therapie_setting_verdacht', '')}"
+                )
                 st.markdown(f"**Diagnostische Maßnahmen:**  \n{st.session_state.user_diagnostics}")
 
         starte_automatische_befundgenerierung_page(st.session_state.get("openai_client"))

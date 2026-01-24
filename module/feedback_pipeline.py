@@ -28,6 +28,8 @@ class FeedbackContext:
     user_ddx2: str
     final_diagnose: str
     therapie_vorschlag: str
+    therapie_setting_verdacht: str
+    therapie_setting_final: str
     patient_forms_dativ: str
     patient_forms_genitiv: str
     patient_alter: Union[int, str, None] = None
@@ -65,6 +67,14 @@ class FeedbackContext:
         teile.append(
             "### Differentialdiagnosen\n"
             f"{self.user_ddx2 or 'Keine Differentialdiagnosen angegeben.'}"
+        )
+        # Das Versorgungssetting ist ein eigener Kontextblock, damit das Modell
+        # die Diagnose- und Therapieplanung an der richtigen Versorgungsstufe
+        # ausrichten kann (ambulant vs. stationär/notfallmäßig).
+        teile.append(
+            "### Versorgungssetting\n"
+            f"Verdacht: {self.therapie_setting_verdacht or 'Keine Angabe.'}\n"
+            f"Final: {self.therapie_setting_final or 'Keine Angabe.'}"
         )
         teile.append(
             "### Finale Diagnose & Therapieplan\n"
