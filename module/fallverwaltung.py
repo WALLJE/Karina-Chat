@@ -91,6 +91,10 @@ _FALL_SESSION_KEYS: set[str] = {
     "gpt_befunde_kumuliert",
     "final_diagnose",
     "therapie_vorschlag",
+    # Versorgungssetting wird getrennt für Verdacht und final gespeichert.
+    # Dadurch können Rollensprünge (Hausarzt -> Klinik) sauber nachvollzogen werden.
+    "therapie_setting_verdacht",
+    "therapie_setting_final",
     "final_feedback",
     "feedback_prompt_final",
     "feedback_row_id",

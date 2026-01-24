@@ -70,16 +70,32 @@ def get_offline_sonderuntersuchung(wunsch_text: str) -> str:
     )
 
 
-def get_offline_feedback(diagnose_szenario: str) -> str:
+def get_offline_feedback(
+    diagnose_szenario: str,
+    *,
+    therapie_setting_verdacht: str = "",
+    therapie_setting_final: str = "",
+) -> str:
     """Provide a static feedback note while offline."""
     szenario = diagnose_szenario or "dem aktuellen Szenario"
+    # Debugging-Hinweis: Die Settings werden hier nur informativ aufgenommen,
+    # damit im Offline-Modus kein Kontext verloren geht.
+    setting_hinweis = ""
+    if therapie_setting_verdacht or therapie_setting_final:
+        setting_hinweis = (
+            "\n"
+            f"(Setting Verdacht: {therapie_setting_verdacht or 'keine Angabe'}, "
+            f"Setting final: {therapie_setting_final or 'keine Angabe'})"
+        )
     return (
         "Offline-Modus – kein automatisches GPT-Feedback verfügbar."
         "\n"
         f"Bewerte deine Bearbeitung von {szenario} anhand der Checkliste:"
+        f"{setting_hinweis}"
         "\n1. Wurden die relevanten Anamnesepunkte erfragt?"
         "\n2. Passten Diagnostik und Differentialdiagnosen zusammen?"
         "\n3. Ist die finale Diagnose nachvollziehbar und das Therapiekonzept begründet?"
+        "\n4. Passte das Versorgungssetting (ambulant vs. Einweisung) zur klinischen Lage?"
         "\nNutze die Lösungen oder besprich den Fall im Team, sobald der Online-Modus wieder aktiv ist."
     )
 

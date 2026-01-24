@@ -64,6 +64,10 @@ def _generiere_feedback() -> str:
         msg["content"] for msg in st.session_state.get("messages", []) if msg["role"] == "user"
     )
     anzahl_termine = st.session_state.get("diagnostik_runden_gesamt", 1)
+    # Das Versorgungssetting wird explizit ins GPT-Feedback gegeben, damit
+    # ambulante Terminlogik und stationäre Kontexte korrekt bewertet werden.
+    therapie_setting_verdacht = st.session_state.get("therapie_setting_verdacht", "")
+    therapie_setting_final = st.session_state.get("therapie_setting_final", "")
 
     if is_offline():
         feedback = feedback_erzeugen(
@@ -77,6 +81,8 @@ def _generiere_feedback() -> str:
             user_verlauf,
             anzahl_termine,
             diagnose_szenario,
+            therapie_setting_verdacht,
+            therapie_setting_final,
         )
         st.session_state.final_feedback = feedback
     else:
@@ -98,6 +104,8 @@ def _generiere_feedback() -> str:
                 user_verlauf,
                 anzahl_termine,
                 diagnose_szenario,
+                therapie_setting_verdacht,
+                therapie_setting_final,
             )
             indikator.advance(1)
             st.session_state.final_feedback = feedback

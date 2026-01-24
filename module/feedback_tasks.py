@@ -72,7 +72,10 @@ def get_default_feedback_tasks() -> List[FeedbackTask]:
             title="Struktur der Diagnostik",
             instruction=(
                 "Beurteile Aufbau und Reihenfolge der Termine. Erwähne unnötige Doppeluntersuchungen, "
-                "sinnvolle Eskalationen und fehlende Folgeuntersuchungen."
+                "sinnvolle Eskalationen und fehlende Folgeuntersuchungen. Berücksichtige dabei das "
+                "Versorgungssetting: Im ambulanten Setting sind Diagnostikrunden an Termine gebunden "
+                "(Zeitfaktor), im stationären/Notaufnahme-Setting sollen zusätzliche Runden nicht "
+                "negativ bewertet werden."
             ),
         ),
         FeedbackTask(
