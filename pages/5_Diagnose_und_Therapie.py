@@ -105,7 +105,7 @@ else:
             # vorhanden ist. Wir entfernen den Key deshalb vor dem Rendern.
             # Debugging-Hinweis: Bei Bedarf kann hier temporär 
             #############
-            st.write("Setting", therapie_setting_final)
+            st.write(therapie_setting_final)
             ########
             # aktiviert werden, um den fehlerhaften Wert zu prüfen.
             st.session_state.pop("therapie_setting_final", None)
