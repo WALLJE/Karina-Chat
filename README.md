@@ -242,6 +242,7 @@ Jeder Lauf erhält eine gemeinsame `laufgruppe`-Nummer (UUID), sodass sich mehre
 
 ### Debugging-Hilfen
 - **Deaktivierte Fallbacks:** Statt automatischer Fallbacks stehen kommentierte Debugging-Hilfen bereit. Diese können im Code aktiviert werden, um detaillierte Ausgaben zu erhalten.
+- **Versorgungssettings prüfen:** Die Auswahl für Verdacht und finale Therapie wird direkt im Session-State gespeichert. Falls sie im Feedback oder Supabase fehlen, können die kommentierten `st.write(...)`-Hinweise in den Seitenmodulen und im `feedbackmodul.py` aktiviert werden, um die aktuellen Werte nachzuvollziehen.
 - **Supabase-Persistenz prüfen:** Für detaillierte Analysen lässt sich die Tabelle `fall_persistenzen` direkt in Supabase öffnen. Zusätzlich zeigt der Adminbereich alle gespeicherten Werte in strukturierter Form an.
 - **Praxis-Tipp:** Vor jeder Aktivierung von Debugging-Hilfen sollte eine Sicherung der Konfiguration vorgenommen werden.
 
