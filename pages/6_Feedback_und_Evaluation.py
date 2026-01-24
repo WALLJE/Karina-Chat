@@ -62,6 +62,12 @@ if not feedback_text:
     # ambulante und stationäre Kontexte korrekt bewertet werden können.
     therapie_setting_verdacht = st.session_state.get("therapie_setting_verdacht", "")
     therapie_setting_final = st.session_state.get("therapie_setting_final", "")
+    # Debug-Hinweis (beschriftet): Aktivieren, um den Übergang von Seite 4/5
+    # zur kombinierten Feedback/Evaluation-Seite zu prüfen. So sieht man, ob
+    # die Settings im Session-State noch vorhanden sind, bevor der Prompt
+    # gebaut wird.
+    st.write("Debug Seite 6E > Session verdacht (vor Prompt):", therapie_setting_verdacht)
+    st.write("Debug Seite 6E > Session final (vor Prompt):", therapie_setting_final)
 
     if is_offline():
         feedback = feedback_erzeugen(
