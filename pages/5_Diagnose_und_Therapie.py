@@ -86,6 +86,9 @@ else:
         # vorhanden ist. Wir entfernen den Key deshalb vor dem Rendern.
         # Debugging-Hinweis: Bei Bedarf kann hier temporär
         # `st.write(bestehendes_setting)` aktiviert werden, um den Wert zu prüfen.
+        # Debug-Hinweis (beschriftet): Zeigt den fehlerhaften Session-State-Wert
+        # vor dem Entfernen an.
+        # st.write("Debug Seite 5 > Ungültiges Setting final:", bestehendes_setting)
         st.session_state.pop("therapie_setting_final", None)
         default_index = 0
     setting_final = st.radio(
@@ -96,6 +99,10 @@ else:
     )
     # Debug-Hinweis: Bei Bedarf kann hier `st.write(setting_final)` aktiviert werden,
     # um die aktuelle Auswahl sofort sichtbar zu machen.
+    # Debug-Hinweis (beschriftet): Aktivieren, um Auswahl und Session-State
+    # nach dem Radio eindeutig zu prüfen.
+    # st.write("Debug Seite 5 > Auswahl final (Radio):", setting_final)
+    # st.write("Debug Seite 5 > Session final (nach Radio):", st.session_state.get("therapie_setting_final"))
     # Kurzer didaktischer Hinweis: Das Setting kann hier noch einmal
     # hinterfragt und bei Bedarf angepasst werden, bevor das Feedback läuft.
     st.info(
