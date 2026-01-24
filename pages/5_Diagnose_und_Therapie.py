@@ -110,12 +110,19 @@ else:
             index=default_index,
             key="therapie_setting_final",
         )
-        # Wenn eine Einweisung gewählt wird, erklären wir den Rollenwechsel
-        # direkt im Formular, damit die Studierenden den Kontext früh verstehen.
+        # Der Hinweis wechselt sofort mit der Auswahl und bleibt farblich
+        # hervorgehoben. So ist das finale Setting beim Therapieplan klar.
+        # Debug-Hinweis: Bei Bedarf kann hier temporär st.write(setting_final)
+        # aktiviert werden, um die Umschaltung zu prüfen.
         if setting_final in {"Einweisung Notaufnahme", "Einweisung elektiv"}:
             st.info(
                 "ℹ️ **Rollenwechsel:** Die weitere Versorgung erfolgt im Krankenhaus/Notaufnahme. "
                 "Bitte richten Sie Diagnostik- und Therapievorschläge konsequent an diesem Setting aus."
+            )
+        else:
+            st.info(
+                "ℹ️ **Hinweis zur Einordnung:** Die Versorgung bleibt ambulant bzw. fachärztlich. "
+                "Bitte stimmen Sie Diagnostik und Therapie auf dieses Setting ab."
             )
         submitted_final = st.form_submit_button("✅ Senden")
 
@@ -123,9 +130,12 @@ else:
         client = st.session_state.get("openai_client")
         st.session_state.final_diagnose = sprach_check(input_diag, client)
         st.session_state.therapie_vorschlag = sprach_check(input_therapie, client)
-        # Das finale Setting wird separat gespeichert, um es im Feedback
-        # und in der Supabase-Persistenz auswerten zu können.
-        st.session_state.therapie_setting_final = setting_final
+        # Das finale Setting stammt direkt aus dem Radio-Widget.
+        # Wichtig: Nach der Widget-Initialisierung darf der Key nicht erneut
+        # gesetzt werden, sonst bricht Streamlit mit einem
+        # "cannot be modified"-Fehler ab. Debug-Hinweis: Bei inkonsistenten
+        # Werten kann der Key per st.session_state.pop(...) entfernt und die
+        # Auswahl neu vorgenommen werden.
         # Nach dem Speichern wieder in die Anzeigeansicht wechseln.
         st.session_state.diagnose_therapie_edit = False
         if is_offline():

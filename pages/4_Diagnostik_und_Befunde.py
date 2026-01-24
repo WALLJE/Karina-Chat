@@ -154,7 +154,10 @@ if "koerper_befund" in st.session_state:
                             "angefordert werden. Achten Sie darauf, dass diese Maßnahmen "
                             "zeitnah und im Setting umsetzbar sind. Im Feedback wird "
                             "geprüft, ob die erste Diagnostik vor der Aufnahme sinnvoll "
-                            "und kurzfristig praktikabel war."
+                            "und kurzfristig praktikabel war. "
+                            "ℹ️ **Rollenwechsel:** Die weitere Versorgung erfolgt im "
+                            "Krankenhaus/Notaufnahme. Bitte richten Sie Diagnostik- und "
+                            "Therapievorschläge konsequent an diesem Setting aus."
                         )
                     st.markdown(
                         "**Hinweis zur Einordnung:** Die folgenden Maßnahmen werden im "
