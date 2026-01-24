@@ -51,13 +51,6 @@ if (
     st.markdown(
         f"**Therapiesetting (final):**  \n{st.session_state.therapie_setting_final}"
     )
-    # Wenn das Setting eine Einweisung verlangt, erläutern wir den Rollenwechsel.
-    if st.session_state.therapie_setting_final in {"Einweisung Notaufnahme", "Einweisung elektiv"}:
-        st.info(
-            "ℹ️ **Rollenwechsel:** Die Versorgung erfolgt im Krankenhaus/Notaufnahme. "
-            "Ab jetzt beziehen sich Diagnostik- und Therapieentscheidungen auf "
-            "dieses Setting – Sie übernehmen die Rolle in der Klinik."
-        )
     # Button, um gezielt zur Eingabe zurückzukehren und die bestehenden Inhalte zu bearbeiten.
     if st.button("✏️ Diagnose/Therapie überarbeiten oder ergänzen"):
         st.session_state.diagnose_therapie_edit = True
@@ -85,6 +78,13 @@ else:
             "Ihr Therapiekonzept:",
             key="diagnose_therapie_edit_therapie",
         )
+        # Kurzer didaktischer Hinweis: Das Setting kann hier noch einmal
+        # hinterfragt und bei Bedarf angepasst werden, bevor das Feedback läuft.
+        st.info(
+            "💡 **Hinweis:** Prüfen Sie Ihr Vorgehen noch einmal und passen Sie das "
+            "Versorgungssetting bei Bedarf an – Sie dürfen Ihre Einschätzung "
+            "hier bewusst revidieren."
+        )
         # Das finale Therapiesetting wird hier neu bewertet. Der zusätzliche
         # Facharzt-Termin ist bewusst nur im finalen Setting enthalten.
         setting_optionen_final = [
@@ -110,20 +110,6 @@ else:
             index=default_index,
             key="therapie_setting_final",
         )
-        # Der Hinweis wechselt sofort mit der Auswahl und bleibt farblich
-        # hervorgehoben. So ist das finale Setting beim Therapieplan klar.
-        # Debug-Hinweis: Bei Bedarf kann hier temporär st.write(setting_final)
-        # aktiviert werden, um die Umschaltung zu prüfen.
-        if setting_final in {"Einweisung Notaufnahme", "Einweisung elektiv"}:
-            st.info(
-                "ℹ️ **Rollenwechsel:** Die weitere Versorgung erfolgt im Krankenhaus/Notaufnahme. "
-                "Bitte richten Sie Diagnostik- und Therapievorschläge konsequent an diesem Setting aus."
-            )
-        else:
-            st.info(
-                "ℹ️ **Hinweis zur Einordnung:** Die Versorgung bleibt ambulant bzw. fachärztlich. "
-                "Bitte stimmen Sie Diagnostik und Therapie auf dieses Setting ab."
-            )
         submitted_final = st.form_submit_button("✅ Senden")
 
     if submitted_final:
