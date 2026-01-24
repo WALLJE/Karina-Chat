@@ -96,8 +96,8 @@ def speichere_gpt_feedback_in_supabase():
         # Debug-Hinweis (beschriftet): Aktivieren, um den Weg der Settings bis
         # zur Supabase-Speicherung nachvollziehen zu können. So lässt sich
         # feststellen, ob das Problem vor oder nach dem Session-State entsteht.
-        st.write("Debug Supabase > Session verdacht:", st.session_state.get("therapie_setting_verdacht"))
-        st.write("Debug Supabase > Session final:", st.session_state.get("therapie_setting_final"))
+        # st.write("Debug Supabase > Session verdacht:", st.session_state.get("therapie_setting_verdacht"))
+        # st.write("Debug Supabase > Session final:", st.session_state.get("therapie_setting_final"))
 
         optionale_spalten = {
             # Gesamtanzahl der diagnostischen Runden wird als Zahl persistiert.
