@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from typing import Any
+from typing import Any, Optional
 
 import streamlit as st
 
@@ -21,6 +21,27 @@ _MIN_AMBOSS_SUMMARY_CHARS = 200
 
 # Maximale Länge eines Debug-Auszugs aus dem Roh-Payload, damit der Prompt klein bleibt.
 _MAX_AMBOSS_RAW_SNIPPET = 2000
+
+
+def _bereinige_setting_wert(raw_value: Optional[str]) -> str:
+    """Normalisiert Platzhalterwerte beim Versorgungssetting.
+
+    Hintergrund: In vereinzelten Fällen wird das Setting als String "NULL"
+    oder mit reinen Leerzeichen übergeben. Damit das Feedback trotzdem
+    konsistent bewertet werden kann, behandeln wir diese Werte wie eine
+    fehlende Angabe. Für Debugging kann bei Bedarf ein temporäres
+    ``st.write(raw_value)`` ergänzt werden, um die Quelle eines unerwarteten
+    Strings zu identifizieren.
+    """
+
+    if raw_value is None:
+        return ""
+    value_clean = str(raw_value).strip()
+    if not value_clean:
+        return ""
+    if value_clean.upper() in {"EMPTY", "NULL"}:
+        return ""
+    return value_clean
 
 
 def _build_amboss_context() -> str:
@@ -93,6 +114,14 @@ def feedback_erzeugen(
     # einbezogen werden dürfen. Bei Bedarf kann hier zur Fehlersuche der Modus
     # geloggt werden.
     feedback_mode = determine_feedback_mode()
+
+    # Platzhalterwerte werden vereinheitlicht, damit beide Settings sicher
+    # im Prompt landen und nicht als "NULL" angezeigt werden.
+    # Debug-Hinweis: Falls weiterhin Platzhalter auftauchen, kann hier
+    # temporär ``st.write(therapie_setting_verdacht, therapie_setting_final)``
+    # aktiviert werden, um die Session-State-Quelle zu prüfen.
+    therapie_setting_verdacht = _bereinige_setting_wert(therapie_setting_verdacht)
+    therapie_setting_final = _bereinige_setting_wert(therapie_setting_final)
 
     # Im Offline-Modus wird eine vorbereitete Rückfallantwort genutzt. Weitere
     # Fallbacks sind bewusst nicht vorhanden, um das Verhalten transparent zu
