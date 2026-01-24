@@ -71,8 +71,8 @@ def _generiere_feedback() -> str:
     # Debug-Hinweis (beschriftet): Aktivieren, um den Übergang von Seite 4/5
     # zur Feedback-Seite zu prüfen. Damit sieht man, ob die Settings im
     # Session-State noch vorhanden sind, bevor der Prompt gebaut wird.
-    # st.write("Debug Seite 6 > Session verdacht (vor Prompt):", therapie_setting_verdacht)
-    # st.write("Debug Seite 6 > Session final (vor Prompt):", therapie_setting_final)
+    st.write("Debug Seite 6 > Session verdacht (vor Prompt):", therapie_setting_verdacht)
+    st.write("Debug Seite 6 > Session final (vor Prompt):", therapie_setting_final)
 
     if is_offline():
         feedback = feedback_erzeugen(
