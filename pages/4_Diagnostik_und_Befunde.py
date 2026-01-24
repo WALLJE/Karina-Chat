@@ -103,67 +103,76 @@ def starte_automatische_befundgenerierung_page(client) -> None:
 # --- Voraussetzungen wie in Hauptdatei beachten ---
 if "koerper_befund" in st.session_state:
         if "user_ddx2" not in st.session_state:
+                # Hinweis: Das Versorgungssetting soll nach den DDx und vor der
+                # konkreten Diagnostik erfragt werden. Dadurch überlegen die
+                # Studierenden früh, ob die weitere Abklärung ambulant oder
+                # stationär/notfallmäßig erfolgen soll.
+                # Wichtig: Das Radio liegt außerhalb des Formulars, damit der
+                # Hinweistext sofort auf Button-Wechsel reagiert (Formulare
+                # aktualisieren Inhalte erst nach dem Absenden).
+                setting_optionen_verdacht = [
+                    "Einweisung Notaufnahme",
+                    "Einweisung elektiv",
+                    "ambulant (zeitnahe Wiedervorstellung)",
+                    "ambulant (Vorstellung im nächsten Quartal)",
+                ]
+                bestehendes_setting = st.session_state.get("therapie_setting_verdacht", "")
+                # Debugging-Hinweis: Wenn ein unerwarteter Wert auftaucht, kann
+                # das Setting temporär aus dem Session-State entfernt werden,
+                # um die Auswahl erneut zu erzwingen.
+                if bestehendes_setting in setting_optionen_verdacht:
+                    default_index = setting_optionen_verdacht.index(bestehendes_setting)
+                else:
+                    # Streamlit wirft einen Fehler, wenn ein Session-State-Wert
+                    # nicht zu den Optionen passt. Für Debugging kann hier
+                    # temporär st.write(bestehendes_setting) aktiviert werden.
+                    st.session_state.pop("therapie_setting_verdacht", None)
+                    default_index = 0
+                setting_verdacht = st.radio(
+                    "Wie soll die Behandlung nach der Verdachtsdiagnose fortgeführt werden?",
+                    options=setting_optionen_verdacht,
+                    index=default_index,
+                    key="therapie_setting_verdacht",
+                )
+                # Der Hinweis wird direkt nach der Auswahl angezeigt und passt
+                # sich automatisch an, sobald ein anderes Setting angeklickt
+                # wird. So ist die Einordnung vor der Diagnostik-Eingabe klar.
+                # Debug-Hinweis: Bei Unklarheiten kann hier temporär
+                # st.write(setting_verdacht) aktiviert werden.
+                if setting_verdacht.startswith("ambulant"):
+                    st.info(
+                        "💡 **Hinweis zur Diagnostik (ambulant):** "
+                        "Die diagnostischen Möglichkeiten sind **nicht limitiert**, "
+                        "aber zusätzliche Anforderungen sind nur bei **neuen Terminen** möglich. "
+                        "Bitte planen Sie daher die Anzahl und Reihenfolge der Untersuchungen "
+                        "realistisch (Zeitfaktor)."
+                    )
+                else:
+                    st.info(
+                        "💡 **Hinweis zur Diagnostik (Einweisung/Notaufnahme):** "
+                        "Es können bereits vor der stationären Aufnahme oder "
+                        "Notfalleinweisung kurzfristig praktikable Untersuchungen "
+                        "angefordert werden. Achten Sie darauf, dass diese Maßnahmen "
+                        "zeitnah und im Setting umsetzbar sind. Im Feedback wird "
+                        "geprüft, ob die erste Diagnostik vor der Aufnahme sinnvoll "
+                        "und kurzfristig praktikabel war. "
+                        "ℹ️ **Rollenwechsel:** Die weitere Versorgung erfolgt im "
+                        "Krankenhaus/Notaufnahme. Bitte richten Sie Diagnostik- und "
+                        "Therapievorschläge konsequent an diesem Setting aus."
+                    )
+                st.markdown(
+                    "**Hinweis zur Einordnung:** Die folgenden Maßnahmen werden im "
+                    "Kontext des oben gewählten Versorgungssettings bewertet."
+                )
                 with st.form("differentialdiagnosen_diagnostik_formular"):
-                    ddx_input2 = st.text_area("Welche drei Differentialdiagnosen halten Sie nach Anamnese und Untersuchung für möglich?", key="ddx_input2")
-                    # Hinweis: Das Versorgungssetting soll nach den DDx und vor der
-                    # konkreten Diagnostik erfragt werden. Dadurch überlegen die
-                    # Studierenden früh, ob die weitere Abklärung ambulant oder
-                    # stationär/notfallmäßig erfolgen soll.
-                    setting_optionen_verdacht = [
-                        "Einweisung Notaufnahme",
-                        "Einweisung elektiv",
-                        "ambulant (zeitnahe Wiedervorstellung)",
-                        "ambulant (Vorstellung im nächsten Quartal)",
-                    ]
-                    bestehendes_setting = st.session_state.get("therapie_setting_verdacht", "")
-                    # Debugging-Hinweis: Wenn ein unerwarteter Wert auftaucht, kann
-                    # das Setting temporär aus dem Session-State entfernt werden,
-                    # um die Auswahl erneut zu erzwingen.
-                    if bestehendes_setting in setting_optionen_verdacht:
-                        default_index = setting_optionen_verdacht.index(bestehendes_setting)
-                    else:
-                        # Streamlit wirft einen Fehler, wenn ein Session-State-Wert
-                        # nicht zu den Optionen passt. Für Debugging kann hier
-                        # temporär st.write(bestehendes_setting) aktiviert werden.
-                        st.session_state.pop("therapie_setting_verdacht", None)
-                        default_index = 0
-                    setting_verdacht = st.radio(
-                        "Wie soll die Behandlung nach der Verdachtsdiagnose fortgeführt werden?",
-                        options=setting_optionen_verdacht,
-                        index=default_index,
-                        key="therapie_setting_verdacht",
+                    ddx_input2 = st.text_area(
+                        "Welche drei Differentialdiagnosen halten Sie nach Anamnese und Untersuchung für möglich?",
+                        key="ddx_input2",
                     )
-                    # Der Hinweis wird direkt nach der Auswahl angezeigt und passt
-                    # sich automatisch an, sobald ein anderes Setting angeklickt
-                    # wird. So ist die Einordnung vor der Diagnostik-Eingabe klar.
-                    # Debug-Hinweis: Bei Unklarheiten kann hier temporär
-                    # st.write(setting_verdacht) aktiviert werden.
-                    if setting_verdacht.startswith("ambulant"):
-                        st.info(
-                            "💡 **Hinweis zur Diagnostik (ambulant):** "
-                            "Die diagnostischen Möglichkeiten sind **nicht limitiert**, "
-                            "aber zusätzliche Anforderungen sind nur bei **neuen Terminen** möglich. "
-                            "Bitte planen Sie daher die Anzahl und Reihenfolge der Untersuchungen "
-                            "realistisch (Zeitfaktor)."
-                        )
-                    else:
-                        st.info(
-                            "💡 **Hinweis zur Diagnostik (Einweisung/Notaufnahme):** "
-                            "Es können bereits vor der stationären Aufnahme oder "
-                            "Notfalleinweisung kurzfristig praktikable Untersuchungen "
-                            "angefordert werden. Achten Sie darauf, dass diese Maßnahmen "
-                            "zeitnah und im Setting umsetzbar sind. Im Feedback wird "
-                            "geprüft, ob die erste Diagnostik vor der Aufnahme sinnvoll "
-                            "und kurzfristig praktikabel war. "
-                            "ℹ️ **Rollenwechsel:** Die weitere Versorgung erfolgt im "
-                            "Krankenhaus/Notaufnahme. Bitte richten Sie Diagnostik- und "
-                            "Therapievorschläge konsequent an diesem Setting aus."
-                        )
-                    st.markdown(
-                        "**Hinweis zur Einordnung:** Die folgenden Maßnahmen werden im "
-                        "Kontext des oben gewählten Versorgungssettings bewertet."
+                    diag_input2 = st.text_area(
+                        "Welche konkreten diagnostischen Maßnahmen möchten Sie vorschlagen?",
+                        key="diag_input2",
                     )
-                    diag_input2 = st.text_area("Welche konkreten diagnostischen Maßnahmen möchten Sie vorschlagen?", key="diag_input2")
                     submitted_diag = st.form_submit_button("✅ Eingaben speichern")
         
                 if submitted_diag:
