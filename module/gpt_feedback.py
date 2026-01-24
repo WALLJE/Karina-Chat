@@ -96,11 +96,11 @@ def speichere_gpt_feedback_in_supabase():
         """Bereinigt fehlerhafte Platzhalterwerte für das Versorgungssetting.
 
         Hintergrund: In der Supabase-Auswertung wurden vereinzelt der String
-        ``"EMPTY"`` oder Leerzeichen gespeichert. Damit das Feedback korrekt
-        bewertet wird, normalisieren wir diese Werte hier auf ``None`` (NULL
-        in Supabase). Für Debugging kann bei Bedarf zusätzlich
-        `st.write(raw_value)` aktiviert werden, um die Quelle eines unerwarteten
-        Werts zu prüfen.
+        ``"EMPTY"`` oder ``"NULL"`` sowie reine Leerzeichen gespeichert. Damit
+        das Feedback korrekt bewertet wird, normalisieren wir diese Werte hier
+        auf ``None`` (NULL in Supabase). Für Debugging kann bei Bedarf
+        zusätzlich `st.write(raw_value)` aktiviert werden, um die Quelle eines
+        unerwarteten Werts zu prüfen.
         """
 
         if raw_value is None:
@@ -108,7 +108,7 @@ def speichere_gpt_feedback_in_supabase():
         value_clean = str(raw_value).strip()
         if not value_clean:
             return None
-        if value_clean.upper() == "EMPTY":
+        if value_clean.upper() in {"EMPTY", "NULL"}:
             return None
         return value_clean
 
