@@ -99,7 +99,7 @@ def speichere_gpt_feedback_in_supabase():
         String. Für Debugging kann bei Bedarf zusätzlich `st.write(raw_value)`
         aktiviert werden, um die Quelle eines unerwarteten Werts zu prüfen.
         """
-
+        st.write(raw_value)
         if raw_value is None:
             return ""
         value_clean = str(raw_value).strip()
