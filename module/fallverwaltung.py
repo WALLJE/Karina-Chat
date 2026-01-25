@@ -760,6 +760,12 @@ def reset_fall_session_state(keep_keys: Iterable[str] | None = None) -> None:
         if key in keys_to_keep:
             continue
         if key in _FALL_SESSION_KEYS or any(key.startswith(prefix) for prefix in _FALL_SESSION_PREFIXES):
+            # Debug-Hinweis (beschriftet): Aktivieren, um zu sehen, wann die
+            # fallbezogenen Keys (inkl. Therapiesettings) beim Reset entfernt
+            # werden. So lässt sich prüfen, ob die Settings vor dem Feedback
+            # versehentlich gelöscht werden.
+            if key in {"therapie_setting_verdacht", "therapie_setting_final"}:
+                st.write("Debug Reset > Entferne Key:", key, "Wert:", st.session_state.get(key))
             st.session_state.pop(key, None)
 
 
