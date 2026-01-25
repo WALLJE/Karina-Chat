@@ -95,6 +95,12 @@ _FALL_SESSION_KEYS: set[str] = {
     # Dadurch können Rollensprünge (Hausarzt -> Klinik) sauber nachvollzogen werden.
     "therapie_setting_verdacht",
     "therapie_setting_final",
+    # Persistente Kopien der Settings müssen ebenfalls gelöscht werden, damit
+    # ein neuer Fall nicht versehentlich alte Auswahlwerte übernimmt.
+    # Debug-Hinweis: Falls hier unerwartete Werte auftauchen, kann im Reset
+    # temporär `st.write(...)` aktiviert werden, um die Löschung zu prüfen.
+    "therapie_setting_verdacht_persisted",
+    "therapie_setting_final_persisted",
     "final_feedback",
     "feedback_prompt_final",
     "feedback_row_id",
