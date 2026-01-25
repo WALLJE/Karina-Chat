@@ -147,6 +147,14 @@ if "koerper_befund" in st.session_state:
                 # Session-State nach dem Radio eindeutig zu prüfen.
                 st.write("Debug Seite 4 > Auswahl verdacht (Radio):", setting_verdacht)
                 st.write("Debug Seite 4 > Session verdacht (nach Radio):", st.session_state.get("therapie_setting_verdacht"))
+                # Debug-Hinweis (beschriftet): Zusätzlicher Snapshot, der nicht
+                # vom Widget-State abhängt. Damit lässt sich prüfen, ob die
+                # Session zwischen Seitenwechseln neu aufgebaut wird.
+                st.session_state["debug_snapshot_therapie_setting_verdacht"] = setting_verdacht
+                st.write(
+                    "Debug Seite 4 > Snapshot verdacht (nicht-Widget):",
+                    st.session_state.get("debug_snapshot_therapie_setting_verdacht"),
+                )
                 if setting_verdacht.startswith("ambulant"):
                     st.info(
                         "💡 **Hinweis zur Diagnostik (ambulant):** "

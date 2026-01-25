@@ -17,6 +17,18 @@ st.write(
     "Debug Seite 6E > therapie_setting-Keys (Start):",
     [key for key in st.session_state.keys() if "therapie_setting" in key],
 )
+st.write(
+    "Debug Seite 6E > Snapshot-Keys (Start):",
+    [key for key in st.session_state.keys() if "debug_snapshot_therapie_setting" in key],
+)
+st.write(
+    "Debug Seite 6E > Snapshot verdacht (Start):",
+    st.session_state.get("debug_snapshot_therapie_setting_verdacht"),
+)
+st.write(
+    "Debug Seite 6E > Snapshot final (Start):",
+    st.session_state.get("debug_snapshot_therapie_setting_final"),
+)
 
 # Voraussetzungen prüfen
 if "SYSTEM_PROMPT" not in st.session_state or "patient_name" not in st.session_state:
@@ -182,6 +194,18 @@ st.write("Debug Seite 6E > Session-Keys (Ende):", sorted(st.session_state.keys()
 st.write(
     "Debug Seite 6E > therapie_setting-Keys (Ende):",
     [key for key in st.session_state.keys() if "therapie_setting" in key],
+)
+st.write(
+    "Debug Seite 6E > Snapshot-Keys (Ende):",
+    [key for key in st.session_state.keys() if "debug_snapshot_therapie_setting" in key],
+)
+st.write(
+    "Debug Seite 6E > Snapshot verdacht (Ende):",
+    st.session_state.get("debug_snapshot_therapie_setting_verdacht"),
+)
+st.write(
+    "Debug Seite 6E > Snapshot final (Ende):",
+    st.session_state.get("debug_snapshot_therapie_setting_final"),
 )
 
 if st.session_state.final_feedback:

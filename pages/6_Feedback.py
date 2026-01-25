@@ -156,6 +156,18 @@ def main() -> None:
         "Debug Seite 6 > therapie_setting-Keys (Start):",
         [key for key in st.session_state.keys() if "therapie_setting" in key],
     )
+    st.write(
+        "Debug Seite 6 > Snapshot-Keys (Start):",
+        [key for key in st.session_state.keys() if "debug_snapshot_therapie_setting" in key],
+    )
+    st.write(
+        "Debug Seite 6 > Snapshot verdacht (Start):",
+        st.session_state.get("debug_snapshot_therapie_setting_verdacht"),
+    )
+    st.write(
+        "Debug Seite 6 > Snapshot final (Start):",
+        st.session_state.get("debug_snapshot_therapie_setting_final"),
+    )
 
     _pruefe_voraussetzungen()
     aktualisiere_diagnostik_zusammenfassung()
@@ -174,6 +186,18 @@ def main() -> None:
     st.write(
         "Debug Seite 6 > therapie_setting-Keys (Ende):",
         [key for key in st.session_state.keys() if "therapie_setting" in key],
+    )
+    st.write(
+        "Debug Seite 6 > Snapshot-Keys (Ende):",
+        [key for key in st.session_state.keys() if "debug_snapshot_therapie_setting" in key],
+    )
+    st.write(
+        "Debug Seite 6 > Snapshot verdacht (Ende):",
+        st.session_state.get("debug_snapshot_therapie_setting_verdacht"),
+    )
+    st.write(
+        "Debug Seite 6 > Snapshot final (Ende):",
+        st.session_state.get("debug_snapshot_therapie_setting_final"),
     )
 
     st.markdown("---")
