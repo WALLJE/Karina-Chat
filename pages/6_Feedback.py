@@ -23,6 +23,23 @@ copyright_footer()
 show_sidebar()
 display_offline_banner()
 
+def _sync_therapie_settings() -> None:
+    """Synchronisiert persistierte Therapiesettings in den Session-State.
+
+    Streamlit entfernt Widget-States, sobald das zugehörige Widget nicht mehr
+    gerendert wird. Dadurch gehen Werte aus Seite 4/5 auf der Feedback-Seite
+    verloren. Wir lesen die persistierten Keys und setzen die Standard-Keys
+    erneut, damit Supabase-Speicherung und Feedback-Prompt vollständige Daten
+    erhalten.
+    """
+
+    for key in ("therapie_setting_verdacht", "therapie_setting_final"):
+        persist_key = f"{key}_persisted"
+        if key not in st.session_state and persist_key in st.session_state:
+            # Debug-Hinweis: Aktivieren, um den Sync nachvollziehen zu können.
+            # st.write("Debug Seite 6 > Sync", key, "=", st.session_state[persist_key])
+            st.session_state[key] = st.session_state[persist_key]
+
 
 def _pruefe_voraussetzungen() -> None:
     """Validiert alle notwendigen Session-State-Einträge.
@@ -55,18 +72,19 @@ def _generiere_feedback() -> str:
 
     # Debug-Hinweis (beschriftet): Zusätzliche Prüfung, ob die Keys im
     # Session-State überhaupt existieren, bevor Werte gelesen werden.
-    st.write(
-        "Debug Seite 6 > Keys vorhanden (therapie_setting_*):",
-        [key for key in st.session_state.keys() if "therapie_setting" in key],
-    )
-    st.write(
-        "Debug Seite 6 > Key vorhanden verdacht?:",
-        "therapie_setting_verdacht" in st.session_state,
-    )
-    st.write(
-        "Debug Seite 6 > Key vorhanden final?:",
-        "therapie_setting_final" in st.session_state,
-    )
+    # TODO: Debug-Ausgaben später entfernen.
+    # st.write(
+    #     "Debug Seite 6 > Keys vorhanden (therapie_setting_*):",
+    #     [key for key in st.session_state.keys() if "therapie_setting" in key],
+    # )
+    # st.write(
+    #     "Debug Seite 6 > Key vorhanden verdacht?:",
+    #     "therapie_setting_verdacht" in st.session_state,
+    # )
+    # st.write(
+    #     "Debug Seite 6 > Key vorhanden final?:",
+    #     "therapie_setting_final" in st.session_state,
+    # )
 
     diagnostik_eingaben = st.session_state.get("diagnostik_eingaben_kumuliert", "")
     gpt_befunde = st.session_state.get("gpt_befunde_kumuliert", "")
@@ -86,8 +104,9 @@ def _generiere_feedback() -> str:
     # Debug-Hinweis (beschriftet): Aktivieren, um den Übergang von Seite 4/5
     # zur Feedback-Seite zu prüfen. Damit sieht man, ob die Settings im
     # Session-State noch vorhanden sind, bevor der Prompt gebaut wird.
-    st.write("Debug Seite 6 > Session verdacht (vor Prompt):", therapie_setting_verdacht)
-    st.write("Debug Seite 6 > Session final (vor Prompt):", therapie_setting_final)
+    # TODO: Debug-Ausgaben später entfernen.
+    # st.write("Debug Seite 6 > Session verdacht (vor Prompt):", therapie_setting_verdacht)
+    # st.write("Debug Seite 6 > Session final (vor Prompt):", therapie_setting_final)
 
     if is_offline():
         feedback = feedback_erzeugen(
@@ -151,23 +170,26 @@ def _zeige_feedback(feedback_text: str) -> None:
 def main() -> None:
     """Zentrale Steuermethode für die Feedback-Seite."""
 
-    st.write("Debug Seite 6 > Session-Keys (Start):", sorted(st.session_state.keys()))
-    st.write(
-        "Debug Seite 6 > therapie_setting-Keys (Start):",
-        [key for key in st.session_state.keys() if "therapie_setting" in key],
-    )
-    st.write(
-        "Debug Seite 6 > Snapshot-Keys (Start):",
-        [key for key in st.session_state.keys() if "debug_snapshot_therapie_setting" in key],
-    )
-    st.write(
-        "Debug Seite 6 > Snapshot verdacht (Start):",
-        st.session_state.get("debug_snapshot_therapie_setting_verdacht"),
-    )
-    st.write(
-        "Debug Seite 6 > Snapshot final (Start):",
-        st.session_state.get("debug_snapshot_therapie_setting_final"),
-    )
+    _sync_therapie_settings()
+
+    # TODO: Debug-Ausgaben später entfernen.
+    # st.write("Debug Seite 6 > Session-Keys (Start):", sorted(st.session_state.keys()))
+    # st.write(
+    #     "Debug Seite 6 > therapie_setting-Keys (Start):",
+    #     [key for key in st.session_state.keys() if "therapie_setting" in key],
+    # )
+    # st.write(
+    #     "Debug Seite 6 > Snapshot-Keys (Start):",
+    #     [key for key in st.session_state.keys() if "debug_snapshot_therapie_setting" in key],
+    # )
+    # st.write(
+    #     "Debug Seite 6 > Snapshot verdacht (Start):",
+    #     st.session_state.get("debug_snapshot_therapie_setting_verdacht"),
+    # )
+    # st.write(
+    #     "Debug Seite 6 > Snapshot final (Start):",
+    #     st.session_state.get("debug_snapshot_therapie_setting_final"),
+    # )
 
     _pruefe_voraussetzungen()
     aktualisiere_diagnostik_zusammenfassung()
@@ -182,23 +204,24 @@ def main() -> None:
 
     _zeige_feedback(feedback_text)
 
-    st.write("Debug Seite 6 > Session-Keys (Ende):", sorted(st.session_state.keys()))
-    st.write(
-        "Debug Seite 6 > therapie_setting-Keys (Ende):",
-        [key for key in st.session_state.keys() if "therapie_setting" in key],
-    )
-    st.write(
-        "Debug Seite 6 > Snapshot-Keys (Ende):",
-        [key for key in st.session_state.keys() if "debug_snapshot_therapie_setting" in key],
-    )
-    st.write(
-        "Debug Seite 6 > Snapshot verdacht (Ende):",
-        st.session_state.get("debug_snapshot_therapie_setting_verdacht"),
-    )
-    st.write(
-        "Debug Seite 6 > Snapshot final (Ende):",
-        st.session_state.get("debug_snapshot_therapie_setting_final"),
-    )
+    # TODO: Debug-Ausgaben später entfernen.
+    # st.write("Debug Seite 6 > Session-Keys (Ende):", sorted(st.session_state.keys()))
+    # st.write(
+    #     "Debug Seite 6 > therapie_setting-Keys (Ende):",
+    #     [key for key in st.session_state.keys() if "therapie_setting" in key],
+    # )
+    # st.write(
+    #     "Debug Seite 6 > Snapshot-Keys (Ende):",
+    #     [key for key in st.session_state.keys() if "debug_snapshot_therapie_setting" in key],
+    # )
+    # st.write(
+    #     "Debug Seite 6 > Snapshot verdacht (Ende):",
+    #     st.session_state.get("debug_snapshot_therapie_setting_verdacht"),
+    # )
+    # st.write(
+    #     "Debug Seite 6 > Snapshot final (Ende):",
+    #     st.session_state.get("debug_snapshot_therapie_setting_final"),
+    # )
 
     st.markdown("---")
     st.page_link(
