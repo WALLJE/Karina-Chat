@@ -102,10 +102,11 @@ def feedback_erzeugen(
     # Debug-Hinweis (beschriftet): Für die Nachverfolgung im App-Verlauf kann
     # zusätzlich dieser Block aktiviert werden, um Quelle und Übergabe klar zu
     # trennen:
-    st.write("Debug Feedbackmodul > Param verdacht:", therapie_setting_verdacht)
-    st.write("Debug Feedbackmodul > Param final:", therapie_setting_final)
-    st.write("Debug Feedbackmodul > Session verdacht:", st.session_state.get("therapie_setting_verdacht"))
-    st.write("Debug Feedbackmodul > Session final:", st.session_state.get("therapie_setting_final"))
+    # TODO: Debug-Ausgaben später entfernen.
+    # st.write("Debug Feedbackmodul > Param verdacht:", therapie_setting_verdacht)
+    # st.write("Debug Feedbackmodul > Param final:", therapie_setting_final)
+    # st.write("Debug Feedbackmodul > Session verdacht:", st.session_state.get("therapie_setting_verdacht"))
+    # st.write("Debug Feedbackmodul > Session final:", st.session_state.get("therapie_setting_final"))
     # Im Offline-Modus wird eine vorbereitete Rückfallantwort genutzt. Weitere
     # Fallbacks sind bewusst nicht vorhanden, um das Verhalten transparent zu
     # halten.
