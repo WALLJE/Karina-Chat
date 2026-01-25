@@ -53,6 +53,21 @@ def _generiere_feedback() -> str:
     if feedback_text:
         return feedback_text
 
+    # Debug-Hinweis (beschriftet): Zusätzliche Prüfung, ob die Keys im
+    # Session-State überhaupt existieren, bevor Werte gelesen werden.
+    st.write(
+        "Debug Seite 6 > Keys vorhanden (therapie_setting_*):",
+        [key for key in st.session_state.keys() if "therapie_setting" in key],
+    )
+    st.write(
+        "Debug Seite 6 > Key vorhanden verdacht?:",
+        "therapie_setting_verdacht" in st.session_state,
+    )
+    st.write(
+        "Debug Seite 6 > Key vorhanden final?:",
+        "therapie_setting_final" in st.session_state,
+    )
+
     diagnostik_eingaben = st.session_state.get("diagnostik_eingaben_kumuliert", "")
     gpt_befunde = st.session_state.get("gpt_befunde_kumuliert", "")
     koerper_befund = st.session_state.get("koerper_befund", "")
@@ -68,6 +83,11 @@ def _generiere_feedback() -> str:
     # ambulante Terminlogik und stationäre Kontexte korrekt bewertet werden.
     therapie_setting_verdacht = st.session_state.get("therapie_setting_verdacht", "")
     therapie_setting_final = st.session_state.get("therapie_setting_final", "")
+    # Debug-Hinweis (beschriftet): Aktivieren, um den Übergang von Seite 4/5
+    # zur Feedback-Seite zu prüfen. Damit sieht man, ob die Settings im
+    # Session-State noch vorhanden sind, bevor der Prompt gebaut wird.
+    st.write("Debug Seite 6 > Session verdacht (vor Prompt):", therapie_setting_verdacht)
+    st.write("Debug Seite 6 > Session final (vor Prompt):", therapie_setting_final)
 
     if is_offline():
         feedback = feedback_erzeugen(

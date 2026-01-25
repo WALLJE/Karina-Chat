@@ -60,6 +60,7 @@ display_offline_banner()
 def _restart_application_after_offline() -> None:
     """Reset den Session State und startet die Anwendung neu."""
 
+    st.write("Debug Reset-Trigger > Admin: _restart_application_after_offline()")
     reset_fall_session_state()
     preserve_keys = {"offline_mode", "is_admin"}
     for key in list(st.session_state.keys()):
@@ -513,6 +514,7 @@ else:
             bestaetigt = st.form_submit_button("Auswahl übernehmen", type="primary")
 
         if bestaetigt and ausgewaehltes_szenario:
+            st.write("Debug Reset-Trigger > Admin: Szenario-Auswahl bestaetigt")
             reset_fall_session_state()
             if fall_fix_toggle:
                 fallauswahl_prompt(fall_df, ausgewaehltes_szenario)

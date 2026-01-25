@@ -98,6 +98,7 @@ def _bereinige_session_state_fuer_neustart() -> None:
     # Wir verwenden den zentralen Reset-Helfer, um sämtliche fallrelevanten Werte aus dem
     # Session-State zu löschen. Dank ``keep_keys`` bleibt die Liste abgeschlossener Fälle
     # erhalten, sodass die nächste Auswahl darauf Rücksicht nehmen kann.
+    st.write("Debug Reset-Trigger > Evaluation: _bereinige_session_state_fuer_neustart()")
     reset_fall_session_state(keep_keys={"abgeschlossene_szenarien"})
 
     # Zusätzlich entfernen wir Steuerflags der Startseite, damit die Instruktionen und
