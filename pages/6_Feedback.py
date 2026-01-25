@@ -53,6 +53,21 @@ def _generiere_feedback() -> str:
     if feedback_text:
         return feedback_text
 
+    # Debug-Hinweis (beschriftet): Zusätzliche Prüfung, ob die Keys im
+    # Session-State überhaupt existieren, bevor Werte gelesen werden.
+    st.write(
+        "Debug Seite 6 > Keys vorhanden (therapie_setting_*):",
+        [key for key in st.session_state.keys() if "therapie_setting" in key],
+    )
+    st.write(
+        "Debug Seite 6 > Key vorhanden verdacht?:",
+        "therapie_setting_verdacht" in st.session_state,
+    )
+    st.write(
+        "Debug Seite 6 > Key vorhanden final?:",
+        "therapie_setting_final" in st.session_state,
+    )
+
     diagnostik_eingaben = st.session_state.get("diagnostik_eingaben_kumuliert", "")
     gpt_befunde = st.session_state.get("gpt_befunde_kumuliert", "")
     koerper_befund = st.session_state.get("koerper_befund", "")
