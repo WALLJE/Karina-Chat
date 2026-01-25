@@ -1,6 +1,4 @@
 from datetime import datetime
-from typing import Optional
-
 import streamlit as st
 from supabase import create_client
 # import json
@@ -92,28 +90,14 @@ def speichere_gpt_feedback_in_supabase():
         "Client": st.session_state.get("feedback_mode", "ChatGPT"),
     }
 
-    def _bereinige_setting_wert(raw_value: Optional[str]) -> Optional[str]:
-        """Bereinigt fehlerhafte Platzhalterwerte für das Versorgungssetting.
-
-        Hintergrund: In der Supabase-Auswertung wurden vereinzelt der String
-        ``"EMPTY"`` oder ``"NULL"`` sowie reine Leerzeichen gespeichert. Damit
-        das Feedback korrekt bewertet wird, normalisieren wir diese Werte hier
-        auf ``None`` (NULL in Supabase). Für Debugging kann bei Bedarf
-        zusätzlich `st.write(raw_value)` aktiviert werden, um die Quelle eines
-        unerwarteten Werts zu prüfen.
-        """
-
-        if raw_value is None:
-            return None
-        value_clean = str(raw_value).strip()
-        if not value_clean:
-            return None
-        if value_clean.upper() in {"EMPTY", "NULL"}:
-            return None
-        return value_clean
-
     try:
         supabase = create_client(st.secrets["supabase"]["url"], st.secrets["supabase"]["key"])
+
+        # Debug-Hinweis (beschriftet): Aktivieren, um den Weg der Settings bis
+        # zur Supabase-Speicherung nachvollziehen zu können. So lässt sich
+        # feststellen, ob das Problem vor oder nach dem Session-State entsteht.
+        st.write("Debug Supabase > Session verdacht:", st.session_state.get("therapie_setting_verdacht"))
+        st.write("Debug Supabase > Session final:", st.session_state.get("therapie_setting_final"))
 
         optionale_spalten = {
             # Gesamtanzahl der diagnostischen Runden wird als Zahl persistiert.
@@ -124,15 +108,16 @@ def speichere_gpt_feedback_in_supabase():
             # Zusammenfassung der körperlichen Untersuchung. Bleibt leer, wenn
             # kein Befund eingegeben wurde.
             "koerper_befund": st.session_state.get("koerper_befund", ""),
-            # Versorgungssetting zur Verdachtsdiagnose. Dieses Feld hilft später
-            # bei der Auswertung, ob ambulant/stationär korrekt eingeschätzt wurde.
-            "therapie_setting_verdacht": _bereinige_setting_wert(
-                st.session_state.get("therapie_setting_verdacht", "")
-            ),
+            # Versorgungssetting zur Verdachtsdiagnose. Der Rohwert bleibt
+            # unverändert, damit leere oder ungewöhnliche Angaben sichtbar
+            # bleiben.
+            # Debug-Hinweis: Bei Bedarf `st.write(st.session_state.get("therapie_setting_verdacht"))`
+            # aktivieren, um den Ursprung direkt zu prüfen.
+            "therapie_setting_verdacht": st.session_state.get("therapie_setting_verdacht"),
             # Finales Therapiesetting, inklusive möglicher Facharzt-Option.
-            "therapie_setting_final": _bereinige_setting_wert(
-                st.session_state.get("therapie_setting_final", "")
-            ),
+            # Debug-Hinweis: Bei Bedarf `st.write(st.session_state.get("therapie_setting_final"))`
+            # aktivieren, um den Ursprung direkt zu prüfen.
+            "therapie_setting_final": st.session_state.get("therapie_setting_final"),
             # Kumulierte Laufzeit aller GPT-Aktionen in Sekunden. Diese Summe
             # basiert auf jedem einzelnen Modellaufruf in der Sitzung.
             "gpt_aktionsdauer_gesamt_sek": round(
