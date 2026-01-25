@@ -25,12 +25,6 @@ st.session_state.setdefault("diagnose_therapie_edit", False)
 # Es sorgt dafür, dass die Widget-States *vor* dem Rendern der Eingabefelder
 # zuverlässig mit den aktuell korrigierten Werten befüllt werden.
 st.session_state.setdefault("diagnose_therapie_sync_edit", False)
-# Das finale Therapiesetting wird hier als eigenständiger Kontext gepflegt.
-# Wir nutzen eine gültige Default-Option, damit das Radio-Widget keinen
-# ungültigen Session-State-Wert verarbeitet.
-# Debugging-Hinweis: Bei inkonsistenten UI-Zuständen kann dieser Key gezielt
-# geleert werden, um die Auswahl neu zu erzwingen.
-st.session_state.setdefault("therapie_setting_final", "Einweisung Notaufnahme")
 # Persistente Kopie des finalen Settings, damit der Wert nach dem Verlassen
 # des Radio-Widgets erhalten bleibt. Streamlit entfernt Widget-States, wenn
 # das Widget nicht mehr gerendert wird (z. B. in der reinen Anzeigeansicht).
@@ -43,6 +37,16 @@ if (
     st.session_state["therapie_setting_final"] = st.session_state[
         "therapie_setting_final_persisted"
     ]
+# Das finale Therapiesetting wird hier als eigenständiger Kontext gepflegt.
+# Wir nutzen eine gültige Default-Option, damit das Radio-Widget keinen
+# ungültigen Session-State-Wert verarbeitet. Als Default dient die Persistenz,
+# damit der gespeicherte Wert nicht von einem frühen setdefault überschrieben wird.
+# Debugging-Hinweis: Bei inkonsistenten UI-Zuständen kann dieser Key gezielt
+# geleert werden, um die Auswahl neu zu erzwingen.
+st.session_state.setdefault(
+    "therapie_setting_final",
+    st.session_state.get("therapie_setting_final_persisted", "Einweisung Notaufnahme"),
+)
 # Synchronisations-Keys für die Eingabefelder, damit nach der sprachlichen Korrektur
 # die aktualisierten Inhalte sicher in den Widgets angezeigt werden.
 # Hinweis zum Debugging: Bei unerwarteten Vorbelegungen können diese Keys gezielt
