@@ -26,25 +26,15 @@ st.session_state.setdefault("befund_generierung_gescheitert", False)
 # temporär geleert werden, um die Datenquelle zu überprüfen.
 st.session_state.setdefault("user_diagnostics", "")
 # Das Versorgungssetting zur Verdachtsdiagnose wird direkt im Diagnostik-Teil
-# erfasst. Wir initialisieren es hier mit einer gültigen Option, damit
-# Streamlit bei der ersten Darstellung keinen ungültigen Default erhält.
+# erfasst. Damit Streamlit keinen ungültigen Default erhält, holen wir zuerst
+# den letzten persistierten Wert und nutzen ihn als Initialwert.
 # Debugging-Hinweis: Bei Bedarf kann der Key gezielt entfernt werden, um die
 # Auswahl neu aufzubauen (z. B. via st.session_state.pop(...)).
-st.session_state.setdefault("therapie_setting_verdacht", "Einweisung Notaufnahme")
-# Damit das Therapiesetting auch nach dem Wechsel auf spätere Seiten verfügbar
-# bleibt, speichern wir eine persistente Kopie außerhalb des Widget-Keys.
-# Hintergrund: Sobald das Radio-Widget nicht mehr gerendert wird, entfernt
-# Streamlit den Widget-State aus dem Session-State. Über diesen Sync stellen
-# wir sicher, dass der zuletzt gewählte Wert erhalten bleibt.
-# Debug-Hinweis: Falls hier falsche Werte auftauchen, kann `st.write` für
-# `therapie_setting_verdacht_persisted` aktiviert werden, um die Persistenz zu prüfen.
-if (
-    "therapie_setting_verdacht_persisted" in st.session_state
-    and "therapie_setting_verdacht" not in st.session_state
-):
-    st.session_state["therapie_setting_verdacht"] = st.session_state[
-        "therapie_setting_verdacht_persisted"
-    ]
+therapie_setting_verdacht_default = st.session_state.get(
+    "therapie_setting_verdacht_persisted",
+    "Einweisung Notaufnahme",
+)
+st.session_state.setdefault("therapie_setting_verdacht", therapie_setting_verdacht_default)
 
 
 def aktualisiere_kumulative_befunde_page(neuer_befund: str) -> None:
