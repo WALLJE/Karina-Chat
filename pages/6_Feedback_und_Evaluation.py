@@ -12,6 +12,24 @@ show_sidebar()
 copyright_footer()
 display_offline_banner()
 
+def _sync_therapie_settings() -> None:
+    """Synchronisiert persistierte Therapiesettings in den Session-State.
+
+    Streamlit entfernt Widget-States, sobald das zugehörige Widget nicht mehr
+    gerendert wird. Damit die Feedback-/Supabase-Pipeline weiterhin die
+    Settings erhält, übernehmen wir gespeicherte Persistenz-Keys erneut in
+    den Standard-Session-State.
+    """
+
+    for key in ("therapie_setting_verdacht", "therapie_setting_final"):
+        persist_key = f"{key}_persisted"
+        if key not in st.session_state and persist_key in st.session_state:
+            # Debug-Hinweis: Aktivieren, um den Sync nachvollziehen zu können.
+            # st.write("Debug Seite 6E > Sync", key, "=", st.session_state[persist_key])
+            st.session_state[key] = st.session_state[persist_key]
+
+_sync_therapie_settings()
+
 st.write("Debug Seite 6E > Session-Keys (Start):", sorted(st.session_state.keys()))
 st.write(
     "Debug Seite 6E > therapie_setting-Keys (Start):",

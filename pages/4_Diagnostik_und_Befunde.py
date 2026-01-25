@@ -31,6 +31,20 @@ st.session_state.setdefault("user_diagnostics", "")
 # Debugging-Hinweis: Bei Bedarf kann der Key gezielt entfernt werden, um die
 # Auswahl neu aufzubauen (z. B. via st.session_state.pop(...)).
 st.session_state.setdefault("therapie_setting_verdacht", "Einweisung Notaufnahme")
+# Damit das Therapiesetting auch nach dem Wechsel auf spätere Seiten verfügbar
+# bleibt, speichern wir eine persistente Kopie außerhalb des Widget-Keys.
+# Hintergrund: Sobald das Radio-Widget nicht mehr gerendert wird, entfernt
+# Streamlit den Widget-State aus dem Session-State. Über diesen Sync stellen
+# wir sicher, dass der zuletzt gewählte Wert erhalten bleibt.
+# Debug-Hinweis: Falls hier falsche Werte auftauchen, kann `st.write` für
+# `therapie_setting_verdacht_persisted` aktiviert werden, um die Persistenz zu prüfen.
+if (
+    "therapie_setting_verdacht_persisted" in st.session_state
+    and "therapie_setting_verdacht" not in st.session_state
+):
+    st.session_state["therapie_setting_verdacht"] = st.session_state[
+        "therapie_setting_verdacht_persisted"
+    ]
 
 
 def aktualisiere_kumulative_befunde_page(neuer_befund: str) -> None:
@@ -151,6 +165,12 @@ if "koerper_befund" in st.session_state:
                 # vom Widget-State abhängt. Damit lässt sich prüfen, ob die
                 # Session zwischen Seitenwechseln neu aufgebaut wird.
                 st.session_state["debug_snapshot_therapie_setting_verdacht"] = setting_verdacht
+                # Persistente Kopie für den Seitenwechsel: wird unabhängig vom
+                # Widget-State gespeichert und kann später in Seite 5/6 wieder
+                # in den Session-State synchronisiert werden.
+                # Debug-Hinweis: Bei Bedarf mit `st.write(...)` prüfen, ob der
+                # Wert korrekt ankommt.
+                st.session_state["therapie_setting_verdacht_persisted"] = setting_verdacht
                 st.write(
                     "Debug Seite 4 > Snapshot verdacht (nicht-Widget):",
                     st.session_state.get("debug_snapshot_therapie_setting_verdacht"),

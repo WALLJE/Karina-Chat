@@ -30,6 +30,18 @@ st.session_state.setdefault("diagnose_therapie_sync_edit", False)
 # Debugging-Hinweis: Bei inkonsistenten UI-Zuständen kann dieser Key gezielt
 # geleert werden, um die Auswahl neu zu erzwingen.
 st.session_state.setdefault("therapie_setting_final", "Einweisung Notaufnahme")
+# Persistente Kopie des finalen Settings, damit der Wert nach dem Verlassen
+# des Radio-Widgets erhalten bleibt. Streamlit entfernt Widget-States, wenn
+# das Widget nicht mehr gerendert wird (z. B. in der reinen Anzeigeansicht).
+# Debug-Hinweis: Mit `st.write(st.session_state.get("therapie_setting_final_persisted"))`
+# lässt sich prüfen, ob der Wert korrekt übernommen wurde.
+if (
+    "therapie_setting_final_persisted" in st.session_state
+    and "therapie_setting_final" not in st.session_state
+):
+    st.session_state["therapie_setting_final"] = st.session_state[
+        "therapie_setting_final_persisted"
+    ]
 # Synchronisations-Keys für die Eingabefelder, damit nach der sprachlichen Korrektur
 # die aktualisierten Inhalte sicher in den Widgets angezeigt werden.
 # Hinweis zum Debugging: Bei unerwarteten Vorbelegungen können diese Keys gezielt
@@ -113,6 +125,11 @@ else:
     # Widget-State abhängt. Damit lässt sich prüfen, ob die Session zwischen
     # Seitenwechseln neu aufgebaut wird.
     st.session_state["debug_snapshot_therapie_setting_final"] = setting_final
+    # Persistente Kopie für den Seitenwechsel: bleibt auch erhalten, wenn das
+    # Radio-Widget später nicht mehr gerendert wird.
+    # Debug-Hinweis: Bei Bedarf mit `st.write(...)` prüfen, ob der Wert korrekt
+    # in der Persistenz landet.
+    st.session_state["therapie_setting_final_persisted"] = setting_final
     st.write(
         "Debug Seite 5 > Snapshot final (nicht-Widget):",
         st.session_state.get("debug_snapshot_therapie_setting_final"),
