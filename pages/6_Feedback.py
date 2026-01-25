@@ -151,6 +151,12 @@ def _zeige_feedback(feedback_text: str) -> None:
 def main() -> None:
     """Zentrale Steuermethode für die Feedback-Seite."""
 
+    st.write("Debug Seite 6 > Session-Keys (Start):", sorted(st.session_state.keys()))
+    st.write(
+        "Debug Seite 6 > therapie_setting-Keys (Start):",
+        [key for key in st.session_state.keys() if "therapie_setting" in key],
+    )
+
     _pruefe_voraussetzungen()
     aktualisiere_diagnostik_zusammenfassung()
 
@@ -163,6 +169,12 @@ def main() -> None:
         st.stop()
 
     _zeige_feedback(feedback_text)
+
+    st.write("Debug Seite 6 > Session-Keys (Ende):", sorted(st.session_state.keys()))
+    st.write(
+        "Debug Seite 6 > therapie_setting-Keys (Ende):",
+        [key for key in st.session_state.keys() if "therapie_setting" in key],
+    )
 
     st.markdown("---")
     st.page_link(

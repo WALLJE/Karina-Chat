@@ -8,6 +8,12 @@ from module.offline import display_offline_banner, is_offline
 show_sidebar()
 display_offline_banner()
 
+st.write("Debug Seite 5 > Session-Keys (Start):", sorted(st.session_state.keys()))
+st.write(
+    "Debug Seite 5 > therapie_setting-Keys (Start):",
+    [key for key in st.session_state.keys() if "therapie_setting" in key],
+)
+
 st.subheader("Diagnose und Therapie")
 
 # Steuerflag für den Bearbeitungsmodus der finalen Angaben.
@@ -138,6 +144,14 @@ else:
         if is_offline():
             st.info("🔌 Offline-Modus: Eingaben wurden ohne GPT-Korrektur übernommen.")
         st.rerun()
+
+# Debug-Hinweis (beschriftet): Snapshot der Session-Keys am Seitenende, um
+# zu prüfen, ob die Keys vor dem Wechsel zur Feedback-Seite noch vorhanden sind.
+st.write("Debug Seite 5 > Session-Keys (Ende):", sorted(st.session_state.keys()))
+st.write(
+    "Debug Seite 5 > therapie_setting-Keys (Ende):",
+    [key for key in st.session_state.keys() if "therapie_setting" in key],
+)
 
 # # Nur für Admin sichtbar:
 # if st.session_state.get("admin_mode"):

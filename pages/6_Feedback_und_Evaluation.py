@@ -12,6 +12,12 @@ show_sidebar()
 copyright_footer()
 display_offline_banner()
 
+st.write("Debug Seite 6E > Session-Keys (Start):", sorted(st.session_state.keys()))
+st.write(
+    "Debug Seite 6E > therapie_setting-Keys (Start):",
+    [key for key in st.session_state.keys() if "therapie_setting" in key],
+)
+
 # Voraussetzungen prüfen
 if "SYSTEM_PROMPT" not in st.session_state or "patient_name" not in st.session_state:
     st.warning("⚠️ Der Fall ist noch nicht geladen. Bitte beginne über die Startseite.")
@@ -171,6 +177,12 @@ if feedback_text:
 else:
     st.error("🚫 Das Abschluss-Feedback konnte nicht erstellt werden.")
     st.stop()
+
+st.write("Debug Seite 6E > Session-Keys (Ende):", sorted(st.session_state.keys()))
+st.write(
+    "Debug Seite 6E > therapie_setting-Keys (Ende):",
+    [key for key in st.session_state.keys() if "therapie_setting" in key],
+)
 
 if st.session_state.final_feedback:
     student_feedback()
