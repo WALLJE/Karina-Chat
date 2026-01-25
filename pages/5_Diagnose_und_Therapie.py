@@ -8,11 +8,12 @@ from module.offline import display_offline_banner, is_offline
 show_sidebar()
 display_offline_banner()
 
-st.write("Debug Seite 5 > Session-Keys (Start):", sorted(st.session_state.keys()))
-st.write(
-    "Debug Seite 5 > therapie_setting-Keys (Start):",
-    [key for key in st.session_state.keys() if "therapie_setting" in key],
-)
+# TODO: Debug-Ausgaben später entfernen.
+# st.write("Debug Seite 5 > Session-Keys (Start):", sorted(st.session_state.keys()))
+# st.write(
+#     "Debug Seite 5 > therapie_setting-Keys (Start):",
+#     [key for key in st.session_state.keys() if "therapie_setting" in key],
+# )
 
 st.subheader("Diagnose und Therapie")
 
@@ -106,7 +107,8 @@ else:
         # `st.write(bestehendes_setting)` aktiviert werden, um den Wert zu prüfen.
         # Debug-Hinweis (beschriftet): Zeigt den fehlerhaften Session-State-Wert
         # vor dem Entfernen an.
-        st.write("Debug Seite 5 > Ungültiges Setting final:", bestehendes_setting)
+        # TODO: Debug-Ausgabe später entfernen.
+        # st.write("Debug Seite 5 > Ungültiges Setting final:", bestehendes_setting)
         st.session_state.pop("therapie_setting_final", None)
         default_index = 0
     setting_final = st.radio(
@@ -119,8 +121,9 @@ else:
     # um die aktuelle Auswahl sofort sichtbar zu machen.
     # Debug-Hinweis (beschriftet): Aktivieren, um Auswahl und Session-State
     # nach dem Radio eindeutig zu prüfen.
-    st.write("Debug Seite 5 > Auswahl final (Radio):", setting_final)
-    st.write("Debug Seite 5 > Session final (nach Radio):", st.session_state.get("therapie_setting_final"))
+    # TODO: Debug-Ausgaben später entfernen.
+    # st.write("Debug Seite 5 > Auswahl final (Radio):", setting_final)
+    # st.write("Debug Seite 5 > Session final (nach Radio):", st.session_state.get("therapie_setting_final"))
     # Debug-Hinweis (beschriftet): Zusätzlicher Snapshot, der nicht vom
     # Widget-State abhängt. Damit lässt sich prüfen, ob die Session zwischen
     # Seitenwechseln neu aufgebaut wird.
@@ -130,10 +133,11 @@ else:
     # Debug-Hinweis: Bei Bedarf mit `st.write(...)` prüfen, ob der Wert korrekt
     # in der Persistenz landet.
     st.session_state["therapie_setting_final_persisted"] = setting_final
-    st.write(
-        "Debug Seite 5 > Snapshot final (nicht-Widget):",
-        st.session_state.get("debug_snapshot_therapie_setting_final"),
-    )
+    # TODO: Debug-Ausgabe später entfernen.
+    # st.write(
+    #     "Debug Seite 5 > Snapshot final (nicht-Widget):",
+    #     st.session_state.get("debug_snapshot_therapie_setting_final"),
+    # )
     # Kurzer didaktischer Hinweis: Das Setting kann hier noch einmal
     # hinterfragt und bei Bedarf angepasst werden, bevor das Feedback läuft.
     st.info(
@@ -172,15 +176,16 @@ else:
 
 # Debug-Hinweis (beschriftet): Snapshot der Session-Keys am Seitenende, um
 # zu prüfen, ob die Keys vor dem Wechsel zur Feedback-Seite noch vorhanden sind.
-st.write("Debug Seite 5 > Session-Keys (Ende):", sorted(st.session_state.keys()))
-st.write(
-    "Debug Seite 5 > therapie_setting-Keys (Ende):",
-    [key for key in st.session_state.keys() if "therapie_setting" in key],
-)
-st.write(
-    "Debug Seite 5 > Snapshot-Keys (Ende):",
-    [key for key in st.session_state.keys() if "debug_snapshot_therapie_setting" in key],
-)
+# TODO: Debug-Ausgaben später entfernen.
+# st.write("Debug Seite 5 > Session-Keys (Ende):", sorted(st.session_state.keys()))
+# st.write(
+#     "Debug Seite 5 > therapie_setting-Keys (Ende):",
+#     [key for key in st.session_state.keys() if "therapie_setting" in key],
+# )
+# st.write(
+#     "Debug Seite 5 > Snapshot-Keys (Ende):",
+#     [key for key in st.session_state.keys() if "debug_snapshot_therapie_setting" in key],
+# )
 
 # # Nur für Admin sichtbar:
 # if st.session_state.get("admin_mode"):

@@ -142,7 +142,8 @@ if "koerper_befund" in st.session_state:
                     # temporär st.write(bestehendes_setting) aktiviert werden.
                     # Debug-Hinweis (beschriftet): Zeigt den fehlerhaften
                     # Session-State-Wert vor dem Entfernen an.
-                    st.write("Debug Seite 4 > Ungültiges Setting verdacht:", bestehendes_setting)
+                    # TODO: Debug-Ausgabe später entfernen.
+                    # st.write("Debug Seite 4 > Ungültiges Setting verdacht:", bestehendes_setting)
                     st.session_state.pop("therapie_setting_verdacht", None)
                     default_index = 0
                 setting_verdacht = st.radio(
@@ -159,8 +160,9 @@ if "koerper_befund" in st.session_state:
                 # aktuelle Auswahl direkt im UI zu sehen.
                 # Debug-Hinweis (beschriftet): Aktivieren, um Auswahl und
                 # Session-State nach dem Radio eindeutig zu prüfen.
-                st.write("Debug Seite 4 > Auswahl verdacht (Radio):", setting_verdacht)
-                st.write("Debug Seite 4 > Session verdacht (nach Radio):", st.session_state.get("therapie_setting_verdacht"))
+                # TODO: Debug-Ausgaben später entfernen.
+                # st.write("Debug Seite 4 > Auswahl verdacht (Radio):", setting_verdacht)
+                # st.write("Debug Seite 4 > Session verdacht (nach Radio):", st.session_state.get("therapie_setting_verdacht"))
                 # Debug-Hinweis (beschriftet): Zusätzlicher Snapshot, der nicht
                 # vom Widget-State abhängt. Damit lässt sich prüfen, ob die
                 # Session zwischen Seitenwechseln neu aufgebaut wird.
@@ -171,10 +173,11 @@ if "koerper_befund" in st.session_state:
                 # Debug-Hinweis: Bei Bedarf mit `st.write(...)` prüfen, ob der
                 # Wert korrekt ankommt.
                 st.session_state["therapie_setting_verdacht_persisted"] = setting_verdacht
-                st.write(
-                    "Debug Seite 4 > Snapshot verdacht (nicht-Widget):",
-                    st.session_state.get("debug_snapshot_therapie_setting_verdacht"),
-                )
+                # TODO: Debug-Ausgabe später entfernen.
+                # st.write(
+                #     "Debug Seite 4 > Snapshot verdacht (nicht-Widget):",
+                #     st.session_state.get("debug_snapshot_therapie_setting_verdacht"),
+                # )
                 if setting_verdacht.startswith("ambulant"):
                     st.info(
                         "💡 **Hinweis zur Diagnostik (ambulant):** "
