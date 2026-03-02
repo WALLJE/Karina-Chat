@@ -170,23 +170,23 @@ Finale Diagnose (Nutzereingabe):
 Therapiekonzept (Nutzereingabe):
 {therapie_vorschlag}
 
-Die Fallbearbeitung umfasste {anzahl_termine} Diagnostik-Termine.
+Die Fallbearbeitung umfasste {anzahl_termine} diagnostische Kontakte.
 
 Strukturiere dein Feedback klar, hilfreich und differenziert – wie ein persönlicher Kommentar bei einer mündlichen Prüfung, schreibe in der zweiten Person.
 
-Nenne vorab das zugrunde liegende Szenario. Gib an, ob die Diagnose richtig gestellt wurde. Gib an, wieviele Termine für die Diagnostik benötigt wurden.
+Nenne vorab das zugrunde liegende Szenario. Gib an, ob die Diagnose richtig gestellt wurde. Gib an, wie viele diagnostische Kontakte insgesamt notwendig waren.
 
 1. Wurden im Gespräch alle relevanten anamnestischen Informationen erhoben?
 2. War die gewählte Diagnostik nachvollziehbar, vollständig und passend zur Szenariodiagnose **{diagnose_szenario}**?
 3. War die gewählte Diagnostik nachvollziehbar, vollständig und passend zu den Differentialdiagnosen **{user_ddx2}**?
-4. Beurteile, ob die diagnostische Strategie sinnvoll aufgebaut war, beachte dabei die Zahl der notwendigen Untersuchungstermine. Gab es unnötige Doppeluntersuchungen, sinnvolle Eskalation, fehlende Folgeuntersuchungen? Beziehe dich ausdrücklich auf die Reihenfolge und den Inhalt der Runden.
+4. Beurteile, ob die diagnostische Strategie sinnvoll aufgebaut war, beachte dabei die Zahl der notwendigen Untersuchungstermine. Gab es unnötige Doppeluntersuchungen, sinnvolle Eskalation, fehlende Folgeuntersuchungen? Beziehe dich ausdrücklich auf den zeitlichen Ablauf und den medizinischen Inhalt der einzelnen diagnostischen Schritte.
 5. Ist die finale Diagnose nachvollziehbar, insbesondere im Hinblick auf Differenzierung zu anderen Möglichkeiten?
 6. Ist das Therapiekonzept leitliniengerecht, plausibel und auf die Diagnose abgestimmt?
 
 **Berücksichtige und kommentiere zusätzlich**:
 - Erkläre, wie sich das gewählte Versorgungssetting (ambulant vs. Einweisung) auf die Diagnostik-Strategie auswirkt.
-- Wenn ein stationäres oder Notaufnahme-Setting gewählt wurde, **bewerte die Diagnostikrunden nicht negativ** – sie gelten dort als eigene Versorgungsstufe.
-- Wenn ein ambulantes Setting gewählt wurde, **bewerte die Diagnostikrunden explizit** im Sinne von Termin- und Zeitfaktoren, ohne die Diagnostik an sich zu limitieren.
+- Wenn ein stationäres oder Notaufnahme-Setting gewählt wurde, **bewerte die Anzahl und Taktung diagnostischer Schritte nicht pauschal negativ** – sie entsprechen dort häufig unterschiedlichen Versorgungsstufen.
+- Wenn ein ambulantes Setting gewählt wurde, **bewerte die zeitliche Staffelung und Anzahl diagnostischer Schritte explizit** im Sinne von Termin- und Zeitfaktoren, ohne die Diagnostik an sich zu limitieren.
 - ökologische Aspekte (z. B. überflüssige Diagnostik, zuviele Anforderungen, zuviele Termine, CO₂-Bilanz, Strahlenbelastung bei CT oder Röntgen, Ressourcenverbrauch).
 - ökonomische Sinnhaftigkeit (Kosten-Nutzen-Verhältnis)
 - Beachte und begründe auch, warum zuwenig Diagnostik unwirtschaftlich und nicht nachhaltig sein kann.
