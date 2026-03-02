@@ -112,6 +112,16 @@ _FALL_SESSION_KEYS: set[str] = {
     "diagnose_therapie_sync_edit",
     "diagnose_therapie_edit_diag",
     "diagnose_therapie_edit_therapie",
+    # Diagnostik-Ansicht nutzt seit der Branch-Aufteilung einen expliziten
+    # Edit-Mode-Schalter. Dieser muss beim Fallwechsel gelöscht werden,
+    # damit neue Fälle garantiert im Eingabemodus starten und nicht in den
+    # Anzeigezweig mit ggf. fehlenden Eingabewerten laufen.
+    "diagnostik_edit_mode",
+    # Auch der Kongruenzstatus und der zugehörige Hinweis gehören zum
+    # vorherigen Fallkontext. Ohne Reset könnten Warnungen oder Blockaden
+    # im nächsten Fall irreführend weiter angezeigt werden.
+    "diagnostik_setting_kongruent",
+    "diagnostik_setting_kongruenz_hinweis",
 }
 
 _FALL_SESSION_PREFIXES: tuple[str, ...] = (
