@@ -126,6 +126,11 @@ def feedback_erzeugen(
 
     # Optionaler AMBOSS-Kontext wird nur im entsprechenden Modus geladen.
     amboss_context = ""
+    # Ergebnis der optionalen Kongruenzprüfung zwischen Setting und Diagnostik.
+    # Debug-Hinweis: Bei Bedarf kann dieser Wert via `st.write(...)` im UI
+    # eingeblendet werden, um die Übergabe an den Prompt nachzuvollziehen.
+    diagnostik_setting_kongruent = st.session_state.get("diagnostik_setting_kongruent")
+    diagnostik_setting_hinweis = st.session_state.get("diagnostik_setting_kongruenz_hinweis", "")
     if feedback_mode == FEEDBACK_MODE_AMBOSS_CHATGPT:
         # Die hier genutzte Zusammenfassung wurde im Vorfeld erzeugt und hält den
         # Prompt bewusst klein. Debug-Hinweise dazu finden sich in
@@ -185,6 +190,16 @@ Nenne vorab das zugrunde liegende Szenario. Gib an, ob die Diagnose richtig gest
 - ökologische Aspekte (z. B. überflüssige Diagnostik, zuviele Anforderungen, zuviele Termine, CO₂-Bilanz, Strahlenbelastung bei CT oder Röntgen, Ressourcenverbrauch).
 - ökonomische Sinnhaftigkeit (Kosten-Nutzen-Verhältnis)
 - Beachte und begründe auch, warum zuwenig Diagnostik unwirtschaftlich und nicht nachhaltig sein kann.
+"""
+
+    if diagnostik_setting_kongruent is False:
+        prompt += f"""
+
+Zusatzhinweis zur Setting-Kongruenz aus der Diagnostikseite:
+- Es wurde eine Diskrepanz zwischen Versorgungssetting und vorgeschlagener Diagnostik erkannt.
+- Begründung: {diagnostik_setting_hinweis or 'Keine Begründung hinterlegt.'}
+
+Bitte berücksichtige diese Diskrepanz ausdrücklich in deiner abschließenden Evaluation.
 """
 
     if amboss_context:
