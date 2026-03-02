@@ -115,12 +115,37 @@ else:
         # st.write("Debug Seite 5 > Ungültiges Setting final:", bestehendes_setting)
         st.session_state.pop("therapie_setting_final", None)
         default_index = 0
-    setting_final = st.radio(
-        "Wie soll die Therapie endgültig fortgeführt werden?",
-        options=setting_optionen_final,
-        index=default_index,
-        key="therapie_setting_final",
-    )
+    with st.form("diagnose_therapie_formular"):
+        # Vorbelegung der Texteingaben, wenn bereits Werte vorhanden sind.
+        # Dies ermöglicht ein schnelles Nachschärfen der Inhalte ohne erneute Eingabe.
+        input_diag = st.text_input(
+            "Ihre endgültige Diagnose:",
+            key="diagnose_therapie_edit_diag",
+        )
+
+        # Das finale Therapiesetting wird direkt nach dem Diagnosefeld gerendert,
+        # damit die inhaltliche Reihenfolge im Layout klar dem gewünschten Ablauf
+        # entspricht (erst Diagnose, dann endgültiges Versorgungssetting).
+        setting_final = st.radio(
+            "Wie soll die Therapie endgültig fortgeführt werden?",
+            options=setting_optionen_final,
+            index=default_index,
+            key="therapie_setting_final",
+        )
+        # Kurzer didaktischer Hinweis: Das Setting kann hier noch einmal
+        # hinterfragt und bei Bedarf angepasst werden, bevor das Feedback läuft.
+        st.info(
+            "💡 **Hinweis:** Prüfen Sie Ihr Vorgehen noch einmal und passen Sie das "
+            "Versorgungssetting bei Bedarf an – Sie dürfen Ihre Einschätzung "
+            "hier bewusst revidieren."
+        )
+
+        input_therapie = st.text_area(
+            "Ihr Therapiekonzept:",
+            key="diagnose_therapie_edit_therapie",
+        )
+        submitted_final = st.form_submit_button("✅ Senden")
+
     # Debug-Hinweis: Bei Bedarf kann hier `st.write(setting_final)` aktiviert werden,
     # um die aktuelle Auswahl sofort sichtbar zu machen.
     # Debug-Hinweis (beschriftet): Aktivieren, um Auswahl und Session-State
@@ -142,25 +167,6 @@ else:
     #     "Debug Seite 5 > Snapshot final (nicht-Widget):",
     #     st.session_state.get("debug_snapshot_therapie_setting_final"),
     # )
-    # Kurzer didaktischer Hinweis: Das Setting kann hier noch einmal
-    # hinterfragt und bei Bedarf angepasst werden, bevor das Feedback läuft.
-    st.info(
-        "💡 **Hinweis:** Prüfen Sie Ihr Vorgehen noch einmal und passen Sie das "
-        "Versorgungssetting bei Bedarf an – Sie dürfen Ihre Einschätzung "
-        "hier bewusst revidieren."
-    )
-    with st.form("diagnose_therapie_formular"):
-        # Vorbelegung der Texteingaben, wenn bereits Werte vorhanden sind.
-        # Dies ermöglicht ein schnelles Nachschärfen der Inhalte ohne erneute Eingabe.
-        input_diag = st.text_input(
-            "Ihre endgültige Diagnose:",
-            key="diagnose_therapie_edit_diag",
-        )
-        input_therapie = st.text_area(
-            "Ihr Therapiekonzept:",
-            key="diagnose_therapie_edit_therapie",
-        )
-        submitted_final = st.form_submit_button("✅ Senden")
 
     if submitted_final:
         client = st.session_state.get("openai_client")
