@@ -239,7 +239,7 @@ if "koerper_befund" in st.session_state:
                 )
 
                 setting_verdacht = st.radio(
-                    "Wie planen Sie unter Beachtung Ihrer bisherigen Befunde die weitere Versorgung Ihres Patienten?\n\nDie Entscheidung kann im Verlauf revidiert werden",
+                    "Wie planen Sie unter Beachtung Ihrer bisherigen Befunde die weitere Versorgung Ihres Patienten?\n\n 💡Die Entscheidung kann im Verlauf revidiert werden",
                     options=setting_optionen_verdacht,
                     index=default_index,
                     key="therapie_setting_verdacht",
@@ -255,14 +255,16 @@ if "koerper_befund" in st.session_state:
                 with st.expander("ℹ️ Hinweise zum gewählten Versorgungssetting", expanded=False):
                     if setting_verdacht.startswith("ambulant"):
                         st.markdown(
-                            "**Hinweis zur Diagnostik (ambulant):** Die diagnostischen Möglichkeiten in diesem Schritt sind nicht limitiert, weitere Anforderungen sind bei neuen Terminen möglich. Versuchen Sie die Diagnostik möglichst rationell zu veranlassen.\n\n"
+                            "**Hinweis zur Diagnostik (ambulant):**\n\nDie diagnostischen Möglichkeiten in diesem Schritt sind nicht begrenzt, sollten aber zum ambulanten Behandlungskonzept passen. Weitere Anforderungen sind bei neuen Terminen möglich."
+                            "Veranlassen Sie Diagnostik so umfangreich wie nötig, aber auch so gezielt wie möglich.\n\n"
                             "💡Weitere Untersuchungen können Sie, falls es Ihnen erforderlich erscheint, in einem nächsten Schritt anfordern.\n\n"
                             "💡Sie können sich auch später noch für eine stationäre Therapie entscheiden."
                         )
                     else:
                         st.markdown(
-                            "**Hinweis zur Diagnostik (Einweisung/Notaufnahme):**\n"
-                            "ℹ️ Die stationäre Therapie führt im nächsten Schritt zu einem Rollenwechsel: Die weitere Versorgung erfolgt im Krankenhaus/Notaufnahme, Sie übernehmen *im nächsten Schritt* die ärztliche Diagnostik und Therapie im Krankenhaus. Bitte richten Sie Diagnostik- und Therapievorschläge konsequent an diesem Setting aus."
+                            "**Hinweis zur Diagnostik (Einweisung/Notaufnahme):**\n\n"
+                            "ℹ️ Sie möchten den Patienten stationär einweisen. Im folgenden können Sie Untersuchungen anfordern, die die vorstationär noch durchführen lassen möchten.\n\n"
+                            "💡Sie können sich auch später noch für eine stationäre Therapie entscheiden."
                         )
 
                 diag_input2 = st.text_area(
