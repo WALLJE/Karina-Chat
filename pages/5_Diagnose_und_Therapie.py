@@ -115,6 +115,24 @@ else:
         # st.write("Debug Seite 5 > Ungültiges Setting final:", bestehendes_setting)
         st.session_state.pop("therapie_setting_final", None)
         default_index = 0
+    # Übergang 1/3 (Widget-State): Das Radio steht bewusst außerhalb des Forms,
+    # damit Änderungen sofort in `st.session_state["therapie_setting_final"]`
+    # landen und nicht erst beim Submit wirksam werden.
+    st.radio(
+        "Wie soll die Therapie endgültig fortgeführt werden?",
+        options=setting_optionen_final,
+        index=default_index,
+        key="therapie_setting_final",
+    )
+    # Layout-Harmonisierung: Hinweistext als normales Markdown statt
+    # Infobox, damit Schriftgröße und visuelle Gewichtung besser zu den
+    # übrigen Formelementen passen.
+    st.markdown(
+        "💡 Hinweis: Prüfen Sie Ihr Vorgehen noch einmal und passen Sie das "
+        "Versorgungssetting bei Bedarf an – Sie dürfen Ihre Einschätzung "
+        "hier bewusst revidieren."
+    )
+
     with st.form("diagnose_therapie_formular"):
         # Vorbelegung der Texteingaben, wenn bereits Werte vorhanden sind.
         # Dies ermöglicht ein schnelles Nachschärfen der Inhalte ohne erneute Eingabe.
@@ -122,46 +140,32 @@ else:
             "Ihre endgültige Diagnose:",
             key="diagnose_therapie_edit_diag",
         )
-        # Platzierung bewusst direkt nach dem Diagnosefeld:
-        # Die Nutzer:innen treffen die finale Setting-Entscheidung jetzt genau
-        # an der gewünschten Stelle im Ablauf, ohne dass sich die übrige Seite
-        # strukturell verändert.
-        setting_final = st.radio(
-            "Wie soll die Therapie endgültig fortgeführt werden?",
-            options=setting_optionen_final,
-            index=default_index,
-            key="therapie_setting_final",
-        )
-        # Layout-Harmonisierung: Hinweistext als normales Markdown statt
-        # Infobox, damit Schriftgröße und visuelle Gewichtung besser zu den
-        # übrigen Formelementen passen.
-        st.markdown(
-            "💡 Hinweis: Prüfen Sie Ihr Vorgehen noch einmal und passen Sie das "
-            "Versorgungssetting bei Bedarf an – Sie dürfen Ihre Einschätzung "
-            "hier bewusst revidieren."
-        )
         input_therapie = st.text_area(
             "Ihr Therapiekonzept:",
             key="diagnose_therapie_edit_therapie",
         )
         submitted_final = st.form_submit_button("✅ Senden")
 
-    # Debug-Hinweis: Bei Bedarf kann hier `st.write(setting_final)` aktiviert werden,
+    # Debug-Hinweis: Bei Bedarf kann hier
+    # `st.write(st.session_state.get("therapie_setting_final"))` aktiviert werden,
     # um die aktuelle Auswahl sofort sichtbar zu machen.
     # Debug-Hinweis (beschriftet): Aktivieren, um Auswahl und Session-State
     # nach dem Radio eindeutig zu prüfen.
     # TODO: Debug-Ausgaben später entfernen.
-    # st.write("Debug Seite 5 > Auswahl final (Radio):", setting_final)
+    # st.write("Debug Seite 5 > Auswahl final (Radio):", st.session_state.get("therapie_setting_final"))
     # st.write("Debug Seite 5 > Session final (nach Radio):", st.session_state.get("therapie_setting_final"))
     # Debug-Hinweis (beschriftet): Zusätzlicher Snapshot, der nicht vom
     # Widget-State abhängt. Damit lässt sich prüfen, ob die Session zwischen
     # Seitenwechseln neu aufgebaut wird.
-    st.session_state["debug_snapshot_therapie_setting_final"] = setting_final
-    # Persistente Kopie für den Seitenwechsel: bleibt auch erhalten, wenn das
-    # Radio-Widget später nicht mehr gerendert wird.
-    # Debug-Hinweis: Bei Bedarf mit `st.write(...)` prüfen, ob der Wert korrekt
-    # in der Persistenz landet.
-    st.session_state["therapie_setting_final_persisted"] = setting_final
+    st.session_state["debug_snapshot_therapie_setting_final"] = st.session_state.get(
+        "therapie_setting_final", ""
+    )
+    # Übergang 2/3 (Persistenz): Es wird ausschließlich der *aktuelle* finale
+    # Widget-Wert persistiert. Damit kann beim Seitenwechsel kein veralteter
+    # Zwischenstand aus einem alten Form-Submit weitergereicht werden.
+    st.session_state["therapie_setting_final_persisted"] = st.session_state.get(
+        "therapie_setting_final", ""
+    )
     # TODO: Debug-Ausgabe später entfernen.
     # st.write(
     #     "Debug Seite 5 > Snapshot final (nicht-Widget):",
@@ -201,6 +205,11 @@ else:
 # if st.session_state.get("admin_mode"):
 #     st.page_link("pages/20_Fallbeispiel_Editor.py", label="🔧 Fallbeispiel-Editor", icon="🔧")
 
+# Übergang 3/3 (Navigation): Der Feedback-Link bleibt an den aktuellen
+# finalen Session-State gekoppelt. Dadurch reagiert die Aktivierung sofort
+# auf Radio-Änderungen und nutzt keinen potenziell veralteten Zwischenstand.
+# Debug-Hinweis: Bei Bedarf `st.write(st.session_state.get("therapie_setting_final"))`
+# direkt vor dem Link aktivieren, um den Navigationszustand transparent zu prüfen.
 # Weiter-Link zum Feedback
 st.page_link(
     "pages/6_Feedback.py",
