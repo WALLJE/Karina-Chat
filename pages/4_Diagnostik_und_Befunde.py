@@ -105,7 +105,24 @@ Kriterien:
         import json
 
         parsed = json.loads(raw_text[json_start : json_ende + 1])
-        return bool(parsed.get("is_congruent", True)), str(parsed.get("reason", "")).strip()
+        is_congruent_raw = parsed.get("is_congruent", True)
+        # Strenge Bool-Normalisierung: LLMs liefern gelegentlich Strings wie
+        # "false" zurück. Diese dürfen nicht implizit als True gewertet werden.
+        # Debug-Hinweis: Bei unerwarteten Antworten `st.write(parsed)` aktivieren.
+        if isinstance(is_congruent_raw, bool):
+            is_congruent = is_congruent_raw
+        elif isinstance(is_congruent_raw, str):
+            normalisiert = is_congruent_raw.strip().lower()
+            if normalisiert in {"true", "1", "ja"}:
+                is_congruent = True
+            elif normalisiert in {"false", "0", "nein"}:
+                is_congruent = False
+            else:
+                is_congruent = True
+        else:
+            is_congruent = True
+
+        return is_congruent, str(parsed.get("reason", "")).strip()
     except Exception:
         # Fehler in dieser Zusatzprüfung blockieren nicht die Seite; für
         # Debugging kann hier temporär `st.exception(...)` ergänzt werden.
@@ -211,57 +228,58 @@ if "koerper_befund" in st.session_state:
                     # st.write("Debug Seite 4 > Ungültiges Setting verdacht:", bestehendes_setting)
                     st.session_state.pop("therapie_setting_verdacht", None)
                     default_index = 0
-                with st.form("differentialdiagnosen_diagnostik_formular"):
-                    ddx_input2 = st.text_area(
-                        "Welche drei Differentialdiagnosen halten Sie nach Anamnese und Untersuchung für möglich?",
-                        key="ddx_input2",
-                    )
+                # Die Eingabefelder liegen bewusst außerhalb eines Streamlit-Forms,
+                # damit Änderungen am Radio-Button sofort einen Re-Run auslösen
+                # und alle hint-Texte/Fragen direkt an das neue Setting angepasst
+                # werden. In einem Form würden diese Texte erst nach Absenden
+                # aktualisiert, was hier explizit nicht gewünscht ist.
+                ddx_input2 = st.text_area(
+                    "Welche drei Differentialdiagnosen halten Sie nach Anamnese und Untersuchung für möglich?",
+                    key="ddx_input2",
+                )
 
-                    setting_verdacht = st.radio(
-                        "Wie planen Sie unter Beachtung Ihrer bisherigen Befunde die weitere Versorgung Ihres Patienten?\nDie Entscheidung kann im Verlauf revidiert werden",
-                        options=setting_optionen_verdacht,
-                        index=default_index,
-                        key="therapie_setting_verdacht",
-                    )
-                    # Debug-Hinweis (beschriftet): Aktivieren, um Auswahl und
-                    # Session-State nach dem Radio eindeutig zu prüfen.
-                    # TODO: Debug-Ausgaben später entfernen.
-                    # st.write("Debug Seite 4 > Auswahl verdacht (Radio):", setting_verdacht)
-                    # st.write("Debug Seite 4 > Session verdacht (nach Radio):", st.session_state.get("therapie_setting_verdacht"))
-                    st.session_state["debug_snapshot_therapie_setting_verdacht"] = setting_verdacht
-                    st.session_state["therapie_setting_verdacht_persisted"] = setting_verdacht
+                setting_verdacht = st.radio(
+                    "Wie planen Sie unter Beachtung Ihrer bisherigen Befunde die weitere Versorgung Ihres Patienten?\nDie Entscheidung kann im Verlauf revidiert werden",
+                    options=setting_optionen_verdacht,
+                    index=default_index,
+                    key="therapie_setting_verdacht",
+                )
+                # Debug-Hinweis (beschriftet): Aktivieren, um Auswahl und
+                # Session-State nach dem Radio eindeutig zu prüfen.
+                # TODO: Debug-Ausgaben später entfernen.
+                # st.write("Debug Seite 4 > Auswahl verdacht (Radio):", setting_verdacht)
+                # st.write("Debug Seite 4 > Session verdacht (nach Radio):", st.session_state.get("therapie_setting_verdacht"))
+                st.session_state["debug_snapshot_therapie_setting_verdacht"] = setting_verdacht
+                st.session_state["therapie_setting_verdacht_persisted"] = setting_verdacht
 
-                    with st.expander("ℹ️ Hinweise zum gewählten Versorgungssetting", expanded=False):
-                        if setting_verdacht.startswith("ambulant"):
-                            st.markdown(
-                                "**Hinweis zur Diagnostik (ambulant):** Die diagnostischen Möglichkeiten in diesem Schritt sind nicht limitiert, weitere Anforderungen sind bei neuen Terminen möglich. Versuchen Sie die Diagnostik möglichst rationell zu veranlassen.\n\n"
-                                "💡Weitere Untersuchungen können Sie, falls es Ihnen erforderlich erscheint, in einem nächsten Schritt anfordern.\n\n"
-                                "💡Sie können sich auch später noch für eine stationäre Therapie entscheiden."
-                            )
-                        else:
-                            st.markdown(
-                                "**Hinweis zur Diagnostik (Einweisung/Notaufnahme):**\n"
-                                "ℹ️ Die stationäre Therapie führt im nächsten Schritt zu einem Rollenwechsel: Die weitere Versorgung erfolgt im Krankenhaus/Notaufnahme, Sie übernehmen *im nächsten Schritt* die ärztliche Diagnostik und Therapie im Krankenhaus. Bitte richten Sie Diagnostik- und Therapievorschläge konsequent an diesem Setting aus."
-                            )
-
-                    diag_input2 = st.text_area(
-                        _diagnostik_label_fuer_setting(setting_verdacht),
-                        key="diag_input2",
-                    )
-
-                    if not _is_stationaeres_setting(setting_verdacht):
-                        st.info(
-                            "Hinweis zur Diagnostik (ambulant): Die diagnostischen Möglichkeiten in diesem Schritt sind nicht limitiert, weitere Anforderungen sind bei neuen Terminen möglich. Versuchen Sie die Diagnostik möglichst rationell zu veranlassen.\n\n"
+                with st.expander("ℹ️ Hinweise zum gewählten Versorgungssetting", expanded=False):
+                    if setting_verdacht.startswith("ambulant"):
+                        st.markdown(
+                            "**Hinweis zur Diagnostik (ambulant):** Die diagnostischen Möglichkeiten in diesem Schritt sind nicht limitiert, weitere Anforderungen sind bei neuen Terminen möglich. Versuchen Sie die Diagnostik möglichst rationell zu veranlassen.\n\n"
                             "💡Weitere Untersuchungen können Sie, falls es Ihnen erforderlich erscheint, in einem nächsten Schritt anfordern.\n\n"
                             "💡Sie können sich auch später noch für eine stationäre Therapie entscheiden."
                         )
                     else:
-                        st.info(
-                            "Hinweis zur Diagnostik (Einweisung/Notaufnahme):\n"
+                        st.markdown(
+                            "**Hinweis zur Diagnostik (Einweisung/Notaufnahme):**\n"
                             "ℹ️ Die stationäre Therapie führt im nächsten Schritt zu einem Rollenwechsel: Die weitere Versorgung erfolgt im Krankenhaus/Notaufnahme, Sie übernehmen *im nächsten Schritt* die ärztliche Diagnostik und Therapie im Krankenhaus. Bitte richten Sie Diagnostik- und Therapievorschläge konsequent an diesem Setting aus."
                         )
 
-                    submitted_diag = st.form_submit_button("✅ Eingaben speichern")
+                diag_input2 = st.text_area(
+                    _diagnostik_label_fuer_setting(setting_verdacht),
+                    key="diag_input2",
+                )
+
+                # Dieser zusätzliche Hinweis direkt vor dem Speichern wird
+                # absichtlich nur im stationären/notfallbezogenen Setting
+                # eingeblendet (Anforderung aus dem Review).
+                if _is_stationaeres_setting(setting_verdacht):
+                    st.info(
+                        "Hinweis zur Diagnostik (Einweisung/Notaufnahme):\n"
+                        "ℹ️ Die stationäre Therapie führt im nächsten Schritt zu einem Rollenwechsel: Die weitere Versorgung erfolgt im Krankenhaus/Notaufnahme, Sie übernehmen *im nächsten Schritt* die ärztliche Diagnostik und Therapie im Krankenhaus. Bitte richten Sie Diagnostik- und Therapievorschläge konsequent an diesem Setting aus."
+                    )
+
+                submitted_diag = st.button("✅ Eingaben speichern", key="btn_diag_erste_runde")
 
                 if submitted_diag:
                     from sprachmodul import sprach_check
@@ -311,7 +329,11 @@ if "koerper_befund" in st.session_state:
                             f"Begründung der KI-Prüfung: {st.session_state.get('diagnostik_setting_kongruenz_hinweis')}"
                         )
 
-        starte_automatische_befundgenerierung_page(st.session_state.get("openai_client"))
+        # Bei erkannter Setting-Diskrepanz darf keine automatische
+        # Befundgenerierung anlaufen, damit die erneute Eingabe wirklich
+        # erzwungen wird.
+        if st.session_state.get("diagnostik_setting_kongruent", True):
+            starte_automatische_befundgenerierung_page(st.session_state.get("openai_client"))
 else:
     st.subheader("Diagnostik und Befunde")
     st.button("Untersuchung durchführen", disabled=True)
