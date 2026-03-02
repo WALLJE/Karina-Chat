@@ -239,7 +239,7 @@ if "koerper_befund" in st.session_state:
                 )
 
                 setting_verdacht = st.radio(
-                    "Wie planen Sie unter Beachtung Ihrer bisherigen Befunde die weitere Versorgung Ihres Patienten?\nDie Entscheidung kann im Verlauf revidiert werden",
+                    "Wie planen Sie unter Beachtung Ihrer bisherigen Befunde die weitere Versorgung Ihres Patienten?\n\nDie Entscheidung kann im Verlauf revidiert werden",
                     options=setting_optionen_verdacht,
                     index=default_index,
                     key="therapie_setting_verdacht",
