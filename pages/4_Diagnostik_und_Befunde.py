@@ -21,6 +21,7 @@ if "SYSTEM_PROMPT" not in st.session_state or "patient_name" not in st.session_s
 
 st.session_state.setdefault("befund_generating", False)
 st.session_state.setdefault("befund_generierung_gescheitert", False)
+st.session_state.setdefault("diagnostik_edit_mode", True)
 # Initialisierung der Nutzereingaben für Diagnostik, damit spätere Zugriffe
 # (z.B. im Anzeige-Block) keinen Session-State-Fehler auslösen.
 # Debug-Hinweis: Falls unerwartete Werte angezeigt werden, kann dieser Key
@@ -198,7 +199,24 @@ def starte_automatische_befundgenerierung_page(client) -> None:
 
 # --- Voraussetzungen wie in Hauptdatei beachten ---
 if "koerper_befund" in st.session_state:
-        if "user_ddx2" not in st.session_state:
+        if st.session_state.get("diagnostik_setting_kongruent") is False:
+                # Bei bestätigter Diskrepanz erzwingen wir den Eingabemodus,
+                # damit keine veralteten Finalwerte im Anzeigezweig hängen
+                # bleiben.
+                st.session_state["diagnostik_edit_mode"] = True
+
+        if st.session_state.get("diagnostik_edit_mode", True):
+                # Debug-Hinweis: Bei Bedarf aktivieren, um die Branch-Auswahl
+                # (Eingabe vs. Anzeige) im Session-State nachvollziehen zu können.
+                # st.write(
+                #     "Debug Seite 4 > Branch:",
+                #     "Eingabe",
+                #     {
+                #         "user_ddx2": st.session_state.get("user_ddx2"),
+                #         "user_diagnostics": st.session_state.get("user_diagnostics"),
+                #         "diagnostik_setting_kongruent": st.session_state.get("diagnostik_setting_kongruent"),
+                #     },
+                # )
                 # Hinweis: Das Versorgungssetting soll nach den DDx und vor der
                 # konkreten Diagnostik erfragt werden. Dadurch überlegen die
                 # Studierenden früh, ob die weitere Abklärung ambulant oder
@@ -286,7 +304,10 @@ if "koerper_befund" in st.session_state:
                 if submitted_diag:
                     from sprachmodul import sprach_check
                     client = st.session_state.get("openai_client")
-                    st.session_state.user_ddx2 = sprach_check(ddx_input2, client)
+                    # Temporäre Formwerte: Wir speichern zunächst nur lokale
+                    # Variablen. Finalwerte im Session-State werden erst bei
+                    # erfolgreicher Kongruenzprüfung gesetzt.
+                    ddx_korrigiert = sprach_check(ddx_input2, client)
                     # Das Versorgungssetting stammt direkt aus dem Radio-Widget.
                     # Wichtig: Nach der Widget-Initialisierung darf der Key nicht
                     # erneut gesetzt werden, sonst bricht Streamlit mit einem
@@ -294,26 +315,68 @@ if "koerper_befund" in st.session_state:
                     # ungültiger Wert auftaucht, kann der Key per
                     # st.session_state.pop("therapie_setting_verdacht", None)
                     # gelöscht und die Seite neu geladen werden.
-                    st.session_state.user_diagnostics = sprach_check(diag_input2, client)
+                    diagnostik_korrigiert = sprach_check(diag_input2, client)
+
+                    # Debug-Hinweis: Übergang direkt vor der Kongruenzprüfung.
+                    # st.write(
+                    #     "Debug Seite 4 > Vor Kongruenzprüfung",
+                    #     {
+                    #         "ddx_korrigiert": ddx_korrigiert,
+                    #         "diagnostik_korrigiert": diagnostik_korrigiert,
+                    #         "diagnostik_setting_kongruent_alt": st.session_state.get("diagnostik_setting_kongruent"),
+                    #     },
+                    # )
 
                     kongruent, begruendung = pruefe_setting_kongruenz_diagnostik(
                         client,
                         setting_verdacht,
-                        st.session_state.user_diagnostics,
+                        diagnostik_korrigiert,
                     )
+
+                    # Debug-Hinweis: Übergang direkt nach der Kongruenzprüfung.
+                    # st.write(
+                    #     "Debug Seite 4 > Nach Kongruenzprüfung",
+                    #     {
+                    #         "kongruent": kongruent,
+                    #         "begruendung": begruendung,
+                    #     },
+                    # )
+
                     st.session_state["diagnostik_setting_kongruent"] = kongruent
                     st.session_state["diagnostik_setting_kongruenz_hinweis"] = begruendung
                     if not kongruent:
+                        # Bei Diskrepanz verwerfen wir explizit mögliche
+                        # Finalwerte aus früheren Läufen und bleiben im
+                        # Eingabemodus.
+                        st.session_state.pop("user_ddx2", None)
+                        st.session_state.pop("user_diagnostics", None)
+                        st.session_state["diagnostik_edit_mode"] = True
                         st.warning(
                             "⚠️ Die diagnostischen Maßnahmen wirken im gewählten Setting nicht vollständig stimmig. "
                             "Bitte passen Sie Ihre Eingabe unter 'Diagnostik und Befunde' an und speichern Sie erneut."
                         )
                         if begruendung:
                             st.info(f"Begründung der KI-Prüfung: {begruendung}")
+                        st.rerun()
                     else:
+                        # Finale Speicherung erst nach bestätigter Kongruenz.
+                        st.session_state.user_ddx2 = ddx_korrigiert
+                        st.session_state.user_diagnostics = diagnostik_korrigiert
+                        st.session_state["diagnostik_edit_mode"] = False
                         starte_automatische_befundgenerierung_page(client)
 
         else:
+                # Debug-Hinweis: Bei Bedarf aktivieren, um die Branch-Auswahl
+                # (Eingabe vs. Anzeige) im Session-State nachvollziehen zu können.
+                # st.write(
+                #     "Debug Seite 4 > Branch:",
+                #     "Anzeige",
+                #     {
+                #         "user_ddx2": st.session_state.get("user_ddx2"),
+                #         "user_diagnostics": st.session_state.get("user_diagnostics"),
+                #         "diagnostik_setting_kongruent": st.session_state.get("diagnostik_setting_kongruent"),
+                #     },
+                # )
                 st.markdown(f"**Differentialdiagnosen:**  \n{st.session_state.user_ddx2}")
                 # Das Setting der Verdachtsdiagnose wird im Verlauf sichtbar
                 # angezeigt, damit der Kontext erhalten bleibt.
@@ -334,7 +397,12 @@ if "koerper_befund" in st.session_state:
         # Bei erkannter Setting-Diskrepanz darf keine automatische
         # Befundgenerierung anlaufen, damit die erneute Eingabe wirklich
         # erzwungen wird.
-        if st.session_state.get("diagnostik_setting_kongruent", True):
+        if (
+            not st.session_state.get("diagnostik_edit_mode", True)
+            and st.session_state.get("diagnostik_setting_kongruent", False) is True
+            and st.session_state.get("user_ddx2", "").strip()
+            and st.session_state.get("user_diagnostics", "").strip()
+        ):
             starte_automatische_befundgenerierung_page(st.session_state.get("openai_client"))
 else:
     st.subheader("Diagnostik und Befunde")
