@@ -140,6 +140,10 @@ def feedback_erzeugen(
     # Der Prompt wird komplett in einem String aufgebaut, sodass das Modell das
     # Feedback in einem Schritt erzeugt. Dadurch vermeiden wir divergierende
     # Teilantworten und gewährleisten eine konsistente Tonalität.
+    # Straffungshinweis: Kompakte Teilantworten pro Abschnitt halten die
+    # Ausgabe kürzer und reduzieren typischerweise Tokenverbrauch sowie Wartezeit.
+    # Debug-Tipp: Bei Bedarf kann temporär `st.write(prompt)` aktiviert werden,
+    # um die final zusammengesetzte Promptversion im UI direkt zu prüfen.
     prompt = f"""
 Ein Medizinstudierender hat eine vollständige virtuelle Fallbesprechung mit {patient_forms.phrase("dat", article="indefinite")} durchgeführt. Du bist ein erfahrener medizinischer Prüfer.
 
@@ -170,23 +174,21 @@ Finale Diagnose (Nutzereingabe):
 Therapiekonzept (Nutzereingabe):
 {therapie_vorschlag}
 
-Die Fallbearbeitung umfasste {anzahl_termine} Diagnostik-Termine.
+Die Fallbearbeitung umfasste {anzahl_termine} Diagnostik-Kontakte.
 
 Strukturiere dein Feedback klar, hilfreich und differenziert – wie ein persönlicher Kommentar bei einer mündlichen Prüfung, schreibe in der zweiten Person.
 
-Nenne vorab das zugrunde liegende Szenario. Gib an, ob die Diagnose richtig gestellt wurde. Gib an, wieviele Termine für die Diagnostik benötigt wurden.
+Nenne vorab das zugrunde liegende Szenario. Gib an, ob die Diagnose richtig gestellt wurde.
 
+Ausgabeformat (kompakte Antworten, je Punkt max. 50 Wörter):
 1. Wurden im Gespräch alle relevanten anamnestischen Informationen erhoben?
-2. War die gewählte Diagnostik nachvollziehbar, vollständig und passend zur Szenariodiagnose **{diagnose_szenario}**?
+2. War die gewählte Diagnostik nachvollziehbar, vollständig und passend zur Szenariodiagnose **{diagnose_szenario}**? Erkläre bei Diskrepanz kurz den Einfluss des Versorgungssettings (ambulant vs. Einweisung).
 3. War die gewählte Diagnostik nachvollziehbar, vollständig und passend zu den Differentialdiagnosen **{user_ddx2}**?
-4. Beurteile, ob die diagnostische Strategie sinnvoll aufgebaut war, beachte dabei die Zahl der notwendigen Untersuchungstermine. Gab es unnötige Doppeluntersuchungen, sinnvolle Eskalation, fehlende Folgeuntersuchungen? Beziehe dich ausdrücklich auf die Reihenfolge und den Inhalt der Runden.
-5. Ist die finale Diagnose nachvollziehbar, insbesondere im Hinblick auf Differenzierung zu anderen Möglichkeiten?
-6. Ist das Therapiekonzept leitliniengerecht, plausibel und auf die Diagnose abgestimmt?
+4. Beurteile die diagnostische Strategie hinsichtlich Reihenfolge und Inhalt der Diagnostik-Kontakte: Gab es unnötige Doppeluntersuchungen und war die Reihenfolge sinnvoll?
+5. Ist die finale Diagnose nachvollziehbar, insbesondere im Hinblick auf Differentialdiagnosen?
+6. Ist das Therapiekonzept leitliniengerecht, plausibel und auf die Diagnose abgestimmt? Ist das Versorgungssetting angemessen? Bewerte bei stationärem/Notaufnahme-Setting die Zahl von Diagnostik-Terminen nicht negativ; im ambulanten Setting die Zahl der diagnostischen Kontakte explizit im Sinne von Termin- und Zeitfaktoren.
 
-**Berücksichtige und kommentiere zusätzlich**:
-- Erkläre, wie sich das gewählte Versorgungssetting (ambulant vs. Einweisung) auf die Diagnostik-Strategie auswirkt.
-- Wenn ein stationäres oder Notaufnahme-Setting gewählt wurde, **bewerte die Diagnostikrunden nicht negativ** – sie gelten dort als eigene Versorgungsstufe.
-- Wenn ein ambulantes Setting gewählt wurde, **bewerte die Diagnostikrunden explizit** im Sinne von Termin- und Zeitfaktoren, ohne die Diagnostik an sich zu limitieren.
+**Berücksichtige und kommentiere kompakt**:
 - ökologische Aspekte (z. B. überflüssige Diagnostik, zuviele Anforderungen, zuviele Termine, CO₂-Bilanz, Strahlenbelastung bei CT oder Röntgen, Ressourcenverbrauch).
 - ökonomische Sinnhaftigkeit (Kosten-Nutzen-Verhältnis)
 - Beachte und begründe auch, warum zuwenig Diagnostik unwirtschaftlich und nicht nachhaltig sein kann.
