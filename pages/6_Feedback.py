@@ -11,6 +11,7 @@ from diagnostikmodul import aktualisiere_diagnostik_zusammenfassung
 from feedbackmodul import feedback_erzeugen
 from module.footer import copyright_footer
 from module.gpt_feedback import speichere_gpt_feedback_in_supabase
+from module.feedback_detail import render_feedback_with_details
 from module.loading_indicator import task_spinner
 from module.navigation import redirect_to_start_page
 from module.offline import display_offline_banner, is_offline
@@ -164,7 +165,9 @@ def _zeige_feedback(feedback_text: str) -> None:
         speichere_gpt_feedback_in_supabase()
 
     st.subheader("📋 Automatisches Feedback")
-    st.markdown(feedback_text)
+    # Das kompakte Feedback bleibt der Standard. Die Detailtiefe wird erst
+    # nach Klick je Unterpunkt geladen (token-sparsam, didaktisch gestuft).
+    render_feedback_with_details(feedback_text)
 
 
 def main() -> None:
