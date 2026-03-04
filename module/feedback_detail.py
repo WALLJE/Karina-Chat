@@ -34,7 +34,10 @@ DETAIL_MODEL = "gpt-4.1-mini"
 # Ausgabeformat in den Cache-Key ein. Wird das Format geändert, kann die
 # Version hochgezählt werden und die App erzeugt automatisch neue Texte im
 # aktuellen Stil, ohne Altbestände manuell löschen zu müssen.
-DETAIL_OUTPUT_STYLE_VERSION = "v2_fliesstext"
+#
+# v3 ergänzt gezielte **Fetthebungen** einzelner klinisch wichtiger Begriffe
+# im Fließtext, damit Kernpunkte schneller visuell erfasst werden können.
+DETAIL_OUTPUT_STYLE_VERSION = "v3_fliesstext_mit_fetthebungen"
 
 # Ein Cache-Eintrag gilt 90 Tage (~3 Monate) als frisch.
 CACHE_TTL_DAYS = 90
@@ -318,6 +321,8 @@ Verbindliche Ausgabe-Regeln:
 - Fokus auf konkrete, praxisnahe klinische Formulierungen statt Allgemeinplätzen.
 - Schreibe ausschließlich als Fließtext in ein bis zwei Absätzen.
 - Keine Bulletpoints, keine nummerierten Listen, keine Markdown-Aufzählungen.
+- Hebe 3-5 klinisch wichtige Einzelwörter oder sehr kurze Phrasen mit **fett** hervor.
+- Nutze Fetthebung sparsam und gezielt (keine ganzen Sätze fett markieren).
 - Nur Inhalte verwenden, die zum Unterpunkt und zum gelieferten Kontext passen.
 - Keine Quellenangaben, keine Leitliniennummern, keine erfundenen Details.
 - Umfang kompakt halten (ca. 120–170 Wörter).
