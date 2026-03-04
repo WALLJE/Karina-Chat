@@ -357,10 +357,43 @@ st.markdown("---")
 
 # Weiter-Link zur Diagnostik
 # Hinweis: "href='/Diagnostik'" sorgt für internen Seitenwechsel, nicht für neues Fenster
+# Der Stil ist bewusst nur auf diesen einen Weiter-Button begrenzt, damit andere
+# Buttons (z. B. "Untersuchung durchführen") visuell unverändert bleiben.
+# Debug-Hinweis: Falls der Zustand nicht plausibel wirkt, temporär
+# `st.write("Weiter-Button disabled:", "koerper_befund" not in st.session_state)` aktivieren.
+st.markdown(
+    """
+    <style>
+    div.st-key-weiter-diagnostik button[kind="secondary"] {
+        background-color: #22a06b;
+        color: #ffffff;
+        border: 1px solid #1b7f54;
+        border-radius: 0.75rem;
+        font-weight: 600;
+        padding: 0.6rem 1rem;
+    }
+
+    div.st-key-weiter-diagnostik button[kind="secondary"]:hover {
+        background-color: #1b7f54;
+        border-color: #166c47;
+    }
+
+    div.st-key-weiter-diagnostik button[kind="secondary"]:disabled {
+        background-color: #d5d8de;
+        color: #5d6573;
+        border: 1px solid #bcc2cc;
+        cursor: not-allowed;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
 render_next_page_link(
     "pages/4_Diagnostik_und_Befunde.py",
     label="Weiter zur Diagnostik",
     icon="🧪",
     disabled="koerper_befund" not in st.session_state,
+    as_button=True,
+    button_key="weiter-diagnostik",
 )
-
