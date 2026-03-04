@@ -34,14 +34,12 @@ def render_next_page_link(
     disabled: bool = False,
     helper_text: str | None = None,
 ) -> None:
-    """Rendert einen einheitlich hervorgehobenen "Weiter zu ..."-Navigationsblock.
+    """Rendert den standardisierten "Weiter zu ..."-Link für den nächsten Lernschritt.
 
     Warum zentral?
-    - Alle Seiten nutzen denselben visuellen Stil für den nächsten Schritt.
-    - Aktivierte Navigation hebt sich deutlich (grüner Hintergrund) vom restlichen
-      Inhalt ab und verbessert die Orientierung innerhalb der Lernstrecke.
-    - Bei deaktivierten Zuständen bleibt die Box sichtbar, damit Lernende sehen,
-      welcher nächste Schritt vorgesehen ist.
+    - Alle Seiten nutzen dieselbe API für den nächsten Navigationsschritt.
+    - Das klickbare Element bleibt ein nativer Streamlit-Link ohne vorgeschaltete
+      Deko-Container, damit Layout und Interaktion konsistent bleiben.
 
     Debug-Hinweis:
     Falls eine Weiterleitung unerwartet deaktiviert wirkt, kann temporär
@@ -49,30 +47,18 @@ def render_next_page_link(
     werden, um den Status transparent zu prüfen.
     """
 
-    box_class = "next-nav-disabled" if disabled else "next-nav-enabled"
-    st.markdown(
-        f"""
-        <style>
-        .next-nav-wrap {{
-            border-radius: 0.75rem;
-            padding: 0.35rem 0.75rem;
-            margin: 0.4rem 0 0.65rem 0;
-            border: 1px solid transparent;
-        }}
-        .next-nav-enabled {{
-            background: #e9f9ee;
-            border-color: #9dd8ac;
-        }}
-        .next-nav-disabled {{
-            background: #f4f6f8;
-            border-color: #d6dbe0;
-        }}
-        </style>
-        <div class="next-nav-wrap {box_class}"></div>
-        """,
-        unsafe_allow_html=True,
-    )
-
+    # Konzeptanpassung:
+    # Die bisherige Variante hat einen separaten, leeren DIV-Block als "grünen Balken"
+    # vor dem eigentlichen Link gerendert. Das wirkt visuell wie ein Fehler, weil der
+    # farbige Hinweis nicht an das klickbare Element gebunden ist.
+    #
+    # Stattdessen nutzen wir den nativen Streamlit-Link direkt als alleinigen UI-Baustein.
+    # So bleibt die Interaktion eindeutig: Was sichtbar hervorgehoben wird, ist auch
+    # tatsächlich der klickbare "Weiter"-Eintrag.
     st.page_link(target_page, label=label, icon=icon, disabled=disabled)
+
+    # Optionaler Debug-Hinweis: Falls der Eindruck entsteht, der Link sei "verschwunden",
+    # kann temporär folgende Zeile aktiviert werden:
+    # st.write("render_next_page_link", {"target_page": target_page, "disabled": disabled})
     if helper_text:
         st.caption(helper_text)
