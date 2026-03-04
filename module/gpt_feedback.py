@@ -6,6 +6,74 @@ from module.token_counter import init_token_counters, get_token_sums
 from module.offline import is_offline
 
 
+def _get_feedback_modus() -> str:
+    """Liefert den aktiven Feedback-Modus aus dem Session-State."""
+
+    return str(st.session_state.get("feedback_mode", "")).strip() or "ChatGPT"
+
+
+def _is_amboss_mcp_genutzt() -> bool:
+    """Kennzeichnet, ob die genutzte AMBOSS-Quelle explizit aus MCP stammt."""
+
+    return str(st.session_state.get("amboss_summary_source", "")).strip().lower() == "mcp"
+
+
+def _build_main_feedback_meta() -> tuple[bool, dict, dict]:
+    """Erstellt Metadaten für das Hauptfeedback analog zu Detail-Events.
+
+    Rückgabe:
+        (zusaetzliche_infos_abgerufen, zusaetzliche_infos_quellen, context_snapshot)
+    """
+
+    amboss_summary_source = str(st.session_state.get("amboss_summary_source", "")).strip() or None
+    zusaetzliche_infos_abgerufen = bool(amboss_summary_source)
+
+    # Die Liste zeigt explizit, welche Session-Variablen in das Hauptfeedback
+    # eingeflossen sind. Damit sind Hauptfeedback und Detail-Feedback in der
+    # späteren Auswertung konsistent vergleichbar.
+    verwendete_context_keys = [
+        "feedback_mode",
+        "amboss_summary_source",
+        "amboss_payload_summary",
+        "Amboss_Input",
+        "diagnose_szenario",
+        "user_verlauf",
+        "user_ddx2",
+        "diagnostik_eingaben_kumuliert",
+        "final_diagnose",
+        "therapie_vorschlag",
+        "therapie_setting_verdacht",
+        "therapie_setting_final",
+        "koerper_befund",
+        "diagnostik_runden_gesamt",
+    ]
+
+    zusaetzliche_infos_quellen = {
+        "amboss_summary_source": amboss_summary_source,
+        "amboss_payload_summary_verfuegbar": bool(str(st.session_state.get("amboss_payload_summary", "")).strip()),
+        "amboss_input_verfuegbar": bool(str(st.session_state.get("Amboss_Input", "")).strip()),
+        "verwendete_context_keys": verwendete_context_keys,
+    }
+
+    context_snapshot = {
+        "feedback_mode": _get_feedback_modus(),
+        "amboss_summary_source": amboss_summary_source,
+        "diagnose_szenario": str(st.session_state.get("diagnose_szenario", "")).strip(),
+        "user_verlauf": str(st.session_state.get("user_verlauf", "")).strip(),
+        "user_ddx2": str(st.session_state.get("user_ddx2", "")).strip(),
+        "diagnostik_eingaben_kumuliert": str(st.session_state.get("diagnostik_eingaben_kumuliert", "")).strip(),
+        "final_diagnose": str(st.session_state.get("final_diagnose", "")).strip(),
+        "therapie_vorschlag": str(st.session_state.get("therapie_vorschlag", "")).strip(),
+        "therapie_setting_verdacht": str(st.session_state.get("therapie_setting_verdacht", "")).strip(),
+        "therapie_setting_final": str(st.session_state.get("therapie_setting_final", "")).strip(),
+        "koerper_befund": str(st.session_state.get("koerper_befund", "")).strip(),
+        "diagnostik_runden_gesamt": int(st.session_state.get("diagnostik_runden_gesamt", 1) or 1),
+        "amboss_payload_summary": str(st.session_state.get("amboss_payload_summary", "")).strip(),
+        "amboss_input": str(st.session_state.get("Amboss_Input", "")).strip(),
+    }
+    return zusaetzliche_infos_abgerufen, zusaetzliche_infos_quellen, context_snapshot
+
+
 def _spalte_verfuegbar(supabase, spaltenname: str) -> bool:
     """Prüft, ob eine Spalte in ``feedback_gpt`` vorhanden ist.
 
@@ -63,6 +131,8 @@ def speichere_gpt_feedback_in_supabase():
     # die Fälle später unverändert wiederverwenden können. Zusätzliche
     # Debug-Ausgaben (z. B. ``st.write(gpt_row)``) können bei Bedarf aktiviert
     # werden, um fehlerhafte oder fehlende Werte schnell zu erkennen.
+    zusaetzliche_infos_abgerufen, zusaetzliche_infos_quellen, context_snapshot = _build_main_feedback_meta()
+
     gpt_row = {
         "datum": jetzt.strftime("%Y-%m-%d"),
         "uhrzeit": jetzt.strftime("%H:%M:%S"),
@@ -87,7 +157,7 @@ def speichere_gpt_feedback_in_supabase():
         "total_tokens_sum": int(total_sum),
         # Der Feedback-Modus wird als "Client" gespeichert, damit im Supabase-Export
         # nachvollzogen werden kann, ob AMBOSS-Daten eingeflossen sind.
-        "Client": st.session_state.get("feedback_mode", "ChatGPT"),
+        "Client": _get_feedback_modus(),
     }
 
     try:
@@ -101,6 +171,14 @@ def speichere_gpt_feedback_in_supabase():
         # st.write("Debug Supabase > Session final:", st.session_state.get("therapie_setting_final"))
 
         optionale_spalten = {
+            # Die folgenden Felder spiegeln die Meta-Struktur aus
+            # `feedback_detail_events`, damit Hauptfeedback und Detail-Feedback
+            # später mit identischen Kennzahlen ausgewertet werden können.
+            "feedback_modus": _get_feedback_modus(),
+            "amboss_mcp_genutzt": _is_amboss_mcp_genutzt(),
+            "zusaetzliche_infos_abgerufen": zusaetzliche_infos_abgerufen,
+            "zusaetzliche_infos_quellen": zusaetzliche_infos_quellen,
+            "context_snapshot": context_snapshot,
             # Gesamtanzahl der diagnostischen Runden wird als Zahl persistiert.
             # Bei nicht migriertem Schema wird die Spalte ausgelassen, damit der
             # Insert nicht scheitert. Die Werte bleiben trotzdem im RAM und

@@ -255,6 +255,11 @@ create table if not exists public.feedback_detail_events (
     feedback_id bigint not null references public.feedback_gpt("ID") on delete cascade,
     section_key text not null,
     section_title text,
+    feedback_modus text,
+    amboss_mcp_genutzt boolean,
+    zusaetzliche_infos_abgerufen boolean,
+    zusaetzliche_infos_quellen jsonb,
+    context_snapshot jsonb,
     opened boolean not null default false,
     generated_text text not null default 'Nein',
     model text,
@@ -270,6 +275,11 @@ alter table public.feedback_detail_events
     add column if not exists feedback_id bigint,
     add column if not exists section_key text,
     add column if not exists section_title text,
+    add column if not exists feedback_modus text,
+    add column if not exists amboss_mcp_genutzt boolean,
+    add column if not exists zusaetzliche_infos_abgerufen boolean,
+    add column if not exists zusaetzliche_infos_quellen jsonb,
+    add column if not exists context_snapshot jsonb,
     add column if not exists opened boolean not null default false,
     add column if not exists generated_text text not null default 'Nein',
     add column if not exists model text,
@@ -350,6 +360,9 @@ create index if not exists feedback_detail_events_feedback_idx
 create index if not exists feedback_detail_events_section_idx
     on public.feedback_detail_events (section_key);
 
+create index if not exists feedback_detail_events_modus_idx
+    on public.feedback_detail_events (feedback_modus);
+
 create index if not exists feedback_detail_cache_section_idx
     on public.feedback_detail_cache (section_key);
 
@@ -358,6 +371,35 @@ create index if not exists feedback_detail_cache_ctx_section_idx
 ```
 
 Debugging-Hinweis: Bei fehlenden Schreibrechten in Supabase zuerst API-Key und RLS-Policies prüfen. Bei Bedarf kann im Seitenmodul ein temporäres `st.write(exc)` aktiviert werden, um konkrete Fehlermeldungen aus dem Insert/Upsert sichtbar zu machen.
+
+#### Auswertungsvorlage: Hauptfeedback + Detail-Events je Fall zusammenführen
+Für Lehrende kann folgende SQL-Vorlage genutzt werden, um je Fall und Unterpunkt auf einen Blick zu sehen, **welcher Modus aktiv war, welche Zusatzquelle genutzt wurde, welcher Detailtext vorliegt und wann der Punkt geöffnet wurde**.
+
+```sql
+select
+    g."ID" as feedback_id,
+    g.datum,
+    g.uhrzeit,
+    coalesce(g.feedback_modus, g."Client") as feedback_modus_haupt,
+    g.amboss_mcp_genutzt as amboss_mcp_haupt,
+    g.zusaetzliche_infos_abgerufen as zusatzinfos_haupt,
+    g.zusaetzliche_infos_quellen->>'amboss_summary_source' as zusatzquelle_haupt,
+    d.section_key,
+    d.section_title,
+    d.opened,
+    d.opened_at,
+    d.generated_text as detailtext,
+    d.feedback_modus as feedback_modus_detail,
+    d.amboss_mcp_genutzt as amboss_mcp_detail,
+    d.zusaetzliche_infos_abgerufen as zusatzinfos_detail,
+    d.zusaetzliche_infos_quellen->>'amboss_summary_source' as zusatzquelle_detail
+from public.feedback_gpt g
+left join public.feedback_detail_events d
+    on d.feedback_id = g."ID"
+order by g."ID" desc, d.section_key asc;
+```
+
+Debugging-Hinweis: Wenn Felder in der Auswertung `null` bleiben, zuerst prüfen, ob die neuen Spalten in `feedback_gpt` und `feedback_detail_events` bereits angelegt sind. Danach testweise einen neuen Fall vollständig bis zum Feedback durchlaufen lassen, damit aktuelle Datensätze mit den neuen Metafeldern erzeugt werden.
 
 ### Diagnostische Funktionen
 - **Log-Ansicht:** Der Admin-Modus bietet Zugriff auf System-Logs, in denen Nutzerinteraktionen und Modulwechsel dokumentiert sind.
