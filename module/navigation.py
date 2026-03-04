@@ -24,3 +24,55 @@ def redirect_to_start_page(warning_message: str | None = None) -> None:
     # Dieser Rückgabepunkt wird faktisch nie erreicht, da Streamlit nach dem Seitenwechsel den
     # restlichen Code der aktuellen Seite ignoriert. Für Debugging kann hier bei Bedarf ein
     # st.write(...) aktiviert werden, um zu prüfen, ob die Funktion unerwartet weiterläuft.
+
+
+def render_next_page_link(
+    target_page: str,
+    label: str,
+    *,
+    icon: str = "➡️",
+    disabled: bool = False,
+    helper_text: str | None = None,
+) -> None:
+    """Rendert einen einheitlich hervorgehobenen "Weiter zu ..."-Navigationsblock.
+
+    Warum zentral?
+    - Alle Seiten nutzen denselben visuellen Stil für den nächsten Schritt.
+    - Aktivierte Navigation hebt sich deutlich (grüner Hintergrund) vom restlichen
+      Inhalt ab und verbessert die Orientierung innerhalb der Lernstrecke.
+    - Bei deaktivierten Zuständen bleibt die Box sichtbar, damit Lernende sehen,
+      welcher nächste Schritt vorgesehen ist.
+
+    Debug-Hinweis:
+    Falls eine Weiterleitung unerwartet deaktiviert wirkt, kann temporär
+    `st.write("Next-Link disabled:", disabled)` direkt vor dem Aufruf aktiviert
+    werden, um den Status transparent zu prüfen.
+    """
+
+    box_class = "next-nav-disabled" if disabled else "next-nav-enabled"
+    st.markdown(
+        f"""
+        <style>
+        .next-nav-wrap {{
+            border-radius: 0.75rem;
+            padding: 0.35rem 0.75rem;
+            margin: 0.4rem 0 0.65rem 0;
+            border: 1px solid transparent;
+        }}
+        .next-nav-enabled {{
+            background: #e9f9ee;
+            border-color: #9dd8ac;
+        }}
+        .next-nav-disabled {{
+            background: #f4f6f8;
+            border-color: #d6dbe0;
+        }}
+        </style>
+        <div class="next-nav-wrap {box_class}"></div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    st.page_link(target_page, label=label, icon=icon, disabled=disabled)
+    if helper_text:
+        st.caption(helper_text)
