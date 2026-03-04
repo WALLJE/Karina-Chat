@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 import hashlib
 import re
-from typing import Dict, List, Tuple
+from typing import Any, Dict, List, Tuple
 
 import streamlit as st
 from supabase import Client, create_client
@@ -152,8 +152,101 @@ def _cache_is_fresh(updated_at: str | None) -> bool:
     return (datetime.now(timezone.utc) - parsed) <= timedelta(days=CACHE_TTL_DAYS)
 
 
-def _generate_detail_text(section: FeedbackSection) -> str:
-    """Generiert einen nicht-personalisierten Lehrbuchtext für einen Unterpunkt."""
+def _build_section_context(section: FeedbackSection) -> Dict[str, Any]:
+    """Stellt je Unterpunkt gezielt den erlaubten Prompt-Kontext zusammen.
+
+    Wichtige Designentscheidung:
+    Für die Vertiefungstexte darf nicht der gesamte Session-State verwendet
+    werden, da dies die Antwort unnötig aufbläht und Inhalte in Abschnitte
+    leaken kann, in denen sie didaktisch nichts zu suchen haben.
+
+    Die Funktion liefert deshalb bewusst einen *strukturierten* Kontext mit
+    eng begrenzten Feldern pro ``section.key``. Diese Begrenzung ist kein
+    technischer Zufall, sondern ein fachlicher Guardrail.
+    """
+
+    feedback_mode = str(st.session_state.get("feedback_mode", "")).strip() or "ChatGPT"
+    context: Dict[str, Any] = {
+        "feedback_mode": feedback_mode,
+        "section_key": section.key,
+    }
+
+    # Zentrale Befundsammlung: Die Detailtexte für Diagnostik-Abschnitte sollen
+    # gezielt mit realen Befunden arbeiten. Wir sammeln nur fachlich relevante
+    # Befundquellen und geben sie strukturiert weiter.
+    relevante_befunde: Dict[str, str] = {}
+    if st.session_state.get("koerper_befund"):
+        relevante_befunde["koerper_befund"] = str(st.session_state.get("koerper_befund", "")).strip()
+    if st.session_state.get("befunde"):
+        relevante_befunde["initiale_befunde"] = str(st.session_state.get("befunde", "")).strip()
+
+    diagnostik_runden_gesamt = int(st.session_state.get("diagnostik_runden_gesamt", 1) or 1)
+    for i in range(2, diagnostik_runden_gesamt + 1):
+        befund_key = f"befunde_runde_{i}"
+        if st.session_state.get(befund_key):
+            relevante_befunde[befund_key] = str(st.session_state.get(befund_key, "")).strip()
+
+    # Abschnitt 1: Anamnese bekommt bewusst nur den Gesprächsverlauf
+    # (Anamneseteil) + optional Szenario-Kontext. Keine Diagnostikdetails,
+    # damit die Vertiefung sauber auf Gesprächsführung fokussiert bleibt.
+    if section.key == "anamnese":
+        context["user_verlauf"] = str(st.session_state.get("user_verlauf", "")).strip()
+        if st.session_state.get("diagnose_szenario"):
+            context["diagnose_szenario"] = str(st.session_state.get("diagnose_szenario", "")).strip()
+
+    # Abschnitt 2b: DDX-Teil bekommt nur DDX + kumulierte Diagnostik + Befunde.
+    # Kein vollständiger Verlauf, damit Differentialdiagnosen nicht mit
+    # Gesprächsrauschen vermischt werden.
+    elif section.key == "diagnostik_ddx":
+        context["user_ddx2"] = str(st.session_state.get("user_ddx2", "")).strip()
+        context["diagnostik_eingaben_kumuliert"] = str(
+            st.session_state.get("diagnostik_eingaben_kumuliert", "")
+        ).strip()
+        context["relevante_befunde"] = relevante_befunde
+
+    # Abschnitt 2a: Diagnostik-Szenario kombiniert Diagnostikdaten, Szenario
+    # und Befunde, aber *ohne* vollständigen Gesprächsverlauf.
+    elif section.key == "diagnostik_szenario":
+        context["diagnostik_eingaben_kumuliert"] = str(
+            st.session_state.get("diagnostik_eingaben_kumuliert", "")
+        ).strip()
+        context["diagnose_szenario"] = str(st.session_state.get("diagnose_szenario", "")).strip()
+        context["relevante_befunde"] = relevante_befunde
+
+    # Abschnitte 5/6: Finale Diagnose/Therapie/Setting nur im Zielbild.
+    # Frühere Hypothesen oder Verlauf werden absichtlich nicht ergänzt, damit
+    # der Abschnitt auf Management-Entscheidungen fokussiert bleibt.
+    elif section.key in {"finale_diagnose", "therapie_setting"}:
+        context["final_diagnose"] = str(st.session_state.get("final_diagnose", "")).strip()
+        context["therapie_vorschlag"] = str(st.session_state.get("therapie_vorschlag", "")).strip()
+        context["therapie_setting_verdacht"] = str(
+            st.session_state.get("therapie_setting_verdacht", "")
+        ).strip()
+        context["therapie_setting_final"] = str(st.session_state.get("therapie_setting_final", "")).strip()
+
+    # Für alle anderen Abschnitte (z. B. "strategie") halten wir den Kontext
+    # bewusst minimal. Debug-Hilfe bei Bedarf:
+    # st.write("Detail-Kontext Strategie:", context)
+
+    # Modusabhängige Kontextfreigabe:
+    # - ChatGPT: kein AMBOSS-Zusatzkontext.
+    # - Amboss_ChatGPT: komprimierte AMBOSS-Zusammenfassung ergänzen.
+    if feedback_mode == "Amboss_ChatGPT":
+        amboss_summary = str(st.session_state.get("amboss_payload_summary", "")).strip()
+        amboss_input_fallback = str(st.session_state.get("Amboss_Input", "")).strip()
+        if amboss_summary:
+            context["amboss_kontext"] = amboss_summary
+        elif amboss_input_fallback:
+            context["amboss_kontext"] = amboss_input_fallback
+        # Debug-Hilfe: Falls im AMBOSS-Modus kein Kontext erscheint, temporär
+        # folgende Zeile aktivieren und prüfen, welche Quelle leer ist:
+        # st.write("AMBOSS Debug", amboss_summary, amboss_input_fallback)
+
+    return context
+
+
+def _generate_detail_text(section: FeedbackSection, context: Dict[str, Any]) -> str:
+    """Generiert einen nicht-personalisierten, praxisnahen Detailtext je Unterpunkt."""
 
     if is_offline():
         raise RuntimeError("Detailtext-Generierung ist im Offline-Modus nicht verfügbar.")
@@ -163,20 +256,24 @@ def _generate_detail_text(section: FeedbackSection) -> str:
         raise RuntimeError("OpenAI-Client fehlt im Session-State (openai_client).")
 
     prompt = f"""
-Erstelle einen sachlichen, nicht-personalisierten Lehrbuchtext auf Deutsch (ca. 150 Wörter).
-Thema des Unterpunkts: {section.title}
+Erstelle eine praxisnahe, nicht-personalisierte Vertiefung auf Deutsch für einen Feedback-Unterpunkt.
+
+Unterpunkt: {section.title}
 Kernaussage aus dem kompakten Feedback:
 {section.body}
 
-Anforderungen:
+Strukturierter Abschnittskontext (nur erlaubte Felder):
+{context}
+
+Verbindliche Ausgabe-Regeln:
 - Kein direktes Ansprechen (kein "du", keine Personalpronomen für Lernende).
-- Struktur in drei Mini-Abschnitten mit Zwischenüberschriften:
-  1) Klinische Relevanz
-  2) Praktisches Vorgehen
-  3) Häufige Fehler und Abgrenzung zu Differentialdiagnosen
-- Konkreter, präziser Lehrbuchstil, praxisoprientierte Hinweise.
-- Keine Quellenangaben oder Leitliniennummern.
-- Inhalt nicht auf einzelne Person beziehen
+- Fokus auf konkrete klinische Formulierungen statt Allgemeinplätzen.
+- Gib zuerst 4–6 kurze Bulletpoints mit klaren Handlungsimpulsen aus.
+- Optional: Ergänze eine Mini-Tabelle im Markdown-Format mit 2–4 Zeilen und den Spalten:
+  Befund | Bedeutung | nächster Schritt
+- Nur Inhalte verwenden, die zum Unterpunkt und zum gelieferten Kontext passen.
+- Keine Quellenangaben, keine Leitliniennummern, keine erfundenen Details.
+- Umfang kompakt halten (ca. 120–170 Wörter inkl. Tabelle).
 """.strip()
 
     response = client.chat.completions.create(
@@ -351,7 +448,8 @@ def render_feedback_with_details(feedback_text: str) -> None:
                 if detail_text is None:
                     try:
                         with st.spinner("⏳ KI erstellt die Vertiefung..."):
-                            detail_text = _generate_detail_text(section)
+                            section_context = _build_section_context(section)
+                            detail_text = _generate_detail_text(section, section_context)
                     except Exception as exc:
                         # Debug-Hinweis:
                         # Wenn diese Meldung häufiger auftritt, temporär
