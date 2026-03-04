@@ -416,9 +416,19 @@ def _sync_default_events(supabase: Client, feedback_id: int, sections: List[Feed
     if not missing_defaults:
         return
 
-    # Nur fehlende Default-Zeilen einfügen (kein Upsert), damit vorhandene
-    # Nutzungsdaten stabil bleiben.
-    supabase.table("feedback_detail_events").insert(missing_defaults).execute()
+    # Nur fehlende Default-Zeilen einfügen.
+    #
+    # WICHTIG FÜR STABILITÄT:
+    # In seltenen Race-Conditions (z. B. mehrere fast gleichzeitige Reruns)
+    # kann zwischen dem obigen Select und dem Insert bereits ein Datensatz
+    # entstanden sein. Mit ``ignore_duplicates=True`` wird dann kein 23505-Fehler
+    # mehr ausgelöst, sondern der bereits vorhandene Datensatz unverändert
+    # beibehalten.
+    supabase.table("feedback_detail_events").upsert(
+        missing_defaults,
+        on_conflict="feedback_id,section_key",
+        ignore_duplicates=True,
+    ).execute()
 
 
 def _save_open_event(
@@ -549,8 +559,8 @@ def render_feedback_with_details(feedback_text: str) -> None:
         previous_open_state_key = f"{detail_open_key}_previous"
         previous_open_state = bool(st.session_state.get(previous_open_state_key, False))
 
-        load_button_label = f"Details zu Punkt {section.number} laden"
-        hide_button_label = f"Details zu Punkt {section.number} ausblenden"
+        load_button_label = f"Mehr Details zu {section.title}"
+        hide_button_label = f"Details zu {section.title} ausblenden"
 
         # Interaktions-CTA pro Abschnitt:
         # - Wenn geschlossen: klarer Lade-Button.
