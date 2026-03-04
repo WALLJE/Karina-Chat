@@ -560,7 +560,6 @@ def render_feedback_with_details(feedback_text: str) -> None:
         # gilt das als echtes Öffnen im aktuellen Run und darf als Event gespeichert werden.
         selection_just_activated = selected == option_label and previous_selection != option_label
 
-        detail_rendered_in_this_run = False
         fall_id = st.session_state.get("fall_id")
         feedback_mode = str(st.session_state.get("feedback_mode", "")).strip() or None
         section_context = _build_section_context(section)
@@ -623,7 +622,6 @@ def render_feedback_with_details(feedback_text: str) -> None:
                 st.caption("♻️ Aus Supabase-Cache geladen (jünger als 3 Monate).")
 
             st.markdown(detail_text)
-            detail_rendered_in_this_run = True
 
             # Öffnungs-Event nur bei *neuer* Aktivierung speichern.
             # Dadurch bleibt opened_at semantisch stabil und unnötige Supabase-Last
@@ -634,9 +632,13 @@ def render_feedback_with_details(feedback_text: str) -> None:
                 except Exception as exc:
                     st.warning(f"⚠️ Speichern des Öffnungs-Events fehlgeschlagen: {exc}")
 
-        already_loaded = detail_cache_state.get(cache_key)
-        if already_loaded and not detail_rendered_in_this_run:
-            st.markdown(already_loaded)
+        # Wichtig für das neue Dropdown-Konzept:
+        # Wenn "Keine Details laden" ausgewählt ist, darf kein zuvor geladener Inhalt
+        # automatisch angezeigt werden. Die Sichtbarkeit wird vollständig durch die
+        # aktuelle Auswahl gesteuert und nicht durch den Cache allein.
+        #
+        # Debug-Hinweis bei Bedarf:
+        # st.write("Detail sichtbar?", selected == option_label, "cache vorhanden?", bool(detail_cache_state.get(cache_key)))
 
         # Am Ende des Abschnitts wird der aktuelle Wert als "vorherige Auswahl"
         # persistiert, damit die Flankenerkennung im nächsten Run korrekt arbeitet.

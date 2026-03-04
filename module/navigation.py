@@ -34,45 +34,61 @@ def render_next_page_link(
     disabled: bool = False,
     helper_text: str | None = None,
 ) -> None:
-    """Rendert einen einheitlich hervorgehobenen "Weiter zu ..."-Navigationsblock.
+    """Rendert den standardisierten "Weiter"-Block mit klarem Aktiv/Deaktiv-Zustand.
 
     Warum zentral?
-    - Alle Seiten nutzen denselben visuellen Stil für den nächsten Schritt.
-    - Aktivierte Navigation hebt sich deutlich (grüner Hintergrund) vom restlichen
-      Inhalt ab und verbessert die Orientierung innerhalb der Lernstrecke.
-    - Bei deaktivierten Zuständen bleibt die Box sichtbar, damit Lernende sehen,
-      welcher nächste Schritt vorgesehen ist.
+    - Alle Seiten verwenden denselben visuellen Zustand für die nächste Navigation.
+    - Klickbar (aktiv): grün hinterlegt, damit der nächste Schritt deutlich sichtbar ist.
+    - Nicht klickbar (deaktiviert): ausgegraut, damit der Zustand sofort erkennbar bleibt.
 
     Debug-Hinweis:
-    Falls eine Weiterleitung unerwartet deaktiviert wirkt, kann temporär
-    `st.write("Next-Link disabled:", disabled)` direkt vor dem Aufruf aktiviert
-    werden, um den Status transparent zu prüfen.
+    Falls die Einfärbung unerwartet nicht greift, kann temporär
+    `st.write("next_link_disabled", disabled)` aktiviert werden.
     """
 
-    box_class = "next-nav-disabled" if disabled else "next-nav-enabled"
+    # CSS-Konzept:
+    # Wir stylen das *gleiche* Element, das auch die Navigation ausführt (st.page_link),
+    # damit keine losgelösten Balken entstehen. Die Farbgebung hängt über aria-disabled
+    # direkt am Interaktionszustand: aktiv = grün, deaktiviert = grau.
+    #
+    # Hinweis: Die CSS-Definition ist absichtlich in dieser Funktion, damit alle Seiten,
+    # die render_next_page_link nutzen, automatisch denselben Stil erhalten.
     st.markdown(
-        f"""
+        """
         <style>
-        .next-nav-wrap {{
+        div[data-testid="stPageLink"] a {
+            display: block;
+            width: 100%;
+            box-sizing: border-box;
+            padding: 0.68rem 0.85rem;
+            margin: 0.35rem 0 0.65rem 0;
             border-radius: 0.75rem;
-            padding: 0.35rem 0.75rem;
-            margin: 0.4rem 0 0.65rem 0;
-            border: 1px solid transparent;
-        }}
-        .next-nav-enabled {{
+            border: 1px solid #95d5a6;
             background: #e9f9ee;
-            border-color: #9dd8ac;
-        }}
-        .next-nav-disabled {{
-            background: #f4f6f8;
-            border-color: #d6dbe0;
-        }}
+            color: #23412c;
+            text-decoration: none;
+            transition: background-color 0.15s ease, border-color 0.15s ease;
+        }
+
+        div[data-testid="stPageLink"] a:hover {
+            background: #ddf5e5;
+            border-color: #80c795;
+        }
+
+        div[data-testid="stPageLink"] a[aria-disabled="true"] {
+            background: #eceff3;
+            border-color: #d5dbe3;
+            color: #7a8290;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
         </style>
-        <div class="next-nav-wrap {box_class}"></div>
         """,
         unsafe_allow_html=True,
     )
 
     st.page_link(target_page, label=label, icon=icon, disabled=disabled)
+
+    # Optionaler Hilfetext bleibt wie bisher unterhalb des Navigations-Elements sichtbar.
     if helper_text:
         st.caption(helper_text)
