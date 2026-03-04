@@ -227,11 +227,44 @@ def main() -> None:
     # )
 
     st.markdown("---")
+    # Ziel: Gleicher visueller Leitfaden wie auf den vorherigen Seiten.
+    # Aktiv = grün, deaktiviert = grau. Der Stil greift ausschließlich auf
+    # den Weiter-Button mit Key "weiter-evaluation".
+    st.markdown(
+        """
+        <style>
+        div.st-key-weiter-evaluation button[kind="secondary"] {
+            background-color: #22a06b;
+            color: #ffffff;
+            border: 1px solid #1b7f54;
+            border-radius: 0.75rem;
+            font-weight: 600;
+            padding: 0.6rem 1rem;
+        }
+
+        div.st-key-weiter-evaluation button[kind="secondary"]:hover {
+            background-color: #1b7f54;
+            border-color: #166c47;
+        }
+
+        div.st-key-weiter-evaluation button[kind="secondary"]:disabled {
+            background-color: #d5d8de;
+            color: #5d6573;
+            border: 1px solid #bcc2cc;
+            cursor: not-allowed;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
     render_next_page_link(
         "pages/7_Evaluation_und_Download.py",
         label="Weiter zur Evaluation",
         icon="📊",
         helper_text="💡 Die Evaluation ist für die Weiterentwicklung und wissenschaftliche Auswertung extrem wichtig.",
+        as_button=True,
+        button_key="weiter-evaluation",
     )
 
 
