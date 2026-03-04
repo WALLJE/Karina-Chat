@@ -1,6 +1,6 @@
 import streamlit as st
 from module.sidebar import show_sidebar
-from module.navigation import redirect_to_start_page
+from module.navigation import redirect_to_start_page, render_next_page_link
 from sprachmodul import sprach_check
 from module.footer import copyright_footer
 from module.offline import display_offline_banner, is_offline
@@ -211,7 +211,7 @@ else:
 # Debug-Hinweis: Bei Bedarf `st.write(st.session_state.get("therapie_setting_final"))`
 # direkt vor dem Link aktivieren, um den Navigationszustand transparent zu prüfen.
 # Weiter-Link zum Feedback
-st.page_link(
+render_next_page_link(
     "pages/6_Feedback.py",
     label="Weiter zum Feedback",
     icon="📝",
@@ -219,7 +219,7 @@ st.page_link(
         st.session_state.get("final_diagnose", "").strip() and
         st.session_state.get("therapie_vorschlag", "").strip() and
         st.session_state.get("therapie_setting_final", "").strip()
-    )
+    ),
 )
 
 
