@@ -306,12 +306,34 @@ def _generate_detail_text(section: FeedbackSection, context: Dict[str, Any]) -> 
     if client is None:
         raise RuntimeError("OpenAI-Client fehlt im Session-State (openai_client).")
 
+    # Abschnittsspezifische Leitplanke für Punkt 6:
+    # Im Detailtext zu "Therapiekonzept und Setting" sollen Ökologie/Ökonomie
+    # ausdrücklich außen vor bleiben. Dafür nutzen wir zwei Mechanismen:
+    # 1) Wir geben dem Modell nur den therapeutischen Kernteil als Kernaussage.
+    # 2) Wir ergänzen eine explizite Negativregel im Prompt.
+    #
+    # Debug-Hilfe bei Bedarf (temporär aktivieren):
+    # st.write("DEBUG therapie_setting core", detail_core_statement)
+    detail_core_statement = section.body
+    section_specific_rules = ""
+    if section.key == "therapie_setting":
+        eco_marker = re.search(
+            r"(?im)^\s*(?:\*\*)?\s*ökologische\s*/\s*ökonomische\s+aspekte\s*:?(?:\*\*)?\s*$",
+            section.body,
+        )
+        if eco_marker:
+            detail_core_statement = section.body[: eco_marker.start()].strip()
+        section_specific_rules = (
+            "- Für diesen Unterpunkt keine Aussagen zu ökologischen oder ökonomischen Aspekten "
+            "machen; Fokus ausschließlich auf Therapieansatz und Versorgungssetting."
+        )
+
     prompt = f"""
 Erstelle eine praxisnahe, nicht-personalisierte Vertiefung auf Deutsch für einen Feedback-Unterpunkt.
 
 Unterpunkt: {section.title}
 Kernaussage aus dem kompakten Feedback:
-{section.body}
+{detail_core_statement}
 
 Strukturierter Abschnittskontext (nur erlaubte Felder):
 {context}
@@ -325,6 +347,7 @@ Verbindliche Ausgabe-Regeln:
 - Nutze Fetthebung sparsam und gezielt (keine ganzen Sätze fett markieren).
 - Nur Inhalte verwenden, die zum Unterpunkt und zum gelieferten Kontext passen.
 - Keine Quellenangaben, keine Leitliniennummern, keine erfundenen Details.
+{section_specific_rules}
 - Umfang kompakt halten (ca. 120–170 Wörter).
 """.strip()
 
