@@ -36,7 +36,7 @@ SECTION_TITLES: Dict[str, str] = {
     "diagnostik_ddx": "Diagnostik – Differentialdiagnosen",
     "strategie": "Diagnostische Strategie",
     "finale_diagnose": "Finale Diagnose",
-    "therapie_setting": "Therapiekonzept & Setting",
+    "therapie_setting": "Therapiekonzept und Setting",
 }
 
 # Regex für nummerierte Unterpunkte wie "1. **Anamnese:**".
@@ -172,11 +172,11 @@ Anforderungen:
 - Kein direktes Ansprechen (kein "du", keine Personalpronomen für Lernende).
 - Struktur in drei Mini-Abschnitten mit Zwischenüberschriften:
   1) Klinische Relevanz
-  2) Leitliniengerechtes Vorgehen
-  3) Häufige Fehler und Abgrenzung
-- Neutraler, präziser Lehrbuchstil.
-- Keine erfundenen Quellenangaben oder Leitliniennummern.
-- Inhalt allgemein halten (nicht auf einzelne Person beziehen).
+  2) Praktisches Vorgehen
+  3) Häufige Fehler und Abgrenzung zu Differentialdiagnosen
+- Konkreter, präziser Lehrbuchstil, praxisoprientierte Hinweise.
+- Keine Quellenangaben oder Leitliniennummern.
+- Inhalt nicht auf einzelne Person beziehen
 """.strip()
 
     response = client.chat.completions.create(
