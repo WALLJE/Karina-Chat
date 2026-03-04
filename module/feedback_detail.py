@@ -124,10 +124,36 @@ def split_feedback_sections(feedback_text: str) -> Tuple[str, List[FeedbackSecti
     return prefix, sections
 
 
-def _make_cache_key(section_key: str, section_body: str) -> str:
-    """Baut einen stabilen Cache-Key aus Unterpunkt und Basisinhalt."""
+def _make_cache_key(
+    section_key: str,
+    section_body: str,
+    feedback_id: int | None,
+    fall_id: str | int | None = None,
+    feedback_mode: str | None = None,
+) -> str:
+    """Baut einen stabilen Cache-Key mit fachlichem Kontext für den Unterpunkt.
 
-    digest = hashlib.sha256(f"{section_key}|{section_body.strip()}|v1".encode("utf-8")).hexdigest()
+    Warum diese Erweiterung wichtig ist:
+    Früher war der Cache faktisch global pro Unterpunkttext. Das konnte dazu
+    führen, dass in einem anderen Fall ein fachlich ähnlicher Abschnitt einen
+    alten Text wiederverwendet hat, obwohl der neue Fallkontext abweicht.
+    Mindestens die ``feedback_id`` muss deshalb in den Hash einfließen.
+    Optional werden auch ``fall_id`` und ``feedback_mode`` ergänzt.
+
+    Debug-Hilfe (bei unerwarteten Cache-Treffern):
+    Temporär kann `st.write("cache_key_input", {...})` vor dem Hash aktiviert
+    werden, um die verwendeten Eingaben sichtbar zu machen.
+    """
+
+    key_input = (
+        f"section={section_key}|"
+        f"body={section_body.strip()}|"
+        f"feedback_id={feedback_id}|"
+        f"fall_id={fall_id}|"
+        f"feedback_mode={feedback_mode}|"
+        "v2"
+    )
+    digest = hashlib.sha256(key_input.encode("utf-8")).hexdigest()
     return digest
 
 
@@ -302,13 +328,24 @@ def _load_cached_detail(supabase: Client, cache_key: str) -> Tuple[str | None, b
     return row.get("detail_text"), _cache_is_fresh(row.get("updated_at"))
 
 
-def _save_cache_detail(supabase: Client, cache_key: str, section_key: str, detail_text: str) -> None:
+def _save_cache_detail(
+    supabase: Client,
+    cache_key: str,
+    section_key: str,
+    detail_text: str,
+    feedback_id: int | None,
+    fall_id: str | int | None,
+    feedback_mode: str | None,
+) -> None:
     """Schreibt/aktualisiert den generierten Detailtext in den Cache."""
 
     supabase.table("feedback_detail_cache").upsert(
         {
             "cache_key": cache_key,
             "section_key": section_key,
+            "feedback_id": feedback_id,
+            "fall_id": None if fall_id is None else str(fall_id),
+            "feedback_modus": feedback_mode,
             "detail_text": detail_text,
             "model": DETAIL_MODEL,
             "updated_at": datetime.now(timezone.utc).isoformat(),
@@ -427,8 +464,20 @@ def render_feedback_with_details(feedback_text: str) -> None:
             # über den Runtime-Cache gerendert. Ohne Schutz würde exakt derselbe Text
             # direkt nacheinander zweimal erscheinen.
             detail_rendered_in_this_run = False
+            fall_id = st.session_state.get("fall_id")
+            feedback_mode = str(st.session_state.get("feedback_mode", "")).strip() or None
             if st.button("Lehrbuch-Vertiefung laden", key=button_key):
-                cache_key = _make_cache_key(section.key, section.body)
+                # Der Cache darf nicht mehr global sein:
+                # Gleiche Abschnittstexte können in unterschiedlichen Fällen
+                # fachlich andere Bedeutungen haben. Durch feedback_id (und
+                # optional fall_id/modus) vermeiden wir falsche Wiederverwendung.
+                cache_key = _make_cache_key(
+                    section.key,
+                    section.body,
+                    int(feedback_id) if feedback_id is not None else None,
+                    fall_id=fall_id,
+                    feedback_mode=feedback_mode,
+                )
 
                 # 1) Laufzeit-Cache in Streamlit-Session prüfen (schnellster Pfad).
                 detail_text = detail_cache_state.get(cache_key)
@@ -461,7 +510,15 @@ def render_feedback_with_details(feedback_text: str) -> None:
                         continue
                     if supabase is not None:
                         try:
-                            _save_cache_detail(supabase, cache_key, section.key, detail_text)
+                            _save_cache_detail(
+                                supabase,
+                                cache_key,
+                                section.key,
+                                detail_text,
+                                int(feedback_id) if feedback_id is not None else None,
+                                fall_id,
+                                feedback_mode,
+                            )
                         except Exception as exc:
                             st.warning(f"⚠️ Schreiben des Detail-Caches fehlgeschlagen: {exc}")
 
@@ -481,7 +538,13 @@ def render_feedback_with_details(feedback_text: str) -> None:
                         st.warning(f"⚠️ Speichern des Öffnungs-Events fehlgeschlagen: {exc}")
 
             # Bereits geladene Inhalte bei erneutem Öffnen erneut anzeigen.
-            cache_key = _make_cache_key(section.key, section.body)
+            cache_key = _make_cache_key(
+                section.key,
+                section.body,
+                int(feedback_id) if feedback_id is not None else None,
+                fall_id=fall_id,
+                feedback_mode=feedback_mode,
+            )
             already_loaded = detail_cache_state.get(cache_key)
             # Nur dann aus dem Cache nachrendern, wenn in diesem Rerun nicht bereits
             # explizit ein Detailtext angezeigt wurde (z. B. durch den Button-Klick).

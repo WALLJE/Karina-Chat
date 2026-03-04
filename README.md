@@ -266,6 +266,9 @@ create table if not exists public.feedback_detail_events (
 
 create table if not exists public.feedback_detail_cache (
     cache_key text primary key,
+    feedback_id bigint,
+    fall_id text,
+    feedback_modus text,
     section_key text not null,
     detail_text text not null,
     model text,
@@ -279,8 +282,8 @@ create index if not exists feedback_detail_events_feedback_idx
 create index if not exists feedback_detail_events_section_idx
     on public.feedback_detail_events (section_key);
 
-create index if not exists feedback_detail_cache_section_idx
-    on public.feedback_detail_cache (section_key);
+create index if not exists feedback_detail_cache_ctx_section_idx
+    on public.feedback_detail_cache (feedback_id, fall_id, feedback_modus, section_key);
 ```
 
 Debugging-Hinweis: Bei fehlenden Schreibrechten in Supabase zuerst API-Key und RLS-Policies prüfen. Bei Bedarf kann im Seitenmodul ein temporäres `st.write(exc)` aktiviert werden, um konkrete Fehlermeldungen aus dem Insert/Upsert sichtbar zu machen.
