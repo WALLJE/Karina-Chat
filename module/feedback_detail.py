@@ -589,10 +589,28 @@ def render_feedback_with_details(feedback_text: str) -> None:
             if st.button(load_button_label, key=f"detail_load_btn_{section.number}_{section.key}"):
                 st.session_state[detail_open_key] = True
                 current_open_state = True
+
+                # WICHTIG für sauberes UX-Toggle ohne Klick-Verzögerung:
+                # Streamlit rendert den aktuellen Durchlauf mit dem bereits
+                # ausgewählten Branch. Ohne expliziten Rerun bleibt dadurch die
+                # Button-Beschriftung bis zum nächsten Klick oft "hinterher".
+                # Mit `st.rerun()` wird sofort der aktualisierte Zustand
+                # gerendert (Label + Sichtbarkeit synchron nach genau 1 Klick).
+                #
+                # Debug-Hilfe bei Bedarf (temporär aktivieren):
+                # st.write("DEBUG after-open-click", detail_open_key, st.session_state.get(detail_open_key))
+                st.rerun()
         else:
             if st.button(hide_button_label, key=f"detail_hide_btn_{section.number}_{section.key}"):
                 st.session_state[detail_open_key] = False
                 current_open_state = False
+
+                # Analog zum Öffnen: sofortiger Rerun verhindert, dass der
+                # Ausblenden-Button optisch noch einen weiteren Klick benötigt.
+                #
+                # Debug-Hilfe bei Bedarf (temporär aktivieren):
+                # st.write("DEBUG after-hide-click", detail_open_key, st.session_state.get(detail_open_key))
+                st.rerun()
 
         # Flankenerkennung analog zur bisherigen Idee:
         # Nur der Übergang False -> True gilt als echte Erstaktivierung.
