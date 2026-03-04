@@ -378,16 +378,27 @@ def _sync_default_events(supabase: Client, feedback_id: int, sections: List[Feed
     # WICHTIG:
     # Diese Funktion darf bei Streamlit-Reruns bereits geöffnete Punkte NICHT
     # zurücksetzen. Daher werden nur fehlende Einträge neu angelegt.
-    defaults = [
-        {
-            "feedback_id": feedback_id,
-            "section_key": section.key,
-            "section_title": section.title,
-            "opened": False,
-            "generated_text": "Nein",
-        }
-        for section in sections
-    ]
+    defaults = []
+    for section in sections:
+        # Meta-Informationen werden bereits beim Default-Insert gespeichert,
+        # damit auch nie geöffnete Unterpunkte für Auswertungen vollständig
+        # vorliegen (z. B. welcher Modus aktiv war oder ob AMBOSS-Kontext
+        # grundsätzlich verfügbar war).
+        section_context = _build_section_context(section)
+        defaults.append(
+            {
+                "feedback_id": feedback_id,
+                "section_key": section.key,
+                "section_title": section.title,
+                "opened": False,
+                "generated_text": "Nein",
+                "feedback_modus": _get_feedback_modus(),
+                "amboss_mcp_genutzt": _is_amboss_mcp_genutzt(),
+                "zusaetzliche_infos_abgerufen": _has_zusaetzliche_infos(),
+                "zusaetzliche_infos_quellen": _build_zusaetzliche_infos_quellen(section_context),
+                "context_snapshot": section_context,
+            }
+        )
     if not defaults:
         return
 
@@ -420,6 +431,12 @@ def _save_open_event(
 ) -> None:
     """Aktualisiert den Event-Eintrag auf `opened=true` und speichert den Text."""
 
+    # Kontext wird explizit hier neu aufgebaut, damit der gespeicherte Snapshot
+    # exakt den Zustand zum Zeitpunkt des Öffnens widerspiegelt. Falls Inhalte
+    # zwischen Default-Anlage und Klick geändert wurden, bleibt das im Event
+    # transparent nachvollziehbar.
+    section_context = _build_section_context(section)
+
     supabase.table("feedback_detail_events").upsert(
         {
             "feedback_id": feedback_id,
@@ -428,10 +445,63 @@ def _save_open_event(
             "opened": True,
             "generated_text": detail_text,
             "model": DETAIL_MODEL,
+            "feedback_modus": _get_feedback_modus(),
+            "amboss_mcp_genutzt": _is_amboss_mcp_genutzt(),
+            "zusaetzliche_infos_abgerufen": _has_zusaetzliche_infos(),
+            "zusaetzliche_infos_quellen": _build_zusaetzliche_infos_quellen(section_context),
+            "context_snapshot": section_context,
             "opened_at": datetime.now(timezone.utc).isoformat(),
+            "updated_at": datetime.now(timezone.utc).isoformat(),
         },
         on_conflict="feedback_id,section_key",
     ).execute()
+
+
+def _get_feedback_modus() -> str:
+    """Liest den aktuell aktiven Feedback-Modus robust aus dem Session-State."""
+
+    return str(st.session_state.get("feedback_mode", "")).strip() or "ChatGPT"
+
+
+def _is_amboss_mcp_genutzt() -> bool:
+    """Kennzeichnet, ob die AMBOSS-Zusammenfassung aus MCP stammt."""
+
+    return str(st.session_state.get("amboss_summary_source", "")).strip().lower() == "mcp"
+
+
+def _has_zusaetzliche_infos() -> bool:
+    """Leitet ab, ob zusätzliche Fachinfos für das Feedback verfügbar waren."""
+
+    # Für die Auswertung genügt ein klarer Boolean:
+    # - True, sobald irgendeine Zusatzquelle signalisiert wurde.
+    # - False, wenn ausschließlich ChatGPT ohne Zusatzdaten lief.
+    amboss_summary_source = str(st.session_state.get("amboss_summary_source", "")).strip()
+    return bool(amboss_summary_source)
+
+
+def _build_zusaetzliche_infos_quellen(section_context: Dict[str, Any]) -> Dict[str, Any]:
+    """Baut strukturierte Metadaten für die Quelle der Zusatzinformationen."""
+
+    amboss_summary_source = str(st.session_state.get("amboss_summary_source", "")).strip() or None
+    verwendete_session_keys = sorted(
+        [
+            key
+            for key in section_context.keys()
+            if key
+            not in {
+                # Diese beiden Felder sind Steuerinfos des Moduls und keine
+                # inhaltlichen Nutzdaten.
+                "feedback_mode",
+                "section_key",
+            }
+        ]
+    )
+    return {
+        "amboss_summary_source": amboss_summary_source,
+        "amboss_payload_summary_verfuegbar": bool(str(st.session_state.get("amboss_payload_summary", "")).strip()),
+        "amboss_input_verfuegbar": bool(str(st.session_state.get("Amboss_Input", "")).strip()),
+        "verwendete_context_keys": verwendete_session_keys,
+    }
 
 
 def render_feedback_with_details(feedback_text: str) -> None:
