@@ -186,13 +186,14 @@ Ausgabeformat (kompakte Antworten, je Punkt max. 75 Wörter, nenne nur die wicht
 3. War die gewählte Diagnostik nachvollziehbar, vollständig und passend zu den Differentialdiagnosen **{user_ddx2}**?
 4. Beurteile die diagnostische Strategie hinsichtlich Reihenfolge und Inhalt der Diagnostik-Kontakte: Gab es unnötige Doppeluntersuchungen und war die Reihenfolge sinnvoll?
 5. Ist die finale Diagnose nachvollziehbar, insbesondere im Hinblick auf Differentialdiagnosen?
-6. Ist das Therapiekonzept leitliniengerecht, plausibel und auf die Diagnose abgestimmt? Ist das Versorgungssetting angemessen? Bewerte bei stationärem/Notaufnahme-Setting die Zahl von Diagnostik-Terminen nicht negativ; im ambulanten Setting die Zahl der diagnostischen Kontakte explizit im Sinne von Termin- und Zeitfaktoren.
+6. Ist das Therapiekonzept leitliniengerecht, plausibel und auf die Diagnose abgestimmt? Ist das Versorgungssetting angemessen? 
+# Bewerte bei stationärem/Notaufnahme-Setting die Zahl von Diagnostik-Terminen nicht negativ; im ambulanten Setting die Zahl der diagnostischen Kontakte explizit im Sinne von Termin- und Zeitfaktoren.
 
 
 **Berücksichtige und kommentiere kompakt, 2-3 Sätze**:
-- ökologische Aspekte (z. B. überflüssige Diagnostik, zuviele Anforderungen, zuviele Termine, CO₂-Bilanz, Strahlenbelastung bei CT oder Röntgen, Ressourcenverbrauch).
+- ökologische Aspekte (z. B. überflüssige Diagnostik, zuviele Anforderungen, CO₂-Bilanz, Strahlenbelastung bei CT oder Röntgen, Ressourcenverbrauch).
 - ökonomische Sinnhaftigkeit (Kosten-Nutzen-Verhältnis)
-- Falls zutreffend: erkläre auch, warum zuwenig Diagnostik unwirtschaftlich und nicht nachhaltig sein kann.
+- Falls zutreffend: erkläre auch, warum zuwenig Diagnostik unwirtschaftlich und nicht nachhaltig sein kann, bzw. wie zuviel Diangostik auch für Patienten schädlich sein kann. 
 """
 
     if diagnostik_setting_kongruent is False:
