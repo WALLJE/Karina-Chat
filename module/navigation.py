@@ -33,6 +33,8 @@ def render_next_page_link(
     icon: str = "➡️",
     disabled: bool = False,
     helper_text: str | None = None,
+    as_button: bool = False,
+    button_key: str | None = None,
 ) -> None:
     """Rendert den standardisierten "Weiter zu ..."-Link für den nächsten Lernschritt.
 
@@ -47,15 +49,30 @@ def render_next_page_link(
     werden, um den Status transparent zu prüfen.
     """
 
-    # Konzeptanpassung:
-    # Die bisherige Variante hat einen separaten, leeren DIV-Block als "grünen Balken"
-    # vor dem eigentlichen Link gerendert. Das wirkt visuell wie ein Fehler, weil der
-    # farbige Hinweis nicht an das klickbare Element gebunden ist.
+    # Neuer optionaler Button-Modus:
+    # Wenn as_button=True gesetzt ist, wird die Navigation als echter Button gerendert.
+    # Das ist nützlich, wenn ein Schritt bewusst als "freigeschaltet / gesperrt"
+    # visualisiert werden soll (z. B. grün bei aktiv, grau bei deaktiviert).
     #
-    # Stattdessen nutzen wir den nativen Streamlit-Link direkt als alleinigen UI-Baustein.
-    # So bleibt die Interaktion eindeutig: Was sichtbar hervorgehoben wird, ist auch
-    # tatsächlich der klickbare "Weiter"-Eintrag.
-    st.page_link(target_page, label=label, icon=icon, disabled=disabled)
+    # Wichtiger Vorteil: Der deaktivierte Zustand ist dann semantisch und visuell an
+    # dasselbe UI-Element gekoppelt. Für Lern-Workflows ist das eindeutiger als ein
+    # Link mit zusätzlicher Deko.
+    if as_button:
+        # Der Key macht den Button selektierbar und stabil. So kann auf Seitenebene
+        # gezieltes CSS nur für diesen speziellen "Weiter"-Button gesetzt werden,
+        # ohne andere Buttons unbeabsichtigt mitzustylen.
+        if st.button(
+            f"{icon} {label}",
+            disabled=disabled,
+            key=button_key,
+            type="secondary",
+        ):
+            st.switch_page(target_page)
+    else:
+        # Standardmodus bleibt erhalten: klassischer Streamlit-Seitenlink.
+        # So bleibt die Funktion weiterhin rückwärtskompatibel in allen Modulen,
+        # die keinen Button-Look benötigen.
+        st.page_link(target_page, label=label, icon=icon, disabled=disabled)
 
     # Optionaler Debug-Hinweis: Falls der Eindruck entsteht, der Link sei "verschwunden",
     # kann temporär folgende Zeile aktiviert werden:
