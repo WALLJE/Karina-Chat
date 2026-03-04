@@ -544,12 +544,21 @@ def render_feedback_with_details(feedback_text: str) -> None:
         # unterhalb angezeigt. Für die Ladephase bleibt ein sichtbarer Spinner erhalten.
         option_label = f"Punkt {section.number}: {SECTION_TITLES.get(section.key, section.title)}"
         selector_key = f"detail_selector_{section.number}_{section.key}"
+        # Wir merken uns die *vorherige* Auswahl explizit in einem separaten Session-Key.
+        # Hintergrund: Bei Streamlit bleibt der Selectbox-Wert über Reruns erhalten.
+        # Ohne Flankenerkennung würde das Öffnungs-Event bei jeder späteren Interaktion
+        # erneut geschrieben und den ursprünglichen opened_at-Zeitpunkt überschreiben.
+        previous_selection_key = f"{selector_key}_previous"
+        previous_selection = st.session_state.get(previous_selection_key, "Keine Details laden")
         selected = st.selectbox(
             "Details auswählen",
             options=["Keine Details laden", option_label],
             key=selector_key,
             label_visibility="collapsed",
         )
+        # Flankenerkennung: Nur wenn der Wert *neu* auf den Detailpunkt gewechselt ist,
+        # gilt das als echtes Öffnen im aktuellen Run und darf als Event gespeichert werden.
+        selection_just_activated = selected == option_label and previous_selection != option_label
 
         detail_rendered_in_this_run = False
         fall_id = st.session_state.get("fall_id")
@@ -616,7 +625,10 @@ def render_feedback_with_details(feedback_text: str) -> None:
             st.markdown(detail_text)
             detail_rendered_in_this_run = True
 
-            if supabase is not None and feedback_id:
+            # Öffnungs-Event nur bei *neuer* Aktivierung speichern.
+            # Dadurch bleibt opened_at semantisch stabil und unnötige Supabase-Last
+            # durch wiederholte Upserts bei normalen Reruns wird vermieden.
+            if supabase is not None and feedback_id and selection_just_activated:
                 try:
                     _save_open_event(supabase, int(feedback_id), section, detail_text)
                 except Exception as exc:
@@ -625,3 +637,9 @@ def render_feedback_with_details(feedback_text: str) -> None:
         already_loaded = detail_cache_state.get(cache_key)
         if already_loaded and not detail_rendered_in_this_run:
             st.markdown(already_loaded)
+
+        # Am Ende des Abschnitts wird der aktuelle Wert als "vorherige Auswahl"
+        # persistiert, damit die Flankenerkennung im nächsten Run korrekt arbeitet.
+        # Debug-Hinweis bei Bedarf:
+        # st.write("Detail-Auswahl vorher/aktuell", previous_selection, selected)
+        st.session_state[previous_selection_key] = selected
