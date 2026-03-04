@@ -7,6 +7,7 @@ from module.gpt_feedback import speichere_gpt_feedback_in_supabase
 from diagnostikmodul import aktualisiere_diagnostik_zusammenfassung
 from module.offline import display_offline_banner, is_offline
 from module.amboss_config import sync_chatgpt_amboss_session_state
+from module.feedback_detail import render_feedback_with_details
 
 show_sidebar()
 copyright_footer()
@@ -206,7 +207,9 @@ if feedback_text:
     elif "feedback_row_id" not in st.session_state:
         speichere_gpt_feedback_in_supabase()
 
-    st.markdown(feedback_text)
+    # Die Kernbewertung bleibt kurz; zusätzliche Inhalte werden je Punkt
+    # erst auf Anforderung eingeblendet und bei Bedarf KI-generiert.
+    render_feedback_with_details(feedback_text)
 else:
     st.error("🚫 Das Abschluss-Feedback konnte nicht erstellt werden.")
     st.stop()
