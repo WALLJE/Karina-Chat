@@ -228,6 +228,9 @@ def _sync_default_events(supabase: Client, feedback_id: int, sections: List[Feed
     auf `opened=true` aktualisiert.
     """
 
+    # WICHTIG:
+    # Diese Funktion darf bei Streamlit-Reruns bereits geöffnete Punkte NICHT
+    # zurücksetzen. Daher werden nur fehlende Einträge neu angelegt.
     defaults = [
         {
             "feedback_id": feedback_id,
@@ -241,10 +244,25 @@ def _sync_default_events(supabase: Client, feedback_id: int, sections: List[Feed
     if not defaults:
         return
 
-    supabase.table("feedback_detail_events").upsert(
-        defaults,
-        on_conflict="feedback_id,section_key",
-    ).execute()
+    # Bereits vorhandene section_keys für dieses Feedback ermitteln.
+    # So verhindern wir, dass bestehende opened/generated_text-Werte bei jedem
+    # Rerun überschrieben werden.
+    existing_response = (
+        supabase.table("feedback_detail_events")
+        .select("section_key")
+        .eq("feedback_id", feedback_id)
+        .execute()
+    )
+    existing_rows = existing_response.data or []
+    existing_keys = {row.get("section_key") for row in existing_rows if row.get("section_key")}
+
+    missing_defaults = [row for row in defaults if row["section_key"] not in existing_keys]
+    if not missing_defaults:
+        return
+
+    # Nur fehlende Default-Zeilen einfügen (kein Upsert), damit vorhandene
+    # Nutzungsdaten stabil bleiben.
+    supabase.table("feedback_detail_events").insert(missing_defaults).execute()
 
 
 def _save_open_event(
@@ -326,8 +344,18 @@ def render_feedback_with_details(feedback_text: str) -> None:
 
                 # 3) Falls kein frischer Cache vorliegt: neu generieren.
                 if detail_text is None:
-                    with st.spinner("⏳ KI erstellt die Vertiefung..."):
-                        detail_text = _generate_detail_text(section)
+                    try:
+                        with st.spinner("⏳ KI erstellt die Vertiefung..."):
+                            detail_text = _generate_detail_text(section)
+                    except Exception as exc:
+                        # Debug-Hinweis:
+                        # Wenn diese Meldung häufiger auftritt, temporär
+                        # `st.write("offline:", is_offline())` und
+                        # `st.write("openai_client vorhanden:", bool(st.session_state.get("openai_client")))`
+                        # aktivieren, um den Zustand direkt im UI zu prüfen.
+                        st.warning(f"⚠️ Vertiefung konnte nicht erzeugt werden: {exc}")
+                        st.info("ℹ️ Bitte später erneut versuchen oder Offline-Modus prüfen.")
+                        continue
                     if supabase is not None:
                         try:
                             _save_cache_detail(supabase, cache_key, section.key, detail_text)
