@@ -11,6 +11,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 import hashlib
+import json
 import re
 from typing import Any, Dict, List, Tuple
 
@@ -130,6 +131,7 @@ def _make_cache_key(
     feedback_id: int | None,
     fall_id: str | int | None = None,
     feedback_mode: str | None = None,
+    section_context: Dict[str, Any] | None = None,
 ) -> str:
     """Baut einen stabilen Cache-Key mit fachlichem Kontext für den Unterpunkt.
 
@@ -140,10 +142,20 @@ def _make_cache_key(
     Mindestens die ``feedback_id`` muss deshalb in den Hash einfließen.
     Optional werden auch ``fall_id`` und ``feedback_mode`` ergänzt.
 
+    Seit der kontextsensitiven Detailgenerierung reicht das allein aber nicht:
+    Der gleiche Unterpunkttext kann je nach ``section_context`` unterschiedliche
+    Vertiefungen erzeugen. Deshalb fließt ein stabil serialisierter Kontext
+    ebenfalls in den Hash ein.
+
     Debug-Hilfe (bei unerwarteten Cache-Treffern):
     Temporär kann `st.write("cache_key_input", {...})` vor dem Hash aktiviert
     werden, um die verwendeten Eingaben sichtbar zu machen.
     """
+
+    # Wichtig für deterministische Keys: JSON mit sortierten Schlüsseln und
+    # expliziter Trennung. So bleibt der Hash bei identischem Kontext stabil,
+    # auch wenn Python-Dicts intern anders angeordnet wurden.
+    context_payload = json.dumps(section_context or {}, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
 
     key_input = (
         f"section={section_key}|"
@@ -151,6 +163,7 @@ def _make_cache_key(
         f"feedback_id={feedback_id}|"
         f"fall_id={fall_id}|"
         f"feedback_mode={feedback_mode}|"
+        f"context={context_payload}|"
         "v2"
     )
     digest = hashlib.sha256(key_input.encode("utf-8")).hexdigest()
@@ -466,6 +479,10 @@ def render_feedback_with_details(feedback_text: str) -> None:
             detail_rendered_in_this_run = False
             fall_id = st.session_state.get("fall_id")
             feedback_mode = str(st.session_state.get("feedback_mode", "")).strip() or None
+            # Der Kontext muss *vor* der Cache-Key-Bildung berechnet werden,
+            # damit Cache-Lookup und Generierung auf exakt derselben Basis
+            # arbeiten. Das verhindert kontextfremde Cache-Treffer.
+            section_context = _build_section_context(section)
             if st.button("Lehrbuch-Vertiefung laden", key=button_key):
                 # Der Cache darf nicht mehr global sein:
                 # Gleiche Abschnittstexte können in unterschiedlichen Fällen
@@ -477,6 +494,7 @@ def render_feedback_with_details(feedback_text: str) -> None:
                     int(feedback_id) if feedback_id is not None else None,
                     fall_id=fall_id,
                     feedback_mode=feedback_mode,
+                    section_context=section_context,
                 )
 
                 # 1) Laufzeit-Cache in Streamlit-Session prüfen (schnellster Pfad).
@@ -497,7 +515,6 @@ def render_feedback_with_details(feedback_text: str) -> None:
                 if detail_text is None:
                     try:
                         with st.spinner("⏳ KI erstellt die Vertiefung..."):
-                            section_context = _build_section_context(section)
                             detail_text = _generate_detail_text(section, section_context)
                     except Exception as exc:
                         # Debug-Hinweis:
@@ -544,6 +561,7 @@ def render_feedback_with_details(feedback_text: str) -> None:
                 int(feedback_id) if feedback_id is not None else None,
                 fall_id=fall_id,
                 feedback_mode=feedback_mode,
+                section_context=section_context,
             )
             already_loaded = detail_cache_state.get(cache_key)
             # Nur dann aus dem Cache nachrendern, wenn in diesem Rerun nicht bereits

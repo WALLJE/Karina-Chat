@@ -264,6 +264,49 @@ create table if not exists public.feedback_detail_events (
     unique (feedback_id, section_key)
 );
 
+-- Falls die Tabelle bereits aus einem älteren Stand existiert, fehlende
+-- Spalten nachziehen (verhindert Fehler wie: column "feedback_id" does not exist).
+alter table public.feedback_detail_events
+    add column if not exists feedback_id bigint,
+    add column if not exists section_key text,
+    add column if not exists section_title text,
+    add column if not exists opened boolean not null default false,
+    add column if not exists generated_text text not null default 'Nein',
+    add column if not exists model text,
+    add column if not exists opened_at timestamptz,
+    add column if not exists created_at timestamptz not null default timezone('utc', now()),
+    add column if not exists updated_at timestamptz not null default timezone('utc', now());
+
+-- Foreign-Key nur anlegen, wenn noch nicht vorhanden.
+do $$
+begin
+    if not exists (
+        select 1
+        from pg_constraint
+        where conname = 'feedback_detail_events_feedback_id_fkey'
+    ) then
+        alter table public.feedback_detail_events
+            add constraint feedback_detail_events_feedback_id_fkey
+            foreign key (feedback_id)
+            references public.feedback_gpt("ID")
+            on delete cascade;
+    end if;
+end $$;
+
+-- Eindeutigkeit pro Feedback + Abschnitt sicherstellen, falls Altbestand.
+do $$
+begin
+    if not exists (
+        select 1
+        from pg_constraint
+        where conname = 'feedback_detail_events_feedback_id_section_key_key'
+    ) then
+        alter table public.feedback_detail_events
+            add constraint feedback_detail_events_feedback_id_section_key_key
+            unique (feedback_id, section_key);
+    end if;
+end $$;
+
 create table if not exists public.feedback_detail_cache (
     cache_key text primary key,
     feedback_id bigint,
@@ -276,11 +319,39 @@ create table if not exists public.feedback_detail_cache (
     created_at timestamptz not null default timezone('utc', now())
 );
 
+alter table public.feedback_detail_cache
+    add column if not exists cache_key text,
+    add column if not exists feedback_id bigint,
+    add column if not exists fall_id text,
+    add column if not exists feedback_modus text,
+    add column if not exists section_key text,
+    add column if not exists detail_text text,
+    add column if not exists model text,
+    add column if not exists updated_at timestamptz not null default timezone('utc', now()),
+    add column if not exists created_at timestamptz not null default timezone('utc', now());
+
+
+do $$
+begin
+    if not exists (
+        select 1
+        from pg_constraint
+        where conname = 'feedback_detail_cache_pkey'
+    ) then
+        alter table public.feedback_detail_cache
+            add constraint feedback_detail_cache_pkey
+            primary key (cache_key);
+    end if;
+end $$;
+
 create index if not exists feedback_detail_events_feedback_idx
     on public.feedback_detail_events (feedback_id);
 
 create index if not exists feedback_detail_events_section_idx
     on public.feedback_detail_events (section_key);
+
+create index if not exists feedback_detail_cache_section_idx
+    on public.feedback_detail_cache (section_key);
 
 create index if not exists feedback_detail_cache_ctx_section_idx
     on public.feedback_detail_cache (feedback_id, fall_id, feedback_modus, section_key);
