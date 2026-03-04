@@ -27,6 +27,18 @@ from module.offline import is_offline
 # - Das Abschlussfeedback selbst bleibt weiterhin im Hauptmodul auf gpt-4.1.
 DETAIL_MODEL = "gpt-4.1-mini"
 
+# Versionierung des Ausgabeformats der Detailtexte.
+#
+# Hintergrund: Bereits gecachte Detailtexte können ein älteres Format enthalten
+# (z. B. Bullet-Listen). Mit dieser Versionskonstante fließt das gewünschte
+# Ausgabeformat in den Cache-Key ein. Wird das Format geändert, kann die
+# Version hochgezählt werden und die App erzeugt automatisch neue Texte im
+# aktuellen Stil, ohne Altbestände manuell löschen zu müssen.
+#
+# v3 ergänzt gezielte **Fetthebungen** einzelner klinisch wichtiger Begriffe
+# im Fließtext, damit Kernpunkte schneller visuell erfasst werden können.
+DETAIL_OUTPUT_STYLE_VERSION = "v3_fliesstext_mit_fetthebungen"
+
 # Ein Cache-Eintrag gilt 90 Tage (~3 Monate) als frisch.
 CACHE_TTL_DAYS = 90
 
@@ -163,8 +175,8 @@ def _make_cache_key(
         f"feedback_id={feedback_id}|"
         f"fall_id={fall_id}|"
         f"feedback_mode={feedback_mode}|"
-        f"context={context_payload}|"
-        "v2"
+        f"output_style={DETAIL_OUTPUT_STYLE_VERSION}|"
+        f"context={context_payload}"
     )
     digest = hashlib.sha256(key_input.encode("utf-8")).hexdigest()
     return digest
@@ -307,7 +319,10 @@ Strukturierter Abschnittskontext (nur erlaubte Felder):
 Verbindliche Ausgabe-Regeln:
 - Kein direktes Ansprechen (kein "du", keine Personalpronomen für Lernende).
 - Fokus auf konkrete, praxisnahe klinische Formulierungen statt Allgemeinplätzen.
-- Gib zuerst 4–6 kurze Bulletpoints mit klaren Handlungsimpulsen aus.
+- Schreibe ausschließlich als Fließtext in ein bis zwei Absätzen.
+- Keine Bulletpoints, keine nummerierten Listen, keine Markdown-Aufzählungen.
+- Hebe 3-5 klinisch wichtige Einzelwörter oder sehr kurze Phrasen mit **fett** hervor.
+- Nutze Fetthebung sparsam und gezielt (keine ganzen Sätze fett markieren).
 - Nur Inhalte verwenden, die zum Unterpunkt und zum gelieferten Kontext passen.
 - Keine Quellenangaben, keine Leitliniennummern, keine erfundenen Details.
 - Umfang kompakt halten (ca. 120–170 Wörter).
@@ -416,9 +431,19 @@ def _sync_default_events(supabase: Client, feedback_id: int, sections: List[Feed
     if not missing_defaults:
         return
 
-    # Nur fehlende Default-Zeilen einfügen (kein Upsert), damit vorhandene
-    # Nutzungsdaten stabil bleiben.
-    supabase.table("feedback_detail_events").insert(missing_defaults).execute()
+    # Nur fehlende Default-Zeilen einfügen.
+    #
+    # WICHTIG FÜR STABILITÄT:
+    # In seltenen Race-Conditions (z. B. mehrere fast gleichzeitige Reruns)
+    # kann zwischen dem obigen Select und dem Insert bereits ein Datensatz
+    # entstanden sein. Mit ``ignore_duplicates=True`` wird dann kein 23505-Fehler
+    # mehr ausgelöst, sondern der bereits vorhandene Datensatz unverändert
+    # beibehalten.
+    supabase.table("feedback_detail_events").upsert(
+        missing_defaults,
+        on_conflict="feedback_id,section_key",
+        ignore_duplicates=True,
+    ).execute()
 
 
 def _save_open_event(
@@ -549,20 +574,43 @@ def render_feedback_with_details(feedback_text: str) -> None:
         previous_open_state_key = f"{detail_open_key}_previous"
         previous_open_state = bool(st.session_state.get(previous_open_state_key, False))
 
-        load_button_label = f"Details zu Punkt {section.number} laden"
-        hide_button_label = f"Details zu Punkt {section.number} ausblenden"
+        load_button_label = f"Mehr Details zu {section.title}"
+        hide_button_label = f"Details zu {section.title} ausblenden"
 
         # Interaktions-CTA pro Abschnitt:
         # - Wenn geschlossen: klarer Lade-Button.
         # - Wenn geöffnet: Ausblenden-Button für kompakte Ansicht.
+        #
+        # Debug-Hinweis bei Problemen mit dem Ausblenden:
+        # Temporär kann unten `st.write({"open_state": current_open_state,
+        # "key": detail_open_key})` aktiviert werden, um den tatsächlichen
+        # Session-State pro Abschnitt zu prüfen.
         if not current_open_state:
             if st.button(load_button_label, key=f"detail_load_btn_{section.number}_{section.key}"):
                 st.session_state[detail_open_key] = True
                 current_open_state = True
+
+                # WICHTIG für sauberes UX-Toggle ohne Klick-Verzögerung:
+                # Streamlit rendert den aktuellen Durchlauf mit dem bereits
+                # ausgewählten Branch. Ohne expliziten Rerun bleibt dadurch die
+                # Button-Beschriftung bis zum nächsten Klick oft "hinterher".
+                # Mit `st.rerun()` wird sofort der aktualisierte Zustand
+                # gerendert (Label + Sichtbarkeit synchron nach genau 1 Klick).
+                #
+                # Debug-Hilfe bei Bedarf (temporär aktivieren):
+                # st.write("DEBUG after-open-click", detail_open_key, st.session_state.get(detail_open_key))
+                st.rerun()
         else:
             if st.button(hide_button_label, key=f"detail_hide_btn_{section.number}_{section.key}"):
                 st.session_state[detail_open_key] = False
                 current_open_state = False
+
+                # Analog zum Öffnen: sofortiger Rerun verhindert, dass der
+                # Ausblenden-Button optisch noch einen weiteren Klick benötigt.
+                #
+                # Debug-Hilfe bei Bedarf (temporär aktivieren):
+                # st.write("DEBUG after-hide-click", detail_open_key, st.session_state.get(detail_open_key))
+                st.rerun()
 
         # Flankenerkennung analog zur bisherigen Idee:
         # Nur der Übergang False -> True gilt als echte Erstaktivierung.
@@ -649,9 +697,18 @@ def render_feedback_with_details(feedback_text: str) -> None:
                 except Exception as exc:
                     st.warning(f"⚠️ Speichern des Öffnungs-Events fehlgeschlagen: {exc}")
 
-        already_loaded = detail_cache_state.get(cache_key)
-        if already_loaded and not detail_rendered_in_this_run:
-            st.markdown(already_loaded)
+        # Wichtig für korrektes Ausblenden:
+        # Der Detailtext wird absichtlich *nicht* automatisch aus dem Cache
+        # nachgerendert, wenn der Abschnitt aktuell geschlossen ist.
+        #
+        # Frühere Logik hat den bereits geladenen Text trotz geschlossenem
+        # Zustand erneut angezeigt. Dadurch wirkte der Ausblenden-Button
+        # funktional defekt. Jetzt gilt: Sichtbarkeit ausschließlich über
+        # `current_open_state` steuern.
+        # Debug-Hilfe bei Bedarf:
+        # st.write("DEBUG render", section.key, {"current_open_state": current_open_state,
+        #     "detail_rendered_in_this_run": detail_rendered_in_this_run,
+        #     "cache_hit": bool(detail_cache_state.get(cache_key))})
 
         # Am Ende des Abschnitts wird der aktuelle Open-State als "vorheriger"
         # Zustand persistiert, damit die Flankenerkennung im nächsten Run korrekt arbeitet.
