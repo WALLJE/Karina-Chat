@@ -5,7 +5,7 @@ from module.untersuchungsmodul import (
     generiere_koerperbefund,
     generiere_sonderuntersuchung,
 )
-from module.navigation import redirect_to_start_page
+from module.navigation import redirect_to_start_page, render_next_page_link
 from openai import RateLimitError
 from module.sidebar import show_sidebar
 from module.footer import copyright_footer
@@ -357,10 +357,10 @@ st.markdown("---")
 
 # Weiter-Link zur Diagnostik
 # Hinweis: "href='/Diagnostik'" sorgt für internen Seitenwechsel, nicht für neues Fenster
-st.page_link(
+render_next_page_link(
     "pages/4_Diagnostik_und_Befunde.py",
     label="Weiter zur Diagnostik",
     icon="🧪",
-    disabled="koerper_befund" not in st.session_state
+    disabled="koerper_befund" not in st.session_state,
 )
 

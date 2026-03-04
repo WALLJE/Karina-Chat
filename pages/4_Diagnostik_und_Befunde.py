@@ -1,6 +1,6 @@
 import streamlit as st
 from module.sidebar import show_sidebar
-from module.navigation import redirect_to_start_page
+from module.navigation import redirect_to_start_page, render_next_page_link
 from module.footer import copyright_footer
 from diagnostikmodul import diagnostik_und_befunde_routine
 from befundmodul import generiere_befund
@@ -564,11 +564,11 @@ if (
 #     st.page_link("pages/20_Fallbeispiel_Editor.py", label="🔧 Fallbeispiel-Editor", icon="🔧")
 
 # Weiter-Link zur Diagnose und Therapie
-st.page_link(
+render_next_page_link(
     "pages/5_Diagnose_und_Therapie.py",
     label="Weiter zur Diagnose und Therapie",
     icon="💊",
-    disabled="befunde" not in st.session_state
+    disabled="befunde" not in st.session_state,
 )
 
 copyright_footer()

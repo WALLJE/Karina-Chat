@@ -1,7 +1,7 @@
 """On-Demand-Vertiefung für das Abschlussfeedback (Variante 2).
 
 Dieses Modul ergänzt die kompakte Feedback-Ausgabe um optionale, ausklappbare
-Lehrbuch-Details pro Unterpunkt. Die Details werden nur bei Klick generiert,
+Details pro Unterpunkt. Die Details werden nur bei Klick generiert,
 um Token zu sparen. Zusätzlich werden Nutzung und Text in Supabase protokolliert
 (Option A: Ereignis-Tabelle) und gecachte Detailtexte nach 3 Monaten erneuert.
 """
@@ -529,110 +529,99 @@ def render_feedback_with_details(feedback_text: str) -> None:
         st.markdown(prefix)
 
     st.caption(
-        "💡 Kompakte Bewertung zuerst; zusätzliche Lehrbuch-Details können pro Unterpunkt bei Bedarf geladen werden."
+        "💡 Kompakte Bewertung zuerst; zusätzliche Details können pro Unterpunkt bei Bedarf geladen werden."
     )
 
     detail_cache_state = st.session_state.setdefault("feedback_detail_runtime_cache", {})
 
     for section in sections:
-        st.markdown(f"{section.number}. **{section.title}:**  {section.body}")
+        st.markdown(f"**{section.number}. {section.title}**")
+        st.markdown(section.body)
 
-        expander_label = f"Mehr Infos zu Punkt {section.number} ({SECTION_TITLES.get(section.key, section.title)})"
-        with st.expander(expander_label, expanded=False):
-            button_key = f"load_detail_{section.number}_{section.key}"
-            # Diese Variable verhindert eine Doppelanzeige im selben Streamlit-Rerun:
-            # Nach einem Button-Klick wird der Detailtext unten im Block zusätzlich
-            # über den Runtime-Cache gerendert. Ohne Schutz würde exakt derselbe Text
-            # direkt nacheinander zweimal erscheinen.
-            detail_rendered_in_this_run = False
-            fall_id = st.session_state.get("fall_id")
-            feedback_mode = str(st.session_state.get("feedback_mode", "")).strip() or None
-            # Der Kontext muss *vor* der Cache-Key-Bildung berechnet werden,
-            # damit Cache-Lookup und Generierung auf exakt derselben Basis
-            # arbeiten. Das verhindert kontextfremde Cache-Treffer.
-            section_context = _build_section_context(section)
-            if st.button("Lehrbuch-Vertiefung laden", key=button_key):
-                # Der Cache darf nicht mehr global sein:
-                # Gleiche Abschnittstexte können in unterschiedlichen Fällen
-                # fachlich andere Bedeutungen haben. Durch feedback_id (und
-                # optional fall_id/modus) vermeiden wir falsche Wiederverwendung.
-                cache_key = _make_cache_key(
-                    section.key,
-                    section.body,
-                    int(feedback_id) if feedback_id is not None else None,
-                    fall_id=fall_id,
-                    feedback_mode=feedback_mode,
-                    section_context=section_context,
-                )
+        # UI-Änderung gemäß Nutzerwunsch:
+        # Statt Expander + klickbarer Fläche verwenden wir eine reine Dropdown-Interaktion.
+        # Sobald der Unterpunkt im Dropdown ausgewählt ist, wird der Inhalt geladen und
+        # unterhalb angezeigt. Für die Ladephase bleibt ein sichtbarer Spinner erhalten.
+        option_label = f"Punkt {section.number}: {SECTION_TITLES.get(section.key, section.title)}"
+        selector_key = f"detail_selector_{section.number}_{section.key}"
+        selected = st.selectbox(
+            "Details auswählen",
+            options=["Keine Details laden", option_label],
+            key=selector_key,
+            label_visibility="collapsed",
+        )
 
-                # 1) Laufzeit-Cache in Streamlit-Session prüfen (schnellster Pfad).
-                detail_text = detail_cache_state.get(cache_key)
+        detail_rendered_in_this_run = False
+        fall_id = st.session_state.get("fall_id")
+        feedback_mode = str(st.session_state.get("feedback_mode", "")).strip() or None
+        section_context = _build_section_context(section)
+        cache_key = _make_cache_key(
+            section.key,
+            section.body,
+            int(feedback_id) if feedback_id is not None else None,
+            fall_id=fall_id,
+            feedback_mode=feedback_mode,
+            section_context=section_context,
+        )
 
-                # 2) Persistenten Supabase-Cache prüfen.
-                from_supabase_cache = False
-                if detail_text is None and supabase is not None:
+        if selected == option_label:
+            # 1) Laufzeit-Cache in Streamlit-Session prüfen (schnellster Pfad).
+            detail_text = detail_cache_state.get(cache_key)
+
+            # 2) Persistenten Supabase-Cache prüfen.
+            from_supabase_cache = False
+            if detail_text is None and supabase is not None:
+                try:
+                    cached_text, is_fresh = _load_cached_detail(supabase, cache_key)
+                    if cached_text and is_fresh:
+                        detail_text = cached_text
+                        from_supabase_cache = True
+                except Exception as exc:
+                    st.warning(f"⚠️ Lesen des Detail-Caches fehlgeschlagen: {exc}")
+
+            # 3) Falls kein frischer Cache vorliegt: neu generieren.
+            if detail_text is None:
+                try:
+                    with st.spinner("⏳ KI lädt zusätzliche Details..."):
+                        detail_text = _generate_detail_text(section, section_context)
+                except Exception as exc:
+                    # Debug-Hinweis:
+                    # Wenn diese Meldung häufiger auftritt, temporär
+                    # `st.write("offline:", is_offline())` und
+                    # `st.write("openai_client vorhanden:", bool(st.session_state.get("openai_client")))`
+                    # aktivieren, um den Zustand direkt im UI zu prüfen.
+                    st.warning(f"⚠️ Details konnten nicht erzeugt werden: {exc}")
+                    st.info("ℹ️ Bitte später erneut versuchen oder Offline-Modus prüfen.")
+                    continue
+                if supabase is not None:
                     try:
-                        cached_text, is_fresh = _load_cached_detail(supabase, cache_key)
-                        if cached_text and is_fresh:
-                            detail_text = cached_text
-                            from_supabase_cache = True
+                        _save_cache_detail(
+                            supabase,
+                            cache_key,
+                            section.key,
+                            detail_text,
+                            int(feedback_id) if feedback_id is not None else None,
+                            fall_id,
+                            feedback_mode,
+                        )
                     except Exception as exc:
-                        st.warning(f"⚠️ Lesen des Detail-Caches fehlgeschlagen: {exc}")
+                        st.warning(f"⚠️ Schreiben des Detail-Caches fehlgeschlagen: {exc}")
 
-                # 3) Falls kein frischer Cache vorliegt: neu generieren.
-                if detail_text is None:
-                    try:
-                        with st.spinner("⏳ KI erstellt die Vertiefung..."):
-                            detail_text = _generate_detail_text(section, section_context)
-                    except Exception as exc:
-                        # Debug-Hinweis:
-                        # Wenn diese Meldung häufiger auftritt, temporär
-                        # `st.write("offline:", is_offline())` und
-                        # `st.write("openai_client vorhanden:", bool(st.session_state.get("openai_client")))`
-                        # aktivieren, um den Zustand direkt im UI zu prüfen.
-                        st.warning(f"⚠️ Vertiefung konnte nicht erzeugt werden: {exc}")
-                        st.info("ℹ️ Bitte später erneut versuchen oder Offline-Modus prüfen.")
-                        continue
-                    if supabase is not None:
-                        try:
-                            _save_cache_detail(
-                                supabase,
-                                cache_key,
-                                section.key,
-                                detail_text,
-                                int(feedback_id) if feedback_id is not None else None,
-                                fall_id,
-                                feedback_mode,
-                            )
-                        except Exception as exc:
-                            st.warning(f"⚠️ Schreiben des Detail-Caches fehlgeschlagen: {exc}")
+            # Laufzeit-Cache immer aktualisieren.
+            detail_cache_state[cache_key] = detail_text
 
-                # Laufzeit-Cache immer aktualisieren.
-                detail_cache_state[cache_key] = detail_text
+            if from_supabase_cache:
+                st.caption("♻️ Aus Supabase-Cache geladen (jünger als 3 Monate).")
 
-                if from_supabase_cache:
-                    st.caption("♻️ Aus Supabase-Cache geladen (jünger als 3 Monate).")
+            st.markdown(detail_text)
+            detail_rendered_in_this_run = True
 
-                st.markdown(detail_text)
-                detail_rendered_in_this_run = True
+            if supabase is not None and feedback_id:
+                try:
+                    _save_open_event(supabase, int(feedback_id), section, detail_text)
+                except Exception as exc:
+                    st.warning(f"⚠️ Speichern des Öffnungs-Events fehlgeschlagen: {exc}")
 
-                if supabase is not None and feedback_id:
-                    try:
-                        _save_open_event(supabase, int(feedback_id), section, detail_text)
-                    except Exception as exc:
-                        st.warning(f"⚠️ Speichern des Öffnungs-Events fehlgeschlagen: {exc}")
-
-            # Bereits geladene Inhalte bei erneutem Öffnen erneut anzeigen.
-            cache_key = _make_cache_key(
-                section.key,
-                section.body,
-                int(feedback_id) if feedback_id is not None else None,
-                fall_id=fall_id,
-                feedback_mode=feedback_mode,
-                section_context=section_context,
-            )
-            already_loaded = detail_cache_state.get(cache_key)
-            # Nur dann aus dem Cache nachrendern, wenn in diesem Rerun nicht bereits
-            # explizit ein Detailtext angezeigt wurde (z. B. durch den Button-Klick).
-            if already_loaded and not detail_rendered_in_this_run:
-                st.markdown(already_loaded)
+        already_loaded = detail_cache_state.get(cache_key)
+        if already_loaded and not detail_rendered_in_this_run:
+            st.markdown(already_loaded)

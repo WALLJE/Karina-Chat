@@ -3,7 +3,7 @@ from openai import OpenAI, RateLimitError
 import os
 from datetime import datetime
 from module.sidebar import show_sidebar
-from module.navigation import redirect_to_start_page
+from module.navigation import redirect_to_start_page, render_next_page_link
 from module.footer import copyright_footer
 from module.offline import (
     display_offline_banner,
@@ -116,4 +116,8 @@ if submit_button and user_input:
 # Weiter-Link zur Diagnostik
 # Hinweis: "href='/Diagnostik'" sorgt für internen Seitenwechsel, nicht für neues Fenster
 
-st.page_link("pages/2_Koerperliche_Untersuchung.py", label="🩺 Weiter zur Körperlichen Untersuchung", icon=None)
+render_next_page_link(
+    "pages/2_Koerperliche_Untersuchung.py",
+    label="Weiter zur Körperlichen Untersuchung",
+    icon="🩺",
+)

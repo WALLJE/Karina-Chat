@@ -13,7 +13,7 @@ from module.footer import copyright_footer
 from module.gpt_feedback import speichere_gpt_feedback_in_supabase
 from module.feedback_detail import render_feedback_with_details
 from module.loading_indicator import task_spinner
-from module.navigation import redirect_to_start_page
+from module.navigation import redirect_to_start_page, render_next_page_link
 from module.offline import display_offline_banner, is_offline
 from module.sidebar import show_sidebar
 
@@ -164,7 +164,7 @@ def _zeige_feedback(feedback_text: str) -> None:
         # Sobald das Feedback erstmals angezeigt wird, erfolgt das Persistieren.
         speichere_gpt_feedback_in_supabase()
 
-    st.subheader("📋 Automatisches Feedback")
+    st.subheader("📋 KI-generiertes Feedback")
     # Das kompakte Feedback bleibt der Standard. Die Detailtiefe wird erst
     # nach Klick je Unterpunkt geladen (token-sparsam, didaktisch gestuft).
     render_feedback_with_details(feedback_text)
@@ -227,13 +227,11 @@ def main() -> None:
     # )
 
     st.markdown("---")
-    st.page_link(
+    render_next_page_link(
         "pages/7_Evaluation_und_Download.py",
         label="Weiter zur Evaluation",
         icon="📊",
-    )
-    st.caption(
-        "💡 Die Evaluation ist für die Weiterentwicklung und wissenschaftliche Auswertung extrem wichtig."
+        helper_text="💡 Die Evaluation ist für die Weiterentwicklung und wissenschaftliche Auswertung extrem wichtig.",
     )
 
 

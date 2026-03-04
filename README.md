@@ -26,16 +26,22 @@ Der Karina-Chat unterstützt medizinische Ausbildungsszenarien, indem realistisc
 - **Patientensimulation & Sprachkorrektur:** `gpt-4o-mini` für kurze, natürliche Antworten bei geringer Latenz.
 - **Körperliche Untersuchung & Diagnostik-Befunde:** `gpt-4o` für präzise, strukturierte Befundtexte mit guter Kostenkontrolle.
 - **Abschlussfeedback (Prüfer-Modul):** `gpt-4.1` für hohe Instruktionsstabilität bei regelreichen Feedback-Prompts.
-- **Aufklapp-Vertiefung pro Unterpunkt:** `gpt-4.1-mini` für schnelle, token-sparsame Lehrbuchtexte (ca. 150 Wörter) mit guter medizinischer Präzision.
+- **Detail-Vertiefung pro Unterpunkt (Dropdown):** `gpt-4.1-mini` für schnelle, token-sparsame Zusatztexte (ca. 150 Wörter) mit guter medizinischer Präzision.
 - **AMBOSS-Zusammenfassungen:** `gpt-4o-mini` für kompakte Verdichtung großer JSON-Payloads.
 
 Hinweis: Änderungen an der Modellauswahl erfolgen direkt in den jeweiligen Modulen. Für Debugging können Kommentare in den Dateien aktiviert werden (z. B. `st.write(prompt)`), damit Prompt und Antwortstruktur nachvollziehbar bleiben.
 
-### Aufklapp-Vertiefung (Variante 2) – Caching und Tokenlogik
-- Die Lehrbuch-Vertiefung wird **nicht vorab**, sondern erst beim Klick auf den jeweiligen Aufklappbereich erzeugt.
+### Detail-Vertiefung (Variante 2) – Caching und Tokenlogik
+- Die Detail-Vertiefung wird **nicht vorab**, sondern erst nach Auswahl des jeweiligen Unterpunkts im Dropdown erzeugt.
 - Falls ein passender Text schon im Cache liegt und jünger als 3 Monate ist, wird er aus Supabase geladen.
 - Ist der Cache älter als 3 Monate, wird der Text KI-gestützt aktualisiert und erneut gespeichert.
 - Dadurch bleiben die Standarddurchläufe mit kompakter Bewertung tokenarm; zusätzliche Kosten entstehen nur bei tatsächlicher Nutzung.
+
+
+### Einheitlicher Weiter-Navigationsblock
+- Alle Seiten mit einem „Weiter zu …“-Schritt verwenden einen einheitlich hervorgehobenen Navigationsblock.
+- Sobald der nächste Schritt klickbar ist, wird der Block grün hinterlegt; bei gesperrtem Zustand bleibt er neutral grau sichtbar.
+- Dadurch ist die Lernstrecke konsistent und der nächste Schritt schneller erkennbar.
 
 ## Systemvoraussetzungen
 - Python 3.10 oder neuer
