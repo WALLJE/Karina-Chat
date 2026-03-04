@@ -507,7 +507,7 @@ def render_feedback_with_details(feedback_text: str) -> None:
 
     Wichtiger Ablauf:
     1) Kompaktes Feedback anzeigen (Variante-2-Stil bleibt erhalten).
-    2) Je Unterpunkt ein Expander mit explizitem Lade-Button.
+    2) Je Unterpunkt ein expliziter CTA-Button zum Laden/Ausblenden.
     3) Erst bei Klick KI-Text laden/generieren + in Supabase protokollieren.
     """
 
@@ -538,27 +538,42 @@ def render_feedback_with_details(feedback_text: str) -> None:
         st.markdown(f"**{section.number}. {section.title}**")
         st.markdown(section.body)
 
-        # UI-Änderung gemäß Nutzerwunsch:
-        # Statt Expander + klickbarer Fläche verwenden wir eine reine Dropdown-Interaktion.
-        # Sobald der Unterpunkt im Dropdown ausgewählt ist, wird der Inhalt geladen und
-        # unterhalb angezeigt. Für die Ladephase bleibt ein sichtbarer Spinner erhalten.
-        option_label = f"Punkt {section.number}: {SECTION_TITLES.get(section.key, section.title)}"
-        selector_key = f"detail_selector_{section.number}_{section.key}"
-        # Wir merken uns die *vorherige* Auswahl explizit in einem separaten Session-Key.
-        # Hintergrund: Bei Streamlit bleibt der Selectbox-Wert über Reruns erhalten.
-        # Ohne Flankenerkennung würde das Öffnungs-Event bei jeder späteren Interaktion
-        # erneut geschrieben und den ursprünglichen opened_at-Zeitpunkt überschreiben.
-        previous_selection_key = f"{selector_key}_previous"
-        previous_selection = st.session_state.get(previous_selection_key, "Keine Details laden")
-        selected = st.selectbox(
-            "Details auswählen",
-            options=["Keine Details laden", option_label],
-            key=selector_key,
-            label_visibility="collapsed",
-        )
-        # Flankenerkennung: Nur wenn der Wert *neu* auf den Detailpunkt gewechselt ist,
-        # gilt das als echtes Öffnen im aktuellen Run und darf als Event gespeichert werden.
-        selection_just_activated = selected == option_label and previous_selection != option_label
+        # Ladezustand wird explizit pro Unterpunkt im Session-State geführt.
+        # Damit ist die UI robust gegenüber Reruns und nicht mehr vom Selectbox-Wert abhängig.
+        detail_open_key = f"detail_open_{section.key}"
+        current_open_state = bool(st.session_state.get(detail_open_key, False))
+
+        # Für die Flankenerkennung halten wir zusätzlich den Zustand aus dem
+        # vorherigen Run fest. So wird das Öffnungs-Event nur bei echter
+        # Erstaktivierung geschrieben und nicht bei jedem Rerun wiederholt.
+        previous_open_state_key = f"{detail_open_key}_previous"
+        previous_open_state = bool(st.session_state.get(previous_open_state_key, False))
+
+        load_button_label = f"Details zu Punkt {section.number} laden"
+        hide_button_label = f"Details zu Punkt {section.number} ausblenden"
+
+        # Interaktions-CTA pro Abschnitt:
+        # - Wenn geschlossen: klarer Lade-Button.
+        # - Wenn geöffnet: Ausblenden-Button für kompakte Ansicht.
+        if not current_open_state:
+            if st.button(load_button_label, key=f"detail_load_btn_{section.number}_{section.key}"):
+                st.session_state[detail_open_key] = True
+                current_open_state = True
+        else:
+            if st.button(hide_button_label, key=f"detail_hide_btn_{section.number}_{section.key}"):
+                st.session_state[detail_open_key] = False
+                current_open_state = False
+
+        # Flankenerkennung analog zur bisherigen Idee:
+        # Nur der Übergang False -> True gilt als echte Erstaktivierung.
+        selection_just_activated = current_open_state and not previous_open_state
+
+        # Debug-Kommentar (temporär aktivierbar):
+        # st.write("DEBUG Detail-State", section.key, {
+        #     "previous_open_state": previous_open_state,
+        #     "current_open_state": current_open_state,
+        #     "selection_just_activated": selection_just_activated,
+        # })
 
         detail_rendered_in_this_run = False
         fall_id = st.session_state.get("fall_id")
@@ -573,7 +588,7 @@ def render_feedback_with_details(feedback_text: str) -> None:
             section_context=section_context,
         )
 
-        if selected == option_label:
+        if current_open_state:
             # 1) Laufzeit-Cache in Streamlit-Session prüfen (schnellster Pfad).
             detail_text = detail_cache_state.get(cache_key)
 
@@ -638,8 +653,8 @@ def render_feedback_with_details(feedback_text: str) -> None:
         if already_loaded and not detail_rendered_in_this_run:
             st.markdown(already_loaded)
 
-        # Am Ende des Abschnitts wird der aktuelle Wert als "vorherige Auswahl"
-        # persistiert, damit die Flankenerkennung im nächsten Run korrekt arbeitet.
+        # Am Ende des Abschnitts wird der aktuelle Open-State als "vorheriger"
+        # Zustand persistiert, damit die Flankenerkennung im nächsten Run korrekt arbeitet.
         # Debug-Hinweis bei Bedarf:
-        # st.write("Detail-Auswahl vorher/aktuell", previous_selection, selected)
-        st.session_state[previous_selection_key] = selected
+        # st.write("Detail-Open-State vorher/aktuell", previous_open_state, current_open_state)
+        st.session_state[previous_open_state_key] = current_open_state
