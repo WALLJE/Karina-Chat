@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import uuid
-from typing import Dict, Iterable, List
+from typing import Any, Dict, Iterable, List
 
 # Hinweis: Zusätzliche Standardbibliotheken wie ``io`` werden bewusst nur
 # eingebunden, wenn sie tatsächlich gebraucht werden. Der Code bleibt so für
@@ -32,6 +32,12 @@ from module.feedback_mode import (
     SESSION_KEY_EFFECTIVE_MODE,
     reset_random_mode,
     set_mode_override,
+)
+from module.feedback_detail import (
+    DETAIL_MODEL,
+    _build_section_context,
+    _generate_detail_text,
+    split_feedback_sections,
 )
 from module.llm_state import ensure_llm_client
 from module.offline import is_offline
@@ -97,6 +103,73 @@ class FeedbackRunResult:
     szenario: str
     fall_datum: str | None
     fehlende_variablen: List[str]
+    detail_feedback: List[Dict[str, Any]]
+
+
+def _variation_spalte_verfuegbar(client: Client, spaltenname: str) -> bool:
+    """Prüft robust, ob eine optionale Spalte im Variations-Table existiert.
+
+    Die Admin-Funktion soll auch dann weiterhin nutzbar bleiben, wenn ein
+    Deployment die neuen Spalten noch nicht migriert hat. Die Prüfung erfolgt
+    daher mit einem leichten ``select(...).limit(0)``, analog zum bestehenden
+    Feedback-Speicherpfad.
+    """
+
+    try:
+        probe = client.table(_TABLE_VARIATIONS).select(spaltenname).limit(0).execute()
+    except Exception:
+        return False
+
+    return not getattr(probe, "error", None)
+
+
+def _erzeuge_detail_feedback_automatisch(feedback_text: str) -> List[Dict[str, Any]]:
+    """Erzeugt für jeden Unterpunkt automatisch einen Detail-Feedback-Block.
+
+    Rückgabeformat:
+    Eine Liste aus serialisierbaren Dicts mit ``section_*``-Metadaten,
+    ``context_snapshot`` und dem generierten ``detail_text``. Damit kann der
+    komplette Detailinhalt später direkt aus ``feedback_gpt_variationen``
+    rekonstruiert werden, ohne zusätzliche Join-Tabellen laden zu müssen.
+    """
+
+    _prefix, sections = split_feedback_sections(feedback_text)
+    detail_bloecke: List[Dict[str, Any]] = []
+
+    for section in sections:
+        # Der Kontext wird identisch zur regulären Detail-Ansicht aufgebaut,
+        # damit die Admin-Variationen dieselbe fachliche Basis verwenden.
+        section_context = _build_section_context(section)
+        detail_text = _generate_detail_text(section, section_context)
+        detail_bloecke.append(
+            {
+                "section_number": section.number,
+                "section_key": section.key,
+                "section_title": section.title,
+                "section_body": section.body,
+                "context_snapshot": section_context,
+                "detail_text": detail_text,
+                "detail_model": DETAIL_MODEL,
+            }
+        )
+
+    return detail_bloecke
+
+
+def _detail_feedback_als_markdown(detail_feedback: List[Dict[str, Any]]) -> str:
+    """Serialisiert Detail-Feedback in ein rekonstruierbares Markdown-Protokoll."""
+
+    if not detail_feedback:
+        return ""
+
+    bloecke: List[str] = []
+    for eintrag in detail_feedback:
+        nummer = eintrag.get("section_number", "?")
+        titel = str(eintrag.get("section_title", "Unterpunkt")).strip() or "Unterpunkt"
+        detail_text = str(eintrag.get("detail_text", "")).strip()
+        bloecke.append(f"### {nummer}. {titel}\n\n{detail_text}")
+
+    return "\n\n".join(bloecke).strip()
 
 
 def _get_supabase_client() -> Client:
@@ -328,6 +401,7 @@ def fuehre_feedback_durchlaeufe_aus(
                 st.session_state.get("therapie_setting_verdacht", ""),
                 st.session_state.get("therapie_setting_final", ""),
             )
+            detail_feedback = _erzeuge_detail_feedback_automatisch(feedback_text)
 
             ergebnisse.append(
                 FeedbackRunResult(
@@ -339,6 +413,7 @@ def fuehre_feedback_durchlaeufe_aus(
                     szenario=fall.szenario,
                     fall_datum=fall.datum,
                     fehlende_variablen=fall.fehlende_felder,
+                    detail_feedback=detail_feedback,
                 )
             )
 
@@ -362,8 +437,22 @@ def speichere_durchlaeufe_in_supabase(ergebnisse: List[FeedbackRunResult]) -> No
 
     client = _get_supabase_client()
 
-    payload = [
-        {
+    # Optionale Spalten nur dann befüllen, wenn das Supabase-Schema bereits
+    # aktualisiert wurde. So bleibt der Insert kompatibel mit älteren Ständen,
+    # und Admins erhalten gleichzeitig eine klare Migrationswarnung.
+    detail_json_verfuegbar = _variation_spalte_verfuegbar(client, "detail_feedback_json")
+    detail_md_verfuegbar = _variation_spalte_verfuegbar(client, "detail_feedback_markdown")
+
+    if not detail_json_verfuegbar or not detail_md_verfuegbar:
+        st.warning(
+            "⚠️ Für vollständige Detail-Rekonstruktion bitte die neuen Spalten "
+            "'detail_feedback_json' und 'detail_feedback_markdown' in "
+            "feedback_gpt_variationen anlegen (siehe README-SQL)."
+        )
+
+    payload = []
+    for e in ergebnisse:
+        row_payload = {
             "laufgruppe": str(e.laufgruppe),
             "feedback_id": e.feedback_id,
             "szenario": e.szenario,
@@ -373,8 +462,13 @@ def speichere_durchlaeufe_in_supabase(ergebnisse: List[FeedbackRunResult]) -> No
             "feedback_text": e.feedback_text,
             "fehlende_variablen": ", ".join(sorted(set(e.fehlende_variablen))) if e.fehlende_variablen else None,
         }
-        for e in ergebnisse
-    ]
+
+        if detail_json_verfuegbar:
+            row_payload["detail_feedback_json"] = e.detail_feedback
+        if detail_md_verfuegbar:
+            row_payload["detail_feedback_markdown"] = _detail_feedback_als_markdown(e.detail_feedback)
+
+        payload.append(row_payload)
 
     try:
         client.table(_TABLE_VARIATIONS).insert(payload).execute()

@@ -233,14 +233,21 @@ create table if not exists public.feedback_gpt_variationen (
     lauf_index integer not null,
     feedback_text text not null,
     fehlende_variablen text,
+    detail_feedback_json jsonb,
+    detail_feedback_markdown text,
     created_at timestamptz not null default timezone('utc', now())
 );
+
+-- Falls die Tabelle bereits existiert, die neuen Detail-Spalten nachziehen:
+alter table if exists public.feedback_gpt_variationen
+    add column if not exists detail_feedback_json jsonb,
+    add column if not exists detail_feedback_markdown text;
 
 create index if not exists feedback_variationen_gruppe_idx
     on public.feedback_gpt_variationen (laufgruppe);
 ```
 
-Jeder Lauf erhält eine gemeinsame `laufgruppe`-Nummer (UUID), sodass sich mehrere Feedbacks derselben Serie leicht bündeln lassen. Die Spalte `fehlende_variablen` dokumentiert, welche Felder im Ursprungsdatensatz leer waren, damit spätere Auswertungen die Datenlage nachvollziehen können.
+Jeder Lauf erhält eine gemeinsame `laufgruppe`-Nummer (UUID), sodass sich mehrere Feedbacks derselben Serie leicht bündeln lassen. Die Spalte `fehlende_variablen` dokumentiert, welche Felder im Ursprungsdatensatz leer waren, damit spätere Auswertungen die Datenlage nachvollziehen können. Zusätzlich speichert `detail_feedback_json` die strukturierte Detail-Generierung je Unterpunkt (inkl. Kontext-Snapshot), während `detail_feedback_markdown` eine direkt lesbare Rekonstruktion als Text bereitstellt.
 
 #### Supabase SQL (Option A) für Aufklapp-Tracking + Text-Cache
 Für die On-Demand-Aufklapptexte der Feedback-Unterpunkte werden zwei zusätzliche Tabellen verwendet:
