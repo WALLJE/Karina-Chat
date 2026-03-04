@@ -306,13 +306,11 @@ Strukturierter Abschnittskontext (nur erlaubte Felder):
 
 Verbindliche Ausgabe-Regeln:
 - Kein direktes Ansprechen (kein "du", keine Personalpronomen für Lernende).
-- Fokus auf konkrete klinische Formulierungen statt Allgemeinplätzen.
+- Fokus auf konkrete, praxisnahe klinische Formulierungen statt Allgemeinplätzen.
 - Gib zuerst 4–6 kurze Bulletpoints mit klaren Handlungsimpulsen aus.
-- Optional: Ergänze eine Mini-Tabelle im Markdown-Format mit 2–4 Zeilen und den Spalten:
-  Befund | Bedeutung | nächster Schritt
 - Nur Inhalte verwenden, die zum Unterpunkt und zum gelieferten Kontext passen.
 - Keine Quellenangaben, keine Leitliniennummern, keine erfundenen Details.
-- Umfang kompakt halten (ca. 120–170 Wörter inkl. Tabelle).
+- Umfang kompakt halten (ca. 120–170 Wörter).
 """.strip()
 
     response = client.chat.completions.create(
