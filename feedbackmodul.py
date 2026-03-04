@@ -188,6 +188,7 @@ Ausgabeformat (kompakte Antworten, je Punkt max. 75 Wörter, nenne nur die wicht
 5. Ist die finale Diagnose nachvollziehbar, insbesondere im Hinblick auf Differentialdiagnosen?
 6. Ist das Therapiekonzept leitliniengerecht, plausibel und auf die Diagnose abgestimmt? Ist das Versorgungssetting angemessen? Bewerte bei stationärem/Notaufnahme-Setting die Zahl von Diagnostik-Terminen nicht negativ; im ambulanten Setting die Zahl der diagnostischen Kontakte explizit im Sinne von Termin- und Zeitfaktoren.
 
+
 **Berücksichtige und kommentiere kompakt, 2-3 Sätze**:
 - ökologische Aspekte (z. B. überflüssige Diagnostik, zuviele Anforderungen, zuviele Termine, CO₂-Bilanz, Strahlenbelastung bei CT oder Röntgen, Ressourcenverbrauch).
 - ökonomische Sinnhaftigkeit (Kosten-Nutzen-Verhältnis)
