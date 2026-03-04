@@ -325,6 +325,11 @@ def render_feedback_with_details(feedback_text: str) -> None:
         expander_label = f"Mehr Infos zu Punkt {section.number} ({SECTION_TITLES.get(section.key, section.title)})"
         with st.expander(expander_label, expanded=False):
             button_key = f"load_detail_{section.number}_{section.key}"
+            # Diese Variable verhindert eine Doppelanzeige im selben Streamlit-Rerun:
+            # Nach einem Button-Klick wird der Detailtext unten im Block zusätzlich
+            # über den Runtime-Cache gerendert. Ohne Schutz würde exakt derselbe Text
+            # direkt nacheinander zweimal erscheinen.
+            detail_rendered_in_this_run = False
             if st.button("Lehrbuch-Vertiefung laden", key=button_key):
                 cache_key = _make_cache_key(section.key, section.body)
 
@@ -369,6 +374,7 @@ def render_feedback_with_details(feedback_text: str) -> None:
                     st.caption("♻️ Aus Supabase-Cache geladen (jünger als 3 Monate).")
 
                 st.markdown(detail_text)
+                detail_rendered_in_this_run = True
 
                 if supabase is not None and feedback_id:
                     try:
@@ -379,5 +385,7 @@ def render_feedback_with_details(feedback_text: str) -> None:
             # Bereits geladene Inhalte bei erneutem Öffnen erneut anzeigen.
             cache_key = _make_cache_key(section.key, section.body)
             already_loaded = detail_cache_state.get(cache_key)
-            if already_loaded:
+            # Nur dann aus dem Cache nachrendern, wenn in diesem Rerun nicht bereits
+            # explizit ein Detailtext angezeigt wurde (z. B. durch den Button-Klick).
+            if already_loaded and not detail_rendered_in_this_run:
                 st.markdown(already_loaded)
