@@ -22,49 +22,40 @@ if "SYSTEM_PROMPT" not in st.session_state or "patient_name" not in st.session_s
 st.session_state.setdefault("befund_generating", False)
 st.session_state.setdefault("befund_generierung_gescheitert", False)
 st.session_state.setdefault("diagnostik_edit_mode", True)
-# Initialisierung der Nutzereingaben für Diagnostik, damit spätere Zugriffe
-# (z.B. im Anzeige-Block) keinen Session-State-Fehler auslösen.
-# Debug-Hinweis: Falls unerwartete Werte angezeigt werden, kann dieser Key
-# temporär geleert werden, um die Datenquelle zu überprüfen.
 st.session_state.setdefault("user_diagnostics", "")
-# Das Versorgungssetting zur Verdachtsdiagnose wird direkt im Diagnostik-Teil
-# erfasst. Damit Streamlit keinen ungültigen Default erhält, holen wir zuerst
-# den letzten persistierten Wert und nutzen ihn als Initialwert.
-# Debugging-Hinweis: Bei Bedarf kann der Key gezielt entfernt werden, um die
-# Auswahl neu aufzubauen (z. B. via st.session_state.pop(...)).
+
 therapie_setting_verdacht_default = st.session_state.get(
     "therapie_setting_verdacht_persisted",
     "Einweisung Notaufnahme",
 )
 st.session_state.setdefault("therapie_setting_verdacht", therapie_setting_verdacht_default)
 
+# --- Labor Kategorien Definition ---
+LABOR_KATEGORIEN = {
+    "Hämatologie": ["Kleines Blutbild", "Großes Blutbild"],
+    "Gerinnung": ["D-Dimere", "Quick / INR", "PTT"],
+    "Klin. Chemie": ["Elektrolyte", "CRP", "BSG", "LDH", "HbA1C", "Procalcitonin"],
+    "Stuhldiagnostik": ["Mikrobiologie Stuhl", "Calprotectin", "iFOBT"],
+    "Leber / Pankreas": ["GOT & GPT", "Gamma-GT", "Alk. Phosphatase", "Bilirubin gesamt", "Lipase"],
+    "Kardial": ["Troponin", "CK", "NT-proBNP"],
+    "Weitere Organe": ["Kreatinin & GFR", "TSH mit fT3 & fT4"],
+    "Infektionsserologie": ["SARS-CoV-2", "Influenza PCR", "HBs-Antigen", "Anti-HBc"],
+    "Urindiagnostik": ["Urinstatus", "Urinkultur"],
+    "Blutkulturen": ["Blutkultur"]
+}
 
 def _is_stationaeres_setting(setting_wert: str) -> bool:
-    """Liefert True, wenn das gewählte Setting stationär/notfallbezogen ist."""
-
     return not setting_wert.startswith("ambulant")
 
-
 def _diagnostik_label_fuer_setting(setting_wert: str) -> str:
-    """Erzeugt die passende Frage zur Diagnostik abhängig vom Versorgungssetting."""
-
     if _is_stationaeres_setting(setting_wert):
-        return "Welche konkreten kurzfristigen diagnostischen Maßnahmen möchten Sie prästationär noch veranlassen?"
-    return "Welche konkreten diagnostischen Maßnahmen möchten Sie vorschlagen?"
-
+        return "Welche konkreten kurzfristigen diagnostischen Maßnahmen möchten Sie prästationär noch veranlassen? (Bildgebung, EKG etc.)"
+    return "Welche konkreten diagnostischen Maßnahmen möchten Sie vorschlagen? (Bildgebung, EKG etc.)"
 
 def pruefe_setting_kongruenz_diagnostik(client, setting_wert: str, diagnostik_text: str) -> tuple[bool, str]:
-    """Prüft per GPT, ob die Diagnostik zum gewählten Setting passt.
-
-    Debug-Hinweis: Für eine manuelle Fehlersuche kann der finale Prompt temporär
-    per `st.write(prompt)` ausgegeben werden. Danach wieder entfernen.
-    """
-
     if not diagnostik_text.strip():
         return True, ""
     if client is None or is_offline():
-        # Im Offline-Modus wird keine künstliche Heuristik verwendet, damit die
-        # Nutzenden transparent sehen, dass diese Prüfung online erfolgt.
         return True, ""
 
     setting_kontext = (
@@ -88,7 +79,6 @@ Kriterien:
 - Bei geplanter Notfalleinweisung sollen prästationäre Maßnahmen realistisch kurzzeitig machbar sein.
 - Wenn Maßnahmen dem Setting deutlich widersprechen, setze is_congruent auf false.
 """
-
     try:
         antwort = messe_gpt_aktion(
             lambda: client.chat.completions.create(
@@ -107,9 +97,6 @@ Kriterien:
 
         parsed = json.loads(raw_text[json_start : json_ende + 1])
         is_congruent_raw = parsed.get("is_congruent", True)
-        # Strenge Bool-Normalisierung: LLMs liefern gelegentlich Strings wie
-        # "false" zurück. Diese dürfen nicht implizit als True gewertet werden.
-        # Debug-Hinweis: Bei unerwarteten Antworten `st.write(parsed)` aktivieren.
         if isinstance(is_congruent_raw, bool):
             is_congruent = is_congruent_raw
         elif isinstance(is_congruent_raw, str):
@@ -125,16 +112,10 @@ Kriterien:
 
         return is_congruent, str(parsed.get("reason", "")).strip()
     except Exception:
-        # Fehler in dieser Zusatzprüfung blockieren nicht die Seite; für
-        # Debugging kann hier temporär `st.exception(...)` ergänzt werden.
         return True, ""
 
-
 def aktualisiere_kumulative_befunde_page(neuer_befund: str) -> None:
-    """Pflegt den Primärbefund und die kumulativen Texte für Export/Feedback ein."""
-
     st.session_state["befunde"] = neuer_befund
-
     passagen = [f"### Termin 1\n{neuer_befund}".strip()]
     gesamt = st.session_state.get("diagnostik_runden_gesamt", 1)
     for termin in range(2, gesamt + 1):
@@ -146,10 +127,7 @@ def aktualisiere_kumulative_befunde_page(neuer_befund: str) -> None:
     st.session_state["gpt_befunde"] = neuer_befund
     st.session_state["gpt_befunde_kumuliert"] = "\n---\n".join(passagen).strip()
 
-
 def starte_automatische_befundgenerierung_page(client) -> None:
-    """Startet ohne Nutzereingriff die Befundgenerierung, sobald alle Daten vorliegen."""
-
     if st.session_state.get("befund_generating", False):
         return
     if st.session_state.get("befunde"):
@@ -157,7 +135,7 @@ def starte_automatische_befundgenerierung_page(client) -> None:
     if st.session_state.get("befund_generierung_gescheitert", False):
         return
     if client is None:
-        return  # Sicherheitsnetz, falls der Client nicht initialisiert wurde.
+        return 
 
     diagnostik_text = st.session_state.get("user_diagnostics", "").strip()
     ddx_text = st.session_state.get("user_ddx2", "").strip()
@@ -195,35 +173,12 @@ def starte_automatische_befundgenerierung_page(client) -> None:
     if not st.session_state.get("befund_generierung_gescheitert", False):
         st.rerun()
 
-# st.subheader("Diagnostik und Befunde")
-
-# --- Voraussetzungen wie in Hauptdatei beachten ---
+# --- Hauptanzeige ---
 if "koerper_befund" in st.session_state:
         if st.session_state.get("diagnostik_setting_kongruent") is False:
-                # Bei bestätigter Diskrepanz erzwingen wir den Eingabemodus,
-                # damit keine veralteten Finalwerte im Anzeigezweig hängen
-                # bleiben.
                 st.session_state["diagnostik_edit_mode"] = True
 
         if st.session_state.get("diagnostik_edit_mode", True):
-                # Debug-Hinweis: Bei Bedarf aktivieren, um die Branch-Auswahl
-                # (Eingabe vs. Anzeige) im Session-State nachvollziehen zu können.
-                # st.write(
-                #     "Debug Seite 4 > Branch:",
-                #     "Eingabe",
-                #     {
-                #         "user_ddx2": st.session_state.get("user_ddx2"),
-                #         "user_diagnostics": st.session_state.get("user_diagnostics"),
-                #         "diagnostik_setting_kongruent": st.session_state.get("diagnostik_setting_kongruent"),
-                #     },
-                # )
-                # Hinweis: Das Versorgungssetting soll nach den DDx und vor der
-                # konkreten Diagnostik erfragt werden. Dadurch überlegen die
-                # Studierenden früh, ob die weitere Abklärung ambulant oder
-                # stationär/notfallmäßig erfolgen soll.
-                # Wichtig: Das Radio liegt außerhalb des Formulars, damit der
-                # Hinweistext sofort auf Button-Wechsel reagiert (Formulare
-                # aktualisieren Inhalte erst nach dem Absenden).
                 setting_optionen_verdacht = [
                     "Einweisung Notaufnahme",
                     "Einweisung elektiv",
@@ -231,26 +186,13 @@ if "koerper_befund" in st.session_state:
                     "ambulant (Vorstellung im nächsten Quartal)",
                 ]
                 bestehendes_setting = st.session_state.get("therapie_setting_verdacht", "")
-                # Debugging-Hinweis: Wenn ein unerwarteter Wert auftaucht, kann
-                # das Setting temporär aus dem Session-State entfernt werden,
-                # um die Auswahl erneut zu erzwingen.
+                
                 if bestehendes_setting in setting_optionen_verdacht:
                     default_index = setting_optionen_verdacht.index(bestehendes_setting)
                 else:
-                    # Streamlit wirft einen Fehler, wenn ein Session-State-Wert
-                    # nicht zu den Optionen passt. Für Debugging kann hier
-                    # temporär st.write(bestehendes_setting) aktiviert werden.
-                    # Debug-Hinweis (beschriftet): Zeigt den fehlerhaften
-                    # Session-State-Wert vor dem Entfernen an.
-                    # TODO: Debug-Ausgabe später entfernen.
-                    # st.write("Debug Seite 4 > Ungültiges Setting verdacht:", bestehendes_setting)
                     st.session_state.pop("therapie_setting_verdacht", None)
                     default_index = 0
-                # Die Eingabefelder liegen bewusst außerhalb eines Streamlit-Forms,
-                # damit Änderungen am Radio-Button sofort einen Re-Run auslösen
-                # und alle hint-Texte/Fragen direkt an das neue Setting angepasst
-                # werden. In einem Form würden diese Texte erst nach Absenden
-                # aktualisiert, was hier explizit nicht gewünscht ist.
+                
                 ddx_input2 = st.text_area(
                     "Welche drei Differentialdiagnosen halten Sie nach Anamnese und Untersuchung für möglich?",
                     key="ddx_input2",
@@ -262,11 +204,7 @@ if "koerper_befund" in st.session_state:
                     index=default_index,
                     key="therapie_setting_verdacht",
                 )
-                # Debug-Hinweis (beschriftet): Aktivieren, um Auswahl und
-                # Session-State nach dem Radio eindeutig zu prüfen.
-                # TODO: Debug-Ausgaben später entfernen.
-                # st.write("Debug Seite 4 > Auswahl verdacht (Radio):", setting_verdacht)
-                # st.write("Debug Seite 4 > Session verdacht (nach Radio):", st.session_state.get("therapie_setting_verdacht"))
+                
                 st.session_state["debug_snapshot_therapie_setting_verdacht"] = setting_verdacht
                 st.session_state["therapie_setting_verdacht_persisted"] = setting_verdacht
 
@@ -285,14 +223,42 @@ if "koerper_befund" in st.session_state:
                             "💡Sie können sich auch später noch für eine stationäre Therapie entscheiden."
                         )
 
+                # --- Neues Labor Modul ---
+                st.markdown("### 🧪 Laboranforderung")
+                with st.expander("Laborwerte auswählen (Zentrallabor)"):
+                    st.info("Markieren Sie die Parameter, die Sie bestimmen lassen möchten. Weitere Parameter können Sie im Feld unten ergänzen.")
+                    
+                    lab_checkboxes_r1 = {}
+                    cols = st.columns(3)
+                    
+                    # Verteilung der neuen Kategorien auf 3 Spalten
+                    with cols[0]:
+                        for cat in ["Hämatologie", "Gerinnung", "Kardial", "Blutkulturen"]:
+                            st.markdown(f"**{cat}**")
+                            for item in LABOR_KATEGORIEN[cat]:
+                                lab_checkboxes_r1[item] = st.checkbox(item, key=f"lab_{item}_r1")
+                    
+                    with cols[1]:
+                        for cat in ["Klin. Chemie", "Leber / Pankreas", "Weitere Organe"]:
+                            st.markdown(f"**{cat}**")
+                            for item in LABOR_KATEGORIEN[cat]:
+                                lab_checkboxes_r1[item] = st.checkbox(item, key=f"lab_{item}_r1")
+                                
+                    with cols[2]:
+                        for cat in ["Infektionsserologie", "Urindiagnostik", "Stuhldiagnostik"]:
+                            st.markdown(f"**{cat}**")
+                            for item in LABOR_KATEGORIEN[cat]:
+                                lab_checkboxes_r1[item] = st.checkbox(item, key=f"lab_{item}_r1")
+
+                    st.markdown("---")
+                    labor_freitext = st.text_input("Weitere Laborparameter (Freitext):", key="labor_freitext_r1", placeholder="z. B. Zöliakie-Serologie")
+
+                # --- Weitere Diagnostik ---
                 diag_input2 = st.text_area(
                     _diagnostik_label_fuer_setting(setting_verdacht),
                     key="diag_input2",
                 )
 
-                # Dieser zusätzliche Hinweis direkt vor dem Speichern wird
-                # absichtlich nur im stationären/notfallbezogenen Setting
-                # eingeblendet (Anforderung aus dem Review).
                 if _is_stationaeres_setting(setting_verdacht):
                     st.info(
                         "Hinweis zur Diagnostik (Einweisung/Notaufnahme):\n"
@@ -304,28 +270,23 @@ if "koerper_befund" in st.session_state:
                 if submitted_diag:
                     from sprachmodul import sprach_check
                     client = st.session_state.get("openai_client")
-                    # Temporäre Formwerte: Wir speichern zunächst nur lokale
-                    # Variablen. Finalwerte im Session-State werden erst bei
-                    # erfolgreicher Kongruenzprüfung gesetzt.
+                    
                     ddx_korrigiert = sprach_check(ddx_input2, client)
-                    # Das Versorgungssetting stammt direkt aus dem Radio-Widget.
-                    # Wichtig: Nach der Widget-Initialisierung darf der Key nicht
-                    # erneut gesetzt werden, sonst bricht Streamlit mit einem
-                    # "cannot be modified"-Fehler ab. Debug-Hinweis: Falls ein
-                    # ungültiger Wert auftaucht, kann der Key per
-                    # st.session_state.pop("therapie_setting_verdacht", None)
-                    # gelöscht und die Seite neu geladen werden.
-                    diagnostik_korrigiert = sprach_check(diag_input2, client)
-
-                    # Debug-Hinweis: Übergang direkt vor der Kongruenzprüfung.
-                    # st.write(
-                    #     "Debug Seite 4 > Vor Kongruenzprüfung",
-                    #     {
-                    #         "ddx_korrigiert": ddx_korrigiert,
-                    #         "diagnostik_korrigiert": diagnostik_korrigiert,
-                    #         "diagnostik_setting_kongruent_alt": st.session_state.get("diagnostik_setting_kongruent"),
-                    #     },
-                    # )
+                    
+                    # Laborauswahl extrahieren
+                    gewaehlte_labore = [lab for lab, checked in lab_checkboxes_r1.items() if checked]
+                    if labor_freitext.strip():
+                        gewaehlte_labore.append(labor_freitext.strip())
+                        
+                    labor_string = ", ".join(gewaehlte_labore) if gewaehlte_labore else "Kein spezifisches Labor angefordert"
+                    
+                    # Kombinierter Text für die KI
+                    if diag_input2.strip():
+                        kombinierte_diagnostik = f"{diag_input2}\n\nAngeforderte Laborwerte: {labor_string}"
+                    else:
+                        kombinierte_diagnostik = f"Angeforderte Laborwerte: {labor_string}"
+                    
+                    diagnostik_korrigiert = sprach_check(kombinierte_diagnostik, client)
 
                     kongruent, begruendung = pruefe_setting_kongruenz_diagnostik(
                         client,
@@ -333,57 +294,32 @@ if "koerper_befund" in st.session_state:
                         diagnostik_korrigiert,
                     )
 
-                    # Debug-Hinweis: Übergang direkt nach der Kongruenzprüfung.
-                    # st.write(
-                    #     "Debug Seite 4 > Nach Kongruenzprüfung",
-                    #     {
-                    #         "kongruent": kongruent,
-                    #         "begruendung": begruendung,
-                    #     },
-                    # )
-
                     st.session_state["diagnostik_setting_kongruent"] = kongruent
                     st.session_state["diagnostik_setting_kongruenz_hinweis"] = begruendung
+                    
                     if not kongruent:
-                        # Bei Diskrepanz verwerfen wir explizit mögliche
-                        # Finalwerte aus früheren Läufen und bleiben im
-                        # Eingabemodus.
                         st.session_state.pop("user_ddx2", None)
                         st.session_state.pop("user_diagnostics", None)
                         st.session_state["diagnostik_edit_mode"] = True
                         st.warning(
                             "⚠️ Die diagnostischen Maßnahmen wirken im gewählten Setting nicht vollständig stimmig. "
-                            "Bitte passen Sie Ihre Eingabe unter 'Diagnostik und Befunde' an und speichern Sie erneut."
+                            "Bitte passen Sie Ihre Eingabe an und speichern Sie erneut."
                         )
                         if begruendung:
                             st.info(f"Begründung der KI-Prüfung: {begruendung}")
                         st.rerun()
                     else:
-                        # Finale Speicherung erst nach bestätigter Kongruenz.
                         st.session_state.user_ddx2 = ddx_korrigiert
                         st.session_state.user_diagnostics = diagnostik_korrigiert
                         st.session_state["diagnostik_edit_mode"] = False
                         starte_automatische_befundgenerierung_page(client)
 
         else:
-                # Debug-Hinweis: Bei Bedarf aktivieren, um die Branch-Auswahl
-                # (Eingabe vs. Anzeige) im Session-State nachvollziehen zu können.
-                # st.write(
-                #     "Debug Seite 4 > Branch:",
-                #     "Anzeige",
-                #     {
-                #         "user_ddx2": st.session_state.get("user_ddx2"),
-                #         "user_diagnostics": st.session_state.get("user_diagnostics"),
-                #         "diagnostik_setting_kongruent": st.session_state.get("diagnostik_setting_kongruent"),
-                #     },
-                # )
-                st.markdown(f"**Differentialdiagnosen:**  \n{st.session_state.user_ddx2}")
-                # Das Setting der Verdachtsdiagnose wird im Verlauf sichtbar
-                # angezeigt, damit der Kontext erhalten bleibt.
+                st.markdown(f"**Differentialdiagnosen:** \n{st.session_state.user_ddx2}")
                 st.markdown(
-                    f"**Versorgungssetting (Verdacht):**  \n{st.session_state.get('therapie_setting_verdacht', '')}"
+                    f"**Versorgungssetting (Verdacht):** \n{st.session_state.get('therapie_setting_verdacht', '')}"
                 )
-                st.markdown(f"**Diagnostische Maßnahmen:**  \n{st.session_state.user_diagnostics}")
+                st.markdown(f"**Diagnostische Maßnahmen:** \n{st.session_state.user_diagnostics}")
                 if st.session_state.get("diagnostik_setting_kongruent") is False:
                     st.warning(
                         "⚠️ Für diese Eingabe liegt eine Setting-Diskrepanz vor. "
@@ -394,9 +330,6 @@ if "koerper_befund" in st.session_state:
                             f"Begründung der KI-Prüfung: {st.session_state.get('diagnostik_setting_kongruenz_hinweis')}"
                         )
 
-        # Bei erkannter Setting-Diskrepanz darf keine automatische
-        # Befundgenerierung anlaufen, damit die erneute Eingabe wirklich
-        # erzwungen wird.
         if (
             not st.session_state.get("diagnostik_edit_mode", True)
             and st.session_state.get("diagnostik_setting_kongruent", False) is True
@@ -465,19 +398,6 @@ if (
                 except Exception as error:
                     st.session_state["befund_generating"] = False
                     st.error(f"❌ Manueller Fallback fehlgeschlagen: {error}")
-                    # Hinweis: Zusätzliche Debug-Ausgaben können hier bei Bedarf ergänzt werden.
-else:
-    # Hinweis für Entwickler*innen: In dieser Verzweigung liegen noch keine Diagnostik-
-    # Eingaben vor. Früher haben wir hier die Überschrift "Befunde" sowie einen
-    # deaktivierten Button und einen erklärenden Hinweis ausgegeben. Dieses Layout hat bei
-    # Nutzer*innen den Eindruck erweckt, dass ein Bedienfehler vorliegt. Um eine klare und
-    # reduzierte Oberfläche zu gewährleisten, lassen wir den Bereich nun bewusst leer.
-    # Für Debugging-Zwecke können die alten Elemente über die auskommentierten Zeilen
-    # reaktiviert werden.
-    # st.subheader("📄 Befunde")
-    # st.button("🧪 Befunde generieren lassen", disabled=True)
-    # st.info("❗Bitte fordern Sie zunächst Untersuchungen an.")
-    pass  # Bewusst keine Ausgabe: Kommentare oben erläutern die Hintergründe für Debugging-Zwecke.
 
 # Weitere Diagnostik-Termine
 if not st.session_state.get("final_diagnose", "").strip():
@@ -517,20 +437,59 @@ if (
 ):
     st.markdown(f"### 📅 Termin {neuer_termin}")
     with st.form(key=f"diagnostik_formular_runde_{neuer_termin}_hauptskript"):
+        
+        # --- Labor Modul für zusätzliche Runden ---
+        with st.expander("🧪 Laboranforderung für diesen Termin"):
+            st.info("Markieren Sie die Parameter für die Verlaufskontrolle.")
+            lab_checkboxes_rX = {}
+            cols2 = st.columns(3)
+            
+            with cols2[0]:
+                for cat in ["Hämatologie", "Gerinnung", "Kardial", "Blutkulturen"]:
+                    st.markdown(f"**{cat}**")
+                    for item in LABOR_KATEGORIEN[cat]:
+                        lab_checkboxes_rX[item] = st.checkbox(item, key=f"lab_{item}_r{neuer_termin}")
+            
+            with cols2[1]:
+                for cat in ["Klin. Chemie", "Leber / Pankreas", "Weitere Organe"]:
+                    st.markdown(f"**{cat}**")
+                    for item in LABOR_KATEGORIEN[cat]:
+                        lab_checkboxes_rX[item] = st.checkbox(item, key=f"lab_{item}_r{neuer_termin}")
+                        
+            with cols2[2]:
+                for cat in ["Infektionsserologie", "Urindiagnostik", "Stuhldiagnostik"]:
+                    st.markdown(f"**{cat}**")
+                    for item in LABOR_KATEGORIEN[cat]:
+                        lab_checkboxes_rX[item] = st.checkbox(item, key=f"lab_{item}_r{neuer_termin}")
+
+            st.markdown("---")
+            labor_freitext_rX = st.text_input("Weitere Laborparameter (Freitext):", key=f"labor_freitext_r{neuer_termin}")
+
         neue_diagnostik = st.text_area(
-            "Welche zusätzlichen diagnostischen Maßnahmen möchten Sie anfordern?",
+            "Welche zusätzlichen diagnostischen Maßnahmen möchten Sie anfordern? (EKG, Bildgebung)",
             key=f"eingabe_diag_r{neuer_termin}"
         )
         submitted = st.form_submit_button("✅ Diagnostik anfordern")
 
-    if submitted and neue_diagnostik.strip():
-        neue_diagnostik = neue_diagnostik.strip()
-        st.session_state[f"diagnostik_runde_{neuer_termin}"] = neue_diagnostik
+    if submitted:
+        # Labor für neue Runde extrahieren
+        gewaehlte_labore_rX = [lab for lab, checked in lab_checkboxes_rX.items() if checked]
+        if labor_freitext_rX.strip():
+            gewaehlte_labore_rX.append(labor_freitext_rX.strip())
+            
+        labor_string_rX = ", ".join(gewaehlte_labore_rX) if gewaehlte_labore_rX else "Kein spezifisches Labor angefordert"
+
+        if neue_diagnostik.strip():
+            kombinierte_eingabe = f"{neue_diagnostik.strip()}\n\nAngeforderte Laborwerte: {labor_string_rX}"
+        else:
+            kombinierte_eingabe = f"Angeforderte Laborwerte: {labor_string_rX}"
+
+        st.session_state[f"diagnostik_runde_{neuer_termin}"] = kombinierte_eingabe
 
         szenario = st.session_state.get("diagnose_szenario", "")
         client = st.session_state.get("openai_client")
         if is_offline():
-            befund = generiere_befund(client, szenario, neue_diagnostik)
+            befund = generiere_befund(client, szenario, kombinierte_eingabe)
             st.session_state[f"befunde_runde_{neuer_termin}"] = befund
         else:
             ladeaufgaben = [
@@ -540,7 +499,7 @@ if (
             ]
             with task_spinner("GPT erstellt Befunde...", ladeaufgaben) as indikator:
                 indikator.advance(1)
-                befund = generiere_befund(client, szenario, neue_diagnostik)
+                befund = generiere_befund(client, szenario, kombinierte_eingabe)
                 indikator.advance(1)
                 st.session_state[f"befunde_runde_{neuer_termin}"] = befund
                 indikator.advance(1)
@@ -559,14 +518,6 @@ if (
         st.session_state["diagnostik_aktiv"] = True
         st.rerun()
 
-# # Nur für Admin sichtbar:
-# if st.session_state.get("admin_mode"):
-#     st.page_link("pages/20_Fallbeispiel_Editor.py", label="🔧 Fallbeispiel-Editor", icon="🔧")
-
-# Weiter-Link zur Diagnose und Therapie
-# Der Stil ist auf den Weiter-Button dieser Seite begrenzt.
-# Dadurch bleibt z. B. "Weitere Diagnostik anfordern" unberührt.
-# Debug-Hinweis: Bei Bedarf temporär `st.write("Weiter disabled:", "befunde" not in st.session_state)` aktivieren.
 st.markdown(
     """
     <style>
