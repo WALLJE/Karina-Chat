@@ -32,16 +32,19 @@ st.session_state.setdefault("therapie_setting_verdacht", therapie_setting_verdac
 
 # --- Labor Kategorien Definition ---
 LABOR_KATEGORIEN = {
+    "Blutgasanalyse": ["BGA"],
     "Hämatologie": ["Kleines Blutbild", "Großes Blutbild"],
-    "Gerinnung": ["D-Dimere", "Quick / INR", "PTT"],
-    "Klin. Chemie": ["Elektrolyte", "CRP", "BSG", "LDH", "HbA1C", "Procalcitonin"],
-    "Stuhldiagnostik": ["Mikrobiologie Stuhl", "Calprotectin", "iFOBT"],
-    "Leber / Pankreas": ["GOT & GPT", "Gamma-GT", "Alk. Phosphatase", "Bilirubin gesamt", "Lipase"],
-    "Kardial": ["Troponin", "CK", "NT-proBNP"],
-    "Weitere Organe": ["Kreatinin & GFR", "TSH mit fT3 & fT4"],
-    "Infektionsserologie": ["SARS-CoV-2", "Influenza PCR", "HBs-Antigen", "Anti-HBc"],
-    "Urindiagnostik": ["Urinstatus", "Urinkultur"],
-    "Blutkulturen": ["Blutkultur"]
+    "Gerinnung": ["Quick / INR", "PTT", "D-Dimere"],
+    "Entzündungsparameter": ["CRP", "BSG", "Procalcitonin"],
+    "Klinische Chemie": [
+        "Elektrolyte", "Kreatinin, GFR", 
+        "GOT, GPT", "Gamma-GT", "Alk. Phosphatase", "Bilirubin gesamt", "Lipase",
+        "LDH", "CK", "Troponin", "NT-proBNP", "HbA1C"
+    ],
+    "Endokrinologie": ["TSH", "fT3", "fT4"],
+    "Infektionsserologie": ["SARS-CoV-2", "Influenza PCR"],
+    "Mikrobiologie": ["Blutkultur"],
+    "Urin- & Stuhldiagnostik": ["Urinstatus", "Urinkultur", "Mikrobiologie Stuhl", "Calprotectin", "iFOBT"]
 }
 
 def _is_stationaeres_setting(setting_wert: str) -> bool:
@@ -116,13 +119,13 @@ Kriterien:
 
 def aktualisiere_kumulative_befunde_page(neuer_befund: str) -> None:
     st.session_state["befunde"] = neuer_befund
-    passagen = [f"### Termin 1\n{neuer_befund}".strip()]
+    passagen = [f"### Erste Befundanforderung\n{neuer_befund}".strip()]
     gesamt = st.session_state.get("diagnostik_runden_gesamt", 1)
     for termin in range(2, gesamt + 1):
         key = f"befunde_runde_{termin}"
         text = st.session_state.get(key, "").strip()
         if text:
-            passagen.append(f"### Termin {termin}\n{text}")
+            passagen.append(f"### Weitere Befunde (Schritt {termin})\n{text}")
 
     st.session_state["gpt_befunde"] = neuer_befund
     st.session_state["gpt_befunde_kumuliert"] = "\n---\n".join(passagen).strip()
@@ -193,16 +196,20 @@ if "koerper_befund" in st.session_state:
                     st.session_state.pop("therapie_setting_verdacht", None)
                     default_index = 0
                 
+                st.markdown("**Welche drei Differentialdiagnosen halten Sie nach Anamnese und Untersuchung für möglich?**")
                 ddx_input2 = st.text_area(
-                    "Welche drei Differentialdiagnosen halten Sie nach Anamnese und Untersuchung für möglich?",
+                    "DDx Input",
                     key="ddx_input2",
+                    label_visibility="collapsed"
                 )
 
-                setting_verdacht = st.radio(
-                    "Wie planen Sie unter Beachtung Ihrer bisherigen Befunde die weitere Versorgung Ihres Patienten?\n\n 💡Die Entscheidung kann im Verlauf revidiert werden",
+                st.markdown("<br>**Wie planen Sie unter Beachtung Ihrer bisherigen Befunde die weitere Versorgung Ihres Patienten?**<br>💡 *Die Entscheidung kann im Verlauf revidiert werden.*", unsafe_allow_html=True)
+                setting_verdacht = st.selectbox(
+                    "Versorgungssetting",
                     options=setting_optionen_verdacht,
                     index=default_index,
                     key="therapie_setting_verdacht",
+                    label_visibility="collapsed"
                 )
                 
                 st.session_state["debug_snapshot_therapie_setting_verdacht"] = setting_verdacht
@@ -211,7 +218,7 @@ if "koerper_befund" in st.session_state:
                 with st.expander("ℹ️ Hinweise zum gewählten Versorgungssetting", expanded=False):
                     if setting_verdacht.startswith("ambulant"):
                         st.markdown(
-                            "**Hinweis zur Diagnostik (ambulant):**\n\nDie diagnostischen Möglichkeiten in diesem Schritt sind nicht begrenzt, sollten aber zum ambulanten Behandlungskonzept passen. Weitere Anforderungen sind bei neuen Terminen möglich."
+                            "**Hinweis zur Diagnostik (ambulant):**\n\nDie diagnostischen Möglichkeiten in diesem Schritt sind nicht begrenzt, sollten aber zum ambulanten Behandlungskonzept passen. Weitere Anforderungen sind bei neuen Vorstellungen möglich.\n\n"
                             "Veranlassen Sie Diagnostik so umfangreich wie nötig, aber auch so gezielt wie möglich.\n\n"
                             "💡Weitere Untersuchungen können Sie, falls es Ihnen erforderlich erscheint, in einem nächsten Schritt anfordern.\n\n"
                             "💡Sie können sich auch später noch für eine stationäre Therapie entscheiden."
@@ -219,7 +226,7 @@ if "koerper_befund" in st.session_state:
                     else:
                         st.markdown(
                             "**Hinweis zur Diagnostik (Einweisung/Notaufnahme):**\n\n"
-                            "ℹ️ Sie möchten den Patienten stationär einweisen. Im folgenden können Sie Untersuchungen anfordern, die die vorstationär noch durchführen lassen möchten.\n\n"
+                            "ℹ️ Sie möchten den Patienten stationär einweisen. Im folgenden können Sie Untersuchungen anfordern, die Sie vorstationär noch durchführen lassen möchten.\n\n"
                             "💡Sie können sich auch später noch für eine stationäre Therapie entscheiden."
                         )
 
@@ -231,32 +238,34 @@ if "koerper_befund" in st.session_state:
                     lab_checkboxes_r1 = {}
                     cols = st.columns(3)
                     
-                    # Verteilung der neuen Kategorien auf 3 Spalten
+                    # Verteilung der Kategorien auf 3 Spalten
                     with cols[0]:
-                        for cat in ["Hämatologie", "Gerinnung", "Kardial", "Blutkulturen"]:
+                        for cat in ["Blutgasanalyse", "Hämatologie", "Gerinnung", "Entzündungsparameter"]:
                             st.markdown(f"**{cat}**")
                             for item in LABOR_KATEGORIEN[cat]:
                                 lab_checkboxes_r1[item] = st.checkbox(item, key=f"lab_{item}_r1")
                     
                     with cols[1]:
-                        for cat in ["Klin. Chemie", "Leber / Pankreas", "Weitere Organe"]:
+                        for cat in ["Klinische Chemie", "Endokrinologie"]:
                             st.markdown(f"**{cat}**")
                             for item in LABOR_KATEGORIEN[cat]:
                                 lab_checkboxes_r1[item] = st.checkbox(item, key=f"lab_{item}_r1")
                                 
                     with cols[2]:
-                        for cat in ["Infektionsserologie", "Urindiagnostik", "Stuhldiagnostik"]:
+                        for cat in ["Infektionsserologie", "Mikrobiologie", "Urin- & Stuhldiagnostik"]:
                             st.markdown(f"**{cat}**")
                             for item in LABOR_KATEGORIEN[cat]:
                                 lab_checkboxes_r1[item] = st.checkbox(item, key=f"lab_{item}_r1")
 
                     st.markdown("---")
-                    labor_freitext = st.text_input("Weitere Laborparameter (Freitext):", key="labor_freitext_r1", placeholder="z. B. Zöliakie-Serologie")
+                    labor_freitext = st.text_input("Weitere Laborparameter (Freitext):", key="labor_freitext_r1", placeholder="Weitere Parameter hier eintragen...")
 
                 # --- Weitere Diagnostik ---
+                st.markdown(f"<br>**{_diagnostik_label_fuer_setting(setting_verdacht)}**", unsafe_allow_html=True)
                 diag_input2 = st.text_area(
-                    _diagnostik_label_fuer_setting(setting_verdacht),
+                    "Weitere Diagnostik",
                     key="diag_input2",
+                    label_visibility="collapsed"
                 )
 
                 if _is_stationaeres_setting(setting_verdacht):
@@ -268,58 +277,96 @@ if "koerper_befund" in st.session_state:
                 submitted_diag = st.button("✅ Eingaben speichern", key="btn_diag_erste_runde")
 
                 if submitted_diag:
-                    from sprachmodul import sprach_check
-                    client = st.session_state.get("openai_client")
-                    
-                    ddx_korrigiert = sprach_check(ddx_input2, client)
-                    
-                    # Laborauswahl extrahieren
-                    gewaehlte_labore = [lab for lab, checked in lab_checkboxes_r1.items() if checked]
-                    if labor_freitext.strip():
-                        gewaehlte_labore.append(labor_freitext.strip())
+                    # --- VALIDIERUNG DER PFLICHTFELDER ---
+                    hat_ddx = bool(ddx_input2.strip())
+                    hat_labor = any(lab_checkboxes_r1.values()) or bool(labor_freitext.strip())
+                    hat_weitere_diag = bool(diag_input2.strip())
+
+                    if not hat_ddx:
+                        st.warning("Bitte geben Sie Ihre Differentialdiagnosen ein, bevor Sie speichern.")
+                    elif not hat_labor and not hat_weitere_diag:
+                        st.warning("Bitte fordern Sie mindestens eine diagnostische Maßnahme an (entweder Laborwerte oder eine weitere Untersuchung).")
+                    else:
+                        from sprachmodul import sprach_check
+                        client = st.session_state.get("openai_client")
                         
-                    labor_string = ", ".join(gewaehlte_labore) if gewaehlte_labore else "Kein spezifisches Labor angefordert"
-                    
-                    # Kombinierter Text für die KI
-                    if diag_input2.strip():
-                        kombinierte_diagnostik = f"{diag_input2}\n\nAngeforderte Laborwerte: {labor_string}"
-                    else:
-                        kombinierte_diagnostik = f"Angeforderte Laborwerte: {labor_string}"
-                    
-                    diagnostik_korrigiert = sprach_check(kombinierte_diagnostik, client)
-
-                    kongruent, begruendung = pruefe_setting_kongruenz_diagnostik(
-                        client,
-                        setting_verdacht,
-                        diagnostik_korrigiert,
-                    )
-
-                    st.session_state["diagnostik_setting_kongruent"] = kongruent
-                    st.session_state["diagnostik_setting_kongruenz_hinweis"] = begruendung
-                    
-                    if not kongruent:
-                        st.session_state.pop("user_ddx2", None)
-                        st.session_state.pop("user_diagnostics", None)
-                        st.session_state["diagnostik_edit_mode"] = True
-                        st.warning(
-                            "⚠️ Die diagnostischen Maßnahmen wirken im gewählten Setting nicht vollständig stimmig. "
-                            "Bitte passen Sie Ihre Eingabe an und speichern Sie erneut."
+                        ddx_korrigiert = sprach_check(ddx_input2, client)
+                        
+                        # 1. Nur den Freitext (Bildgebung, EKG) durch den KI-Sprachcheck schicken
+                        if hat_weitere_diag:
+                            diag_freitext_korrigiert = sprach_check(diag_input2, client)
+                        else:
+                            diag_freitext_korrigiert = ""
+                        
+                        # 2. Laborauswahl extrahieren 
+                        gewaehlte_labore = [lab for lab, checked in lab_checkboxes_r1.items() if checked]
+                        if labor_freitext.strip():
+                            gewaehlte_labore.append(labor_freitext.strip())
+                            
+                        labor_string = ", ".join(gewaehlte_labore) if gewaehlte_labore else "Kein spezifisches Labor angefordert"
+                        
+                        # 3. String für die KI-Befundgenerierung zusammenbauen (Bleibt im Hintergrund)
+                        if diag_freitext_korrigiert:
+                            diagnostik_fuer_ki = f"{diag_freitext_korrigiert}\n\nAngeforderte Laborwerte: {labor_string}"
+                        else:
+                            diagnostik_fuer_ki = f"Angeforderte Laborwerte: {labor_string}"
+                        
+                        # 4. Setting-Prüfung
+                        kongruent, begruendung = pruefe_setting_kongruenz_diagnostik(
+                            client,
+                            setting_verdacht,
+                            diagnostik_fuer_ki,
                         )
-                        if begruendung:
-                            st.info(f"Begründung der KI-Prüfung: {begruendung}")
-                        st.rerun()
-                    else:
-                        st.session_state.user_ddx2 = ddx_korrigiert
-                        st.session_state.user_diagnostics = diagnostik_korrigiert
-                        st.session_state["diagnostik_edit_mode"] = False
-                        starte_automatische_befundgenerierung_page(client)
+
+                        st.session_state["diagnostik_setting_kongruent"] = kongruent
+                        st.session_state["diagnostik_setting_kongruenz_hinweis"] = begruendung
+                        
+                        if not kongruent:
+                            st.session_state.pop("user_ddx2", None)
+                            st.session_state.pop("user_diagnostics", None)
+                            st.session_state.pop("user_diagnostics_display", None)
+                            st.session_state["diagnostik_edit_mode"] = True
+                            st.warning(
+                                "⚠️ Die diagnostischen Maßnahmen wirken im gewählten Setting nicht vollständig stimmig. "
+                                "Bitte passen Sie Ihre Eingabe an und speichern Sie erneut."
+                            )
+                            if begruendung:
+                                st.info(f"Begründung der KI-Prüfung: {begruendung}")
+                            st.rerun()
+                        else:
+                            st.session_state.user_ddx2 = ddx_korrigiert
+                            # Dieser Text geht an die KI (inkl. Labor)
+                            st.session_state.user_diagnostics = diagnostik_fuer_ki
+                            # Dieser saubere Text wird dem User auf der UI angezeigt (ohne Labor-Block)
+                            st.session_state.user_diagnostics_display = diag_freitext_korrigiert
+                            
+                            st.session_state["diagnostik_edit_mode"] = False
+                            starte_automatische_befundgenerierung_page(client)
 
         else:
                 st.markdown(f"**Differentialdiagnosen:** \n{st.session_state.user_ddx2}")
                 st.markdown(
                     f"**Versorgungssetting (Verdacht):** \n{st.session_state.get('therapie_setting_verdacht', '')}"
                 )
-                st.markdown(f"**Diagnostische Maßnahmen:** \n{st.session_state.user_diagnostics}")
+                
+                # Hier greifen wir auf die Anzeige-Version ohne das Labor zu
+                display_diag = st.session_state.get("user_diagnostics_display")
+                
+                # Fallback für alte Speicherstände
+                if display_diag is None:
+                    display_diag = st.session_state.user_diagnostics
+                    if "Angeforderte Laborwerte:" in display_diag:
+                        display_diag = display_diag.split("Angeforderte Laborwerte:")[0].strip()
+                
+                # UI Rendering
+                if display_diag:
+                    st.markdown(f"**Diagnostische Maßnahmen:** \n{display_diag}")
+                else:
+                    if "Kein spezifisches Labor angefordert" in st.session_state.user_diagnostics:
+                        st.markdown("**Diagnostische Maßnahmen:** \n*(Keine weiteren Untersuchungen angefordert)*")
+                    else:
+                        st.markdown("**Diagnostische Maßnahmen:** \n*(Labor angefordert)*")
+
                 if st.session_state.get("diagnostik_setting_kongruent") is False:
                     st.warning(
                         "⚠️ Für diese Eingabe liegt eine Setting-Diskrepanz vor. "
@@ -424,7 +471,7 @@ if not st.session_state.get("final_diagnose", "").strip():
         bef_key = f"befunde_runde_{i}"
         bef = st.session_state.get(bef_key, "")
         if bef:
-            st.markdown(f"📅 Termin {i}")
+            st.markdown(f"### 📅 Weitere Befunde (Schritt {i})")
             st.markdown(bef)
 
 # Zusätzlicher Termin
@@ -435,79 +482,88 @@ if (
     st.session_state.get("diagnostik_aktiv", False)
     and f"diagnostik_runde_{neuer_termin}" not in st.session_state
 ):
-    st.markdown(f"### 📅 Termin {neuer_termin}")
+    st.markdown(f"### 📅 Neue Befundanforderung")
     with st.form(key=f"diagnostik_formular_runde_{neuer_termin}_hauptskript"):
         
         # --- Labor Modul für zusätzliche Runden ---
-        with st.expander("🧪 Laboranforderung für diesen Termin"):
+        with st.expander("🧪 Zusätzliche Laboranforderung"):
             st.info("Markieren Sie die Parameter für die Verlaufskontrolle.")
             lab_checkboxes_rX = {}
             cols2 = st.columns(3)
             
             with cols2[0]:
-                for cat in ["Hämatologie", "Gerinnung", "Kardial", "Blutkulturen"]:
+                for cat in ["Blutgasanalyse", "Hämatologie", "Gerinnung", "Entzündungsparameter"]:
                     st.markdown(f"**{cat}**")
                     for item in LABOR_KATEGORIEN[cat]:
                         lab_checkboxes_rX[item] = st.checkbox(item, key=f"lab_{item}_r{neuer_termin}")
             
             with cols2[1]:
-                for cat in ["Klin. Chemie", "Leber / Pankreas", "Weitere Organe"]:
+                for cat in ["Klinische Chemie", "Endokrinologie"]:
                     st.markdown(f"**{cat}**")
                     for item in LABOR_KATEGORIEN[cat]:
                         lab_checkboxes_rX[item] = st.checkbox(item, key=f"lab_{item}_r{neuer_termin}")
                         
             with cols2[2]:
-                for cat in ["Infektionsserologie", "Urindiagnostik", "Stuhldiagnostik"]:
+                for cat in ["Infektionsserologie", "Mikrobiologie", "Urin- & Stuhldiagnostik"]:
                     st.markdown(f"**{cat}**")
                     for item in LABOR_KATEGORIEN[cat]:
                         lab_checkboxes_rX[item] = st.checkbox(item, key=f"lab_{item}_r{neuer_termin}")
 
             st.markdown("---")
-            labor_freitext_rX = st.text_input("Weitere Laborparameter (Freitext):", key=f"labor_freitext_r{neuer_termin}")
+            labor_freitext_rX = st.text_input("Weitere Laborparameter (Freitext):", key=f"labor_freitext_r{neuer_termin}", placeholder="Parameter hier eintragen...")
 
+        st.markdown("**Welche zusätzlichen diagnostischen Maßnahmen möchten Sie anfordern? (EKG, Bildgebung)**")
         neue_diagnostik = st.text_area(
-            "Welche zusätzlichen diagnostischen Maßnahmen möchten Sie anfordern? (EKG, Bildgebung)",
-            key=f"eingabe_diag_r{neuer_termin}"
+            "Neue Diagnostik",
+            key=f"eingabe_diag_r{neuer_termin}",
+            label_visibility="collapsed"
         )
         submitted = st.form_submit_button("✅ Diagnostik anfordern")
 
     if submitted:
-        # Labor für neue Runde extrahieren
-        gewaehlte_labore_rX = [lab for lab, checked in lab_checkboxes_rX.items() if checked]
-        if labor_freitext_rX.strip():
-            gewaehlte_labore_rX.append(labor_freitext_rX.strip())
-            
-        labor_string_rX = ", ".join(gewaehlte_labore_rX) if gewaehlte_labore_rX else "Kein spezifisches Labor angefordert"
+        # --- VALIDIERUNG DER PFLICHTFELDER (RUNDE 2+) ---
+        hat_labor_rX = any(lab_checkboxes_rX.values()) or bool(labor_freitext_rX.strip())
+        hat_weitere_diag_rX = bool(neue_diagnostik.strip())
 
-        if neue_diagnostik.strip():
-            kombinierte_eingabe = f"{neue_diagnostik.strip()}\n\nAngeforderte Laborwerte: {labor_string_rX}"
+        if not hat_labor_rX and not hat_weitere_diag_rX:
+            st.warning("Bitte fordern Sie mindestens eine Untersuchung an, bevor Sie den Schritt abschließen.")
         else:
-            kombinierte_eingabe = f"Angeforderte Laborwerte: {labor_string_rX}"
+            # Labor für neue Runde extrahieren
+            gewaehlte_labore_rX = [lab for lab, checked in lab_checkboxes_rX.items() if checked]
+            if labor_freitext_rX.strip():
+                gewaehlte_labore_rX.append(labor_freitext_rX.strip())
+                
+            labor_string_rX = ", ".join(gewaehlte_labore_rX) if gewaehlte_labore_rX else "Kein spezifisches Labor angefordert"
 
-        st.session_state[f"diagnostik_runde_{neuer_termin}"] = kombinierte_eingabe
+            if neue_diagnostik.strip():
+                kombinierte_eingabe = f"{neue_diagnostik.strip()}\n\nAngeforderte Laborwerte: {labor_string_rX}"
+            else:
+                kombinierte_eingabe = f"Angeforderte Laborwerte: {labor_string_rX}"
 
-        szenario = st.session_state.get("diagnose_szenario", "")
-        client = st.session_state.get("openai_client")
-        if is_offline():
-            befund = generiere_befund(client, szenario, kombinierte_eingabe)
-            st.session_state[f"befunde_runde_{neuer_termin}"] = befund
-        else:
-            ladeaufgaben = [
-                "Übertrage neue Diagnostik an das Modell",
-                "Stimme Ergebnisse mit bisherigen Befunden ab",
-                "Bereite Rückmeldung für die Anzeige auf",
-            ]
-            with task_spinner("GPT erstellt Befunde...", ladeaufgaben) as indikator:
-                indikator.advance(1)
+            st.session_state[f"diagnostik_runde_{neuer_termin}"] = kombinierte_eingabe
+
+            szenario = st.session_state.get("diagnose_szenario", "")
+            client = st.session_state.get("openai_client")
+            if is_offline():
                 befund = generiere_befund(client, szenario, kombinierte_eingabe)
-                indikator.advance(1)
                 st.session_state[f"befunde_runde_{neuer_termin}"] = befund
-                indikator.advance(1)
-        st.session_state["diagnostik_runden_gesamt"] = neuer_termin
-        st.session_state["diagnostik_aktiv"] = False
-        if is_offline():
-            st.info("🔌 Offline-Befund gespeichert. Schalte den Online-Modus wieder ein, um echte GPT-Ergebnisse zu erhalten.")
-        st.rerun()
+            else:
+                ladeaufgaben = [
+                    "Übertrage neue Diagnostik an das Modell",
+                    "Stimme Ergebnisse mit bisherigen Befunden ab",
+                    "Bereite Rückmeldung für die Anzeige auf",
+                ]
+                with task_spinner("GPT erstellt Befunde...", ladeaufgaben) as indikator:
+                    indikator.advance(1)
+                    befund = generiere_befund(client, szenario, kombinierte_eingabe)
+                    indikator.advance(1)
+                    st.session_state[f"befunde_runde_{neuer_termin}"] = befund
+                    indikator.advance(1)
+            st.session_state["diagnostik_runden_gesamt"] = neuer_termin
+            st.session_state["diagnostik_aktiv"] = False
+            if is_offline():
+                st.info("🔌 Offline-Befund gespeichert. Schalte den Online-Modus wieder ein, um echte GPT-Ergebnisse zu erhalten.")
+            st.rerun()
 
 # Button für neue Diagnostik
 if (
