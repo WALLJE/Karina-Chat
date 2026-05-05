@@ -18,18 +18,13 @@ display_offline_banner()
 st.subheader("Diagnose und Therapie")
 
 # Steuerflag für den Bearbeitungsmodus der finalen Angaben.
-# Falls aktiv, werden die Eingabefelder mit den bereits gespeicherten Werten vorbelegt,
-# damit die Nutzer:innen ihre Diagnose/Therapie gezielt ergänzen oder korrigieren können.
 st.session_state.setdefault("diagnose_therapie_edit", False)
+
 # Synchronisations-Flag, das beim Wechsel in den Bearbeitungsmodus gesetzt wird.
-# Es sorgt dafür, dass die Widget-States *vor* dem Rendern der Eingabefelder
-# zuverlässig mit den aktuell korrigierten Werten befüllt werden.
 st.session_state.setdefault("diagnose_therapie_sync_edit", False)
+
 # Persistente Kopie des finalen Settings, damit der Wert nach dem Verlassen
-# des Radio-Widgets erhalten bleibt. Streamlit entfernt Widget-States, wenn
-# das Widget nicht mehr gerendert wird (z. B. in der reinen Anzeigeansicht).
-# Debug-Hinweis: Mit `st.write(st.session_state.get("therapie_setting_final_persisted"))`
-# lässt sich prüfen, ob der Wert korrekt übernommen wurde.
+# des Selectbox-Widgets erhalten bleibt.
 if (
     "therapie_setting_final_persisted" in st.session_state
     and "therapie_setting_final" not in st.session_state
@@ -37,20 +32,14 @@ if (
     st.session_state["therapie_setting_final"] = st.session_state[
         "therapie_setting_final_persisted"
     ]
+
 # Das finale Therapiesetting wird hier als eigenständiger Kontext gepflegt.
-# Wir nutzen eine gültige Default-Option, damit das Radio-Widget keinen
-# ungültigen Session-State-Wert verarbeitet. Als Default dient die Persistenz,
-# damit der gespeicherte Wert nicht von einem frühen setdefault überschrieben wird.
-# Debugging-Hinweis: Bei inkonsistenten UI-Zuständen kann dieser Key gezielt
-# geleert werden, um die Auswahl neu zu erzwingen.
 st.session_state.setdefault(
     "therapie_setting_final",
     st.session_state.get("therapie_setting_final_persisted", "Einweisung Notaufnahme"),
 )
-# Synchronisations-Keys für die Eingabefelder, damit nach der sprachlichen Korrektur
-# die aktualisierten Inhalte sicher in den Widgets angezeigt werden.
-# Hinweis zum Debugging: Bei unerwarteten Vorbelegungen können diese Keys gezielt
-# gelöscht werden (z.B. per st.session_state.pop(...)), um das Verhalten zu prüfen.
+
+# Synchronisations-Keys für die Eingabefelder
 if "diagnose_therapie_edit_diag" not in st.session_state:
     st.session_state["diagnose_therapie_edit_diag"] = st.session_state.get("final_diagnose", "")
 if "diagnose_therapie_edit_therapie" not in st.session_state:
@@ -77,23 +66,15 @@ if (
     # Button, um gezielt zur Eingabe zurückzukehren und die bestehenden Inhalte zu bearbeiten.
     if st.button("✏️ Diagnose/Therapie überarbeiten oder ergänzen"):
         st.session_state.diagnose_therapie_edit = True
-        # Synchronisation anfordern, damit die Widget-States im *nächsten* Lauf
-        # vor dem Rendern der Eingabefelder auf die aktuell gespeicherten Werte
-        # gesetzt werden können (Streamlit erlaubt keine Änderung nach Instanziierung).
         st.session_state.diagnose_therapie_sync_edit = True
         st.rerun()
 else:
     # Synchronisation der Eingabefelder *vor* deren Instanziierung.
-    # Damit wird sichergestellt, dass die korrigierten Inhalte tatsächlich in den
-    # Widgets landen und keine veralteten Eingaben überschreiben.
     if st.session_state.get("diagnose_therapie_sync_edit"):
         st.session_state["diagnose_therapie_edit_diag"] = st.session_state.get("final_diagnose", "")
         st.session_state["diagnose_therapie_edit_therapie"] = st.session_state.get("therapie_vorschlag", "")
         st.session_state["diagnose_therapie_sync_edit"] = False
-    # Das finale Therapiesetting wird außerhalb des Formulars gepflegt, damit
-    # Änderungen sofort im Session-State landen und beim Wechsel zur Feedback-
-    # Seite zuverlässig verfügbar sind. Dadurch entfällt die Abhängigkeit von
-    # einem zusätzlichen Form-Submit.
+        
     setting_optionen_final = [
         "Einweisung Notaufnahme",
         "Einweisung elektiv",
@@ -101,41 +82,44 @@ else:
         "ambulant (Vorstellung im nächsten Quartal)",
         "Vorstellung Facharzt (Termin in 2 Monaten)",
     ]
+    
     bestehendes_setting = st.session_state.get("therapie_setting_final", "")
     if bestehendes_setting in setting_optionen_final:
         default_index = setting_optionen_final.index(bestehendes_setting)
     else:
-        # Streamlit ignoriert den Index, wenn ein ungültiger Session-State-Wert
-        # vorhanden ist. Wir entfernen den Key deshalb vor dem Rendern.
-        # Debugging-Hinweis: Bei Bedarf kann hier temporär
-        # `st.write(bestehendes_setting)` aktiviert werden, um den Wert zu prüfen.
-        # Debug-Hinweis (beschriftet): Zeigt den fehlerhaften Session-State-Wert
-        # vor dem Entfernen an.
-        # TODO: Debug-Ausgabe später entfernen.
-        # st.write("Debug Seite 5 > Ungültiges Setting final:", bestehendes_setting)
         st.session_state.pop("therapie_setting_final", None)
         default_index = 0
-    # Übergang 1/3 (Widget-State): Das Radio steht bewusst außerhalb des Forms,
-    # damit Änderungen sofort in `st.session_state["therapie_setting_final"]`
-    # landen und nicht erst beim Submit wirksam werden.
-    st.radio(
-        "Wie soll die Therapie endgültig fortgeführt werden?",
+        
+    # --- Neues Layout Versorgungssetting ---
+    st.markdown("<br>**Wie soll die Therapie endgültig fortgeführt werden?**", unsafe_allow_html=True)
+    setting_final = st.selectbox(
+        "Versorgungssetting",
         options=setting_optionen_final,
         index=default_index,
         key="therapie_setting_final",
+        label_visibility="collapsed"
     )
-    # Layout-Harmonisierung: Hinweistext als normales Markdown statt
-    # Infobox, damit Schriftgröße und visuelle Gewichtung besser zu den
-    # übrigen Formelementen passen.
-    st.markdown(
-        "💡 Hinweis: Prüfen Sie Ihr Vorgehen noch einmal und passen Sie das "
-        "Versorgungssetting bei Bedarf an – Sie dürfen Ihre Einschätzung "
-        "hier bewusst revidieren."
-    )
+
+    with st.expander("ℹ️ Hinweise zum gewählten Versorgungssetting", expanded=False):
+        st.markdown(
+            "💡 **Hinweis:** Prüfen Sie Ihr Vorgehen noch einmal und passen Sie das "
+            "Versorgungssetting bei Bedarf an – Sie dürfen Ihre Einschätzung aus dem Diagnostik-Schritt "
+            "hier bewusst revidieren.\n\n"
+        )
+        if setting_final.startswith("ambulant") or "Facharzt" in setting_final:
+            st.markdown(
+                "**Hinweis zur Therapie (ambulant):**\n\n"
+                "Bitte formulieren Sie im Feld 'Therapiekonzept' alle Maßnahmen für die ambulante Weiterbehandlung (z.B. Medikamente, Rezeptierung, Krankschreibung, Verhaltenshinweise)."
+            )
+        else:
+            st.markdown(
+                "**Hinweis zur Therapie (Einweisung/Notaufnahme):**\n\n"
+                "Bitte formulieren Sie im Feld 'Therapiekonzept', welche konkreten therapeutischen Schritte stationär als nächstes erfolgen sollen."
+            )
+    # --- Ende Neues Layout ---
 
     with st.form("diagnose_therapie_formular"):
         # Vorbelegung der Texteingaben, wenn bereits Werte vorhanden sind.
-        # Dies ermöglicht ein schnelles Nachschärfen der Inhalte ohne erneute Eingabe.
         input_diag = st.text_input(
             "Ihre endgültige Diagnose:",
             key="diagnose_therapie_edit_diag",
@@ -146,70 +130,25 @@ else:
         )
         submitted_final = st.form_submit_button("✅ Senden")
 
-    # Debug-Hinweis: Bei Bedarf kann hier
-    # `st.write(st.session_state.get("therapie_setting_final"))` aktiviert werden,
-    # um die aktuelle Auswahl sofort sichtbar zu machen.
-    # Debug-Hinweis (beschriftet): Aktivieren, um Auswahl und Session-State
-    # nach dem Radio eindeutig zu prüfen.
-    # TODO: Debug-Ausgaben später entfernen.
-    # st.write("Debug Seite 5 > Auswahl final (Radio):", st.session_state.get("therapie_setting_final"))
-    # st.write("Debug Seite 5 > Session final (nach Radio):", st.session_state.get("therapie_setting_final"))
-    # Debug-Hinweis (beschriftet): Zusätzlicher Snapshot, der nicht vom
-    # Widget-State abhängt. Damit lässt sich prüfen, ob die Session zwischen
-    # Seitenwechseln neu aufgebaut wird.
     st.session_state["debug_snapshot_therapie_setting_final"] = st.session_state.get(
         "therapie_setting_final", ""
     )
-    # Übergang 2/3 (Persistenz): Es wird ausschließlich der *aktuelle* finale
-    # Widget-Wert persistiert. Damit kann beim Seitenwechsel kein veralteter
-    # Zwischenstand aus einem alten Form-Submit weitergereicht werden.
+    
     st.session_state["therapie_setting_final_persisted"] = st.session_state.get(
         "therapie_setting_final", ""
     )
-    # TODO: Debug-Ausgabe später entfernen.
-    # st.write(
-    #     "Debug Seite 5 > Snapshot final (nicht-Widget):",
-    #     st.session_state.get("debug_snapshot_therapie_setting_final"),
-    # )
 
     if submitted_final:
         client = st.session_state.get("openai_client")
         st.session_state.final_diagnose = sprach_check(input_diag, client)
         st.session_state.therapie_vorschlag = sprach_check(input_therapie, client)
-        # Das finale Setting stammt direkt aus dem Radio-Widget.
-        # Wichtig: Nach der Widget-Initialisierung darf der Key nicht erneut
-        # gesetzt werden, sonst bricht Streamlit mit einem
-        # "cannot be modified"-Fehler ab. Debug-Hinweis: Bei inkonsistenten
-        # Werten kann der Key per st.session_state.pop(...) entfernt und die
-        # Auswahl neu vorgenommen werden.
-        # Nach dem Speichern wieder in die Anzeigeansicht wechseln.
+        
         st.session_state.diagnose_therapie_edit = False
         if is_offline():
             st.info("🔌 Offline-Modus: Eingaben wurden ohne GPT-Korrektur übernommen.")
         st.rerun()
 
-# Debug-Hinweis (beschriftet): Snapshot der Session-Keys am Seitenende, um
-# zu prüfen, ob die Keys vor dem Wechsel zur Feedback-Seite noch vorhanden sind.
-# TODO: Debug-Ausgaben später entfernen.
-# st.write("Debug Seite 5 > Session-Keys (Ende):", sorted(st.session_state.keys()))
-# st.write(
-#     "Debug Seite 5 > therapie_setting-Keys (Ende):",
-#     [key for key in st.session_state.keys() if "therapie_setting" in key],
-# )
-# st.write(
-#     "Debug Seite 5 > Snapshot-Keys (Ende):",
-#     [key for key in st.session_state.keys() if "debug_snapshot_therapie_setting" in key],
-# )
 
-# # Nur für Admin sichtbar:
-# if st.session_state.get("admin_mode"):
-#     st.page_link("pages/20_Fallbeispiel_Editor.py", label="🔧 Fallbeispiel-Editor", icon="🔧")
-
-# Übergang 3/3 (Navigation): Der Feedback-Link bleibt an den aktuellen
-# finalen Session-State gekoppelt. Dadurch reagiert die Aktivierung sofort
-# auf Radio-Änderungen und nutzt keinen potenziell veralteten Zwischenstand.
-# Debug-Hinweis: Bei Bedarf `st.write(st.session_state.get("therapie_setting_final"))`
-# direkt vor dem Link aktivieren, um den Navigationszustand transparent zu prüfen.
 # Weiter-Link zum Feedback
 st.markdown(
     """
@@ -251,6 +190,5 @@ render_next_page_link(
     as_button=True,
     button_key="weiter-feedback",
 )
-
 
 copyright_footer()
