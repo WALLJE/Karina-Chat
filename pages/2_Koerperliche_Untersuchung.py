@@ -87,17 +87,10 @@ def aktualisiere_sonderdiagnostik_prefix() -> None:
         ergebnis = eintrag.get("diagnostik", "").strip()
 
         # Die Diagnostik-Dokumentation erhält nur den Wunsch selbst – Supabase
-        # erwartet hier ausdrücklich keinen Ergebnistext. Das Schlüsselwort
-        # „erweiterte Untersuchung“ erleichtert später die Filterung.
+        # erwartet hier ausdrücklich keinen Ergebnistext.
         diag_abschnitte.append(f"- erweiterte Untersuchung: {anforderung}")
 
         if ergebnis:
-            # Supabase erhält exakt die kurze Fassung, die bereits im Modul
-            # „untersuchungsmodus.py“ erzeugt wird. Die dort vorbereiteten
-            # Stichpunkte oder JSON-Strukturen gelten als maßgeblich und werden
-            # hier nur noch für die Ausgabe getrimmt. Optional lässt sich über
-            # eine temporäre Debug-Ausgabe wie ``st.write(ergebnis)`` prüfen,
-            # welche Werte im Session-State vorliegen.
             kurzfassung = ergebnis.strip()
             befund_abschnitte.append(
                 f"- Erweiterte Untersuchung {index}: {kurzfassung or '(kein Ergebnis hinterlegt)'}"
@@ -129,13 +122,10 @@ def aktualisiere_sonderdiagnostik_prefix() -> None:
     st.session_state["gpt_befunde_kumuliert"] = kombinierte_befunde
 
 
-# Standardinitialisierung, damit nach Laden eines Falls konsistente Strukturen
-# vorliegen und Debug-Ausgaben bei Bedarf darauf zugreifen können.
+# Standardinitialisierung
 st.session_state.setdefault("sonderuntersuchungen", [])
 
 if "koerper_befund" in st.session_state and "koerper_befund_basis" not in st.session_state:
-    # Kompatibilitätsschicht für ältere SessionStates: Der vorhandene Text wird als
-    # Basis übernommen, damit neue Zusatzblöcke korrekt angehängt werden können.
     st.session_state["koerper_befund_basis"] = st.session_state["koerper_befund"]
 
 # Voraussetzungen prüfen
@@ -148,18 +138,13 @@ if (
 ):
     redirect_to_start_page("⚠️ Der Fall ist noch nicht geladen. Bitte beginne über die Startseite.")
 
-# Optional: Startzeit merken (z. B. für spätere Auswertung)
 if "start_untersuchung" not in st.session_state:
     st.session_state.start_untersuchung = datetime.now()
-
-# Körperlicher Befund generieren oder anzeigen
 
 # Bedingung: mindestens eine Anamnesefrage gestellt
 fragen_gestellt = any(m["role"] == "user" for m in st.session_state.get("messages", []))
 
 if "koerper_befund" in st.session_state:
-    # Bei jedem Seitenaufruf wird der Text aus Basis + Zusätzen neu zusammengesetzt,
-    # damit nach einer Rerun-Operation keine veralteten Abschnitte sichtbar bleiben.
     aktualisiere_befundanzeige()
     st.success("✅ Körperliche Untersuchung erfolgt.")
     st.subheader("🔍 Befund")
@@ -180,35 +165,76 @@ if "koerper_befund" in st.session_state:
             st.warning("Bitte gib eine konkrete Untersuchung an, bevor du absendest.")
         else:
             st.session_state["sonder_untersuchung_generating"] = True
+            
             try:
-                if is_offline():
-                    sonder_befund = generiere_sonderuntersuchung(
-                        st.session_state.get("openai_client"),
-                        st.session_state.diagnose_szenario,
-                        st.session_state.diagnose_features,
-                        sonder_input,
-                        st.session_state.get("koerper_befund_basis", ""),
-                    )
-                else:
+                is_labor = False
+                client = st.session_state.get("openai_client")
+                
+                # --- KI Pre-Check ---
+                if client and not is_offline():
                     sonderaufgaben = [
+                        "Prüfe Untersuchungstyp",
                         "Analysiere Anforderung",
                         "Beziehe bisherigen Befund ein",
                         "Formuliere Zusatzbefund",
                     ]
                     with task_spinner(
-                        "Zusatzuntersuchung wird erstellt...",
+                        "Anforderung wird analysiert...",
                         sonderaufgaben,
                     ) as indikator:
+                        # 1. Intent-Check
+                        check_prompt = f"""Entscheide, ob in der folgenden ärztlichen Anforderung apparative Diagnostik (wie EKG, Röntgen, CT, MRT, Ultraschall) oder Labor (wie Blut, Urin, Abstriche) angefordert wird.
+WICHTIG: Rein körperliche Untersuchungen (z.B. Blutdruck messen, Puls, Auskultation, Palpation, Inspektion, Reflexe) sind HIER ERLAUBT.
+Antworte AUSSCHLIESSLICH mit 'JA', wenn Labor/Bildgebung/Apparative Diagnostik verlangt wird. Antworte mit 'NEIN', wenn es sich um eine rein körperliche Untersuchung handelt.
+Anforderung: {sonder_input.strip()}"""
+                        try:
+                            antwort = client.chat.completions.create(
+                                model="gpt-4o-mini",
+                                messages=[{"role": "user", "content": check_prompt}],
+                                temperature=0,
+                                max_tokens=5
+                            )
+                            if "JA" in antwort.choices[0].message.content.upper():
+                                is_labor = True
+                        except Exception:
+                            pass
                         indikator.advance(1)
+                        
+                        # 2. Reagieren je nach Typ
+                        if is_labor:
+                            sonder_befund = "ℹ️ **Hinweis:** In diesem Schritt geht es ausschließlich um die klinisch-körperliche Untersuchung. Laborwerte, Bildgebung und apparative Diagnostik können Sie im nächsten Schritt ('Diagnostik und Befunde') anfordern."
+                            indikator.advance(1)
+                            indikator.advance(1)
+                            indikator.advance(1)
+                        else:
+                            indikator.advance(1)
+                            sonder_befund = generiere_sonderuntersuchung(
+                                client,
+                                st.session_state.diagnose_szenario,
+                                st.session_state.diagnose_features,
+                                sonder_input.strip(),
+                                st.session_state.get("koerper_befund_basis", ""),
+                            )
+                            indikator.advance(1)
+                            indikator.advance(1)
+                else:
+                    # Fallback für den Offline-Modus
+                    lower_input = sonder_input.lower()
+                    labor_keywords = ["labor", "blutab", "urin", "röntgen", "xray", "ct ", "mrt", "sono", "ultraschall", "ekg", "bga", "crp"]
+                    if "blutdruck" not in lower_input and any(kw in lower_input for kw in labor_keywords):
+                        is_labor = True
+
+                    if is_labor:
+                        sonder_befund = "ℹ️ **Hinweis:** In diesem Schritt geht es ausschließlich um die klinisch-körperliche Untersuchung. Laborwerte, Bildgebung und apparative Diagnostik können Sie im nächsten Schritt ('Diagnostik und Befunde') anfordern."
+                    else:
                         sonder_befund = generiere_sonderuntersuchung(
-                            st.session_state["openai_client"],
+                            client,
                             st.session_state.diagnose_szenario,
                             st.session_state.diagnose_features,
-                            sonder_input,
+                            sonder_input.strip(),
                             st.session_state.get("koerper_befund_basis", ""),
                         )
-                        indikator.advance(1)
-                        indikator.advance(1)
+                # --- Ende KI Pre-Check ---
 
                 neuer_block = {
                     "anforderung": sonder_input.strip(),
@@ -219,21 +245,17 @@ if "koerper_befund" in st.session_state:
                 aktualisiere_befundanzeige()
                 aktualisiere_sonderdiagnostik_prefix()
                 st.session_state["sonder_untersuchung_generating"] = False
-                # Anstatt das Textfeld direkt zu überschreiben, setzen wir eine
-                # Zielmarke für den nächsten Durchlauf. Beim erneuten Rendern
-                # wird das Feld vor der Widget-Erstellung geleert.
                 st.session_state["sonderuntersuchung_input_leeren"] = True
-                st.success("Die gesonderte Untersuchung wurde ergänzt.")
+                st.success("Die Eingabe wurde verarbeitet.")
                 st.rerun()
             except RateLimitError:
                 st.session_state["sonder_untersuchung_generating"] = False
                 st.error(
-                    "🚫 Die Zusatzuntersuchung konnte nicht generiert werden. Die OpenAI-API ist aktuell ausgelastet."
+                    "🚫 Die Verarbeitung konnte nicht erfolgen. Die OpenAI-API ist aktuell ausgelastet."
                 )
             except Exception as err:
                 st.session_state["sonder_untersuchung_generating"] = False
-                st.error(f"❌ Fehler bei der Zusatzuntersuchung: {err}")
-                # Debug-Hinweis: Bei Bedarf kann hier temporär st.exception(err) aktiviert werden.
+                st.error(f"❌ Fehler bei der Verarbeitung: {err}")
 
 elif fragen_gestellt:
     if not st.session_state.get("koerper_befund_generating", False):
@@ -246,8 +268,6 @@ elif fragen_gestellt:
                     st.session_state.diagnose_features,
                     st.session_state.get("koerper_befund_tip", ""),
                 )
-                # Neuer Befund wird als Grundlage gespeichert und Zusatzlisten geleert,
-                # damit Altlasten aus vorherigen Fällen nicht angezeigt werden.
                 st.session_state.koerper_befund_basis = koerper_befund
                 st.session_state["sonderuntersuchungen"] = []
                 aktualisiere_befundanzeige()
@@ -287,7 +307,6 @@ elif fragen_gestellt:
         except Exception as err:
             st.session_state.koerper_befund_generating = False
             st.error(f"❌ Unerwarteter Fehler bei der Untersuchung: {err}")
-        # Debug-Hinweis: Bei Bedarf kann hier kurzfristig st.write(...) ergänzt werden, um Zwischenstände sichtbar zu machen.
 
     if st.button(
         "🩺 Untersuchung durchführen",
@@ -348,19 +367,11 @@ else:
     st.info(f"Zuerst bitte mit {st.session_state.patient_name} sprechen.", icon="🔒")
     st.page_link("pages/1_Anamnese.py", label="Zurück zur Anamnese", icon="⬅")
     
-# Verlauf sichern (optional für spätere Analyse)
 if "untersuchung_done" not in st.session_state:
     st.session_state.untersuchung_done = True
 
-# Trennlinie zum Navigationslink
 st.markdown("---")
 
-# Weiter-Link zur Diagnostik
-# Hinweis: "href='/Diagnostik'" sorgt für internen Seitenwechsel, nicht für neues Fenster
-# Der Stil ist bewusst nur auf diesen einen Weiter-Button begrenzt, damit andere
-# Buttons (z. B. "Untersuchung durchführen") visuell unverändert bleiben.
-# Debug-Hinweis: Falls der Zustand nicht plausibel wirkt, temporär
-# `st.write("Weiter-Button disabled:", "koerper_befund" not in st.session_state)` aktivieren.
 st.markdown(
     """
     <style>
