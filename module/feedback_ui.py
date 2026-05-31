@@ -57,43 +57,46 @@ def student_feedback():
     st.markdown("#### 1. Fall & Simulation")
     st.markdown("Bitte bewerten Sie die folgenden Aspekte auf einer Schulnoten-Skala von 1 (sehr gut) bis 6 (ungenügend):")
 
+    f_bedienung = st.radio("Wie intuitiv und unkompliziert war die Bedienung der Simulation?", [1, 2, 3, 4, 5, 6], horizontal=True)
+    
     f1 = st.radio("Wie realistisch war das Fallbeispiel?", [1, 2, 3, 4, 5, 6], horizontal=True)
     if f1 >= 4:
         st.info("❗Vielen Dank für die kritische Rückmeldung: Sie halten das Fallbeispiel nicht für realistisch. Erklären Sie gern Ihre Bewertung im Freitext unten konkreter.")
 
     f2 = st.radio("Wie hilfreich war die Simulation für das Training der Anamnese?", [1, 2, 3, 4, 5, 6], horizontal=True)
     if f2 >= 4:
-        st.info("❗Sie scheinen die Simuation nicht für hilfreich zu erachten. Was hätten Sie sich beim Anamnese-Training anders gewünscht? Bitte erläutern Sie unten, damit wir Ihr Feedback besser verstehen und die App anpassen können.")
+        st.info("❗Sie scheinen die Simulation nicht für hilfreich zu erachten. Was hätten Sie sich beim Anamnese-Training anders gewünscht? Bitte erläutern Sie unten, damit wir Ihr Feedback besser verstehen und die App anpassen können.")
 
-    f3 = st.radio("Wie verständlich und relevant war das automatische Feedback?", [1, 2, 3, 4, 5, 6], horizontal=True)
+    f3 = st.radio("Wie verständlich und relevant war das KI-generierte Feedback?", [1, 2, 3, 4, 5, 6], horizontal=True)
     if f3 >= 4:
         st.info("❗Sie sind mit dem Feedback unzufrieden. Wir möchten gern besser werden. Beschreiben Sie deswegen bitte im folgenden Freitext warum.")
 
-    f4 = st.radio("Wie bewerten Sie den didaktischen Gesamtwert der Simulation?", [1, 2, 3, 4, 5, 6], horizontal=True)
+    f4 = st.radio("Wie bewerten Sie den Gesamtwert der Simulation als Lernangebot?", [1, 2, 3, 4, 5, 6], horizontal=True)
     if f4 >= 4:
         st.info("❗Was hat aus Ihrer Sicht den didaktischen Wert eingeschränkt? Bitte erläutern Sie uns Ihre Kritik.")
 
+    # --- ANGEPASSTES LAYOUT FÜR DIE FALLSCHWERE ---
+    st.markdown("Wie bewerten Sie die Schwierigkeit des Falls?")
     st.markdown("**Fallschwere-Skala:** -2 = deutlich zu leicht, 0 = passend, +2 = deutlich zu schwer.")
+    
     f5 = st.radio(
-        "Wie schwierig fanden Sie den Fall?",
+        "Verstecktes Label für Fallschwere", # Dieser Text wird durch die nächste Zeile ausgeblendet
         [-2, -1, 0, 1, 2],
-        index=2,  # <-- Das setzt den Standardwert auf 0 
+        index=2,
         horizontal=True,
+        label_visibility="collapsed" # Versteckt das Standard-Label, damit unsere eigene Struktur oben genutzt wird
     )
     
-    # Variable für die Begründung initialisieren
     fallschwere_begruendung = ""
     
     if f5 == -2:
-        st.info("❗Der Fall war für Sie deutlich zu leicht. Was würden Sie verbessern, damit die Aufgabe anspruchsvoller wird?")
         fallschwere_begruendung = st.text_area("Ihre Vorschläge für mehr Anspruch:", key="schwere_leicht")
     elif f5 == 2:
-        st.info("❗Der Fall war für Sie deutlich zu schwer. Was würden Sie verbessern, damit die Aufgabe fairer und verständlicher wird?")
         fallschwere_begruendung = st.text_area("Ihre Vorschläge zur Erleichterung:", key="schwere_schwer")
 
     st.markdown("---")
 
-    # Definition der Antwortmöglichkeiten für die neuen Blöcke
+    # Definition der Antwortmöglichkeiten für die Likert-Skalen
     likert_options = [
         "Trifft voll zu", 
         "Trifft eher zu", 
@@ -106,12 +109,12 @@ def student_feedback():
     # BLOCK 2: Safe Space & Lernatmosphäre
     # ---------------------------------------------------------
     st.markdown("#### 2. Safe Space")
-    eval_safespace = st.radio(
-        "Die Simulation bietet mir einen Safe Space, in dem ich ohne Druck klinische Entscheidungen treffen kann.", 
+    eval_safespace_1 = st.radio(
+        "Die Simulation bietet mir eine sichere Lernumgebung, in der ich ohne Angst vor Fehlern klinische Entscheidungen treffen kann.", 
         likert_options, horizontal=True
     )
-    eval_angst = st.radio(
-        "Das automatische Feedback nimmt mir die Angst davor, im klinischen Alltag Fehler zu machen.", 
+    eval_safespace_2 = st.radio(
+        "In der Simulation kann ich klinische Situationen üben, ohne mich von anderen beobachtet oder bewertet zu fühlen.", 
         likert_options, horizontal=True
     )
 
@@ -121,16 +124,20 @@ def student_feedback():
     # BLOCK 3: Clinical Reasoning & Lerneffekt
     # ---------------------------------------------------------
     st.markdown("#### 3. Clinical Reasoning")
-    eval_reasoning = st.radio(
+    eval_reasoning_1 = st.radio(
         "Das Training mit der App fördert mein strukturiertes klinisches Denken.", 
         likert_options, horizontal=True
     )
-    eval_sicherheit = st.radio(
-        "Durch die Simulation fühle ich mich sicherer für zukünftige, reale Patientenkontakte.", 
+    eval_reasoning_2 = st.radio(
+        "Durch die Simulation fühle ich mich besser auf zukünftige, reale Patientenkontakte vorbereitet.", 
         likert_options, horizontal=True
     )
-    eval_feedback_praezise = st.radio(
-        "Das Feedback der KI war fachlich präzise und hat mir geholfen, meine Fehler zu verstehen.", 
+    eval_feedback_1 = st.radio(
+        "Das Feedback der KI war fachlich nachvollziehbar.", 
+        likert_options, horizontal=True
+    )
+    eval_feedback_2 = st.radio(
+        "Das Feedback der KI hat mir geholfen, meine Fehler zu erkennen und zu verstehen.", 
         likert_options, horizontal=True
     )
 
@@ -141,7 +148,7 @@ def student_feedback():
     # ---------------------------------------------------------
     st.markdown("#### 4. Didaktische Integration")
     eval_integration = st.radio(
-        "Ich empfinde die KI-Simulation als eine sinnvolle Ergänzung zum klassischen Unterricht (z. B. Skills-Lab).", 
+        "Ich empfinde die KI-Simulation als eine sinnvolle Ergänzung zum klassischen Unterricht.", 
         likert_options, horizontal=True
     )
 
@@ -171,19 +178,21 @@ def student_feedback():
             st.info("🔌 Offline-Modus: Feedback konnte nicht gespeichert werden.")
             return
 
-        # Hier werden alle alten UND neuen Werte in das Dictionary gepackt
+        # Aktualisiertes Dictionary mit den neuen/angepassten Variablen
         eintrag = {
+            "note_bedienung": f_bedienung,
             "note_realismus": f1,
             "note_anamnese": f2,
             "note_feedback": f3,
             "note_didaktik": f4,
             "fall_schwere": f5,
             "fallschwere_begruendung": fallschwere_begruendung,
-            "eval_safespace": eval_safespace,
-            "eval_angst": eval_angst,
-            "eval_reasoning": eval_reasoning,
-            "eval_sicherheit": eval_sicherheit,
-            "eval_feedback_praezise": eval_feedback_praezise,
+            "eval_safespace_sicherheit": eval_safespace_1,
+            "eval_safespace_beobachtung": eval_safespace_2,
+            "eval_reasoning_denken": eval_reasoning_1,
+            "eval_reasoning_vorbereitung": eval_reasoning_2,
+            "eval_feedback_fachlich": eval_feedback_1,
+            "eval_feedback_lerneffekt": eval_feedback_2,
             "eval_integration": eval_integration,
             "semester": f7,
             "fall_bug": bugs,
