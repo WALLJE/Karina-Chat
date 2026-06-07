@@ -44,6 +44,10 @@ def initialisiere_session_state() -> None:
     st.session_state.setdefault("offline_mode", False)
     st.session_state.setdefault("fall_vorbereitung_abgeschlossen", False)
 
+    # NEU: LimeSurvey-ID aus der URL abfangen und im Session State speichern
+    if "id" in st.query_params:
+        if "limesurvey_id" not in st.session_state:
+            st.session_state["limesurvey_id"] = st.query_params.get("id")
 
 initialisiere_session_state()
 # Der Feedback-Modus wird direkt bestimmt, damit Admin-Vorgaben auf allen Seiten
