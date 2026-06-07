@@ -88,7 +88,6 @@ def student_feedback():
     
     fallschwere_begruendung = ""
     
-    # Adaptive Logik ab -1 und +1, wie von Prof. Walldorf gewünscht
     if f5 <= -1:
         fallschwere_begruendung = st.text_area("Ihre Vorschläge für mehr Anspruch:", key="schwere_leicht")
     elif f5 >= 1:
@@ -171,10 +170,17 @@ def student_feedback():
     # ---------------------------------------------------------
     st.markdown("#### 5. Allgemeine Angaben & Kommentare")
     
+    # NEU: Technische Probleme mit aufklappbarem Textfeld
     tech_probleme = st.radio(
         "Technische Probleme haben meinen Lernprozess beeinträchtigt.",
-        ["Ja", "Nein"], horizontal=True
+        ["Ja", "Nein"], 
+        index=1,  # Standardmäßig auf "Nein" gesetzt
+        horizontal=True
     )
+    
+    tech_probleme_begruendung = ""
+    if tech_probleme == "Ja":
+        tech_probleme_begruendung = st.text_area("Welche technischen Probleme traten konkret auf?", key="tech_bug_text")
     
     f7 = st.selectbox(
         "In welchem Semester befinden Sie sich aktuell?",
@@ -187,7 +193,7 @@ def student_feedback():
         help="Die Matrikelnummer wird verschlüsselt gespeichert und ist nur erforderlich, wenn die Simulation als Lehrveranstaltungsaufgabe bearbeitet wurde."
     )
 
-    bugs = st.text_area("💬 Welche Ungenauigkeiten oder Fehler sind Ihnen aufgefallen (optional):", "")
+    bugs = st.text_area("💬 Welche sonstigen Ungenauigkeiten oder Fehler sind Ihnen aufgefallen (optional):", "")
     kommentar = st.text_area("💬 Freitext (optional):", "")
 
     if st.button("📩 Feedback absenden", disabled=offline_active):
@@ -195,7 +201,6 @@ def student_feedback():
             st.info("🔌 Offline-Modus: Feedback konnte nicht gespeichert werden.")
             return
 
-        # 1. Das inhaltliche Feedback für die Haupttabelle zusammenstellen
         eintrag = {
             "note_bedienung": f_bedienung,
             "note_realismus": f1,
@@ -215,6 +220,7 @@ def student_feedback():
             "eval_anforderungen_passen": eval_anforderungen,
             "eval_weitere_faelle": eval_weitere_faelle,
             "tech_probleme": tech_probleme,
+            "tech_probleme_begruendung": tech_probleme_begruendung, # NEU eingefügt
             "semester": f7,
             "fall_bug": bugs,
             "kommentar": kommentar,
@@ -228,7 +234,7 @@ def student_feedback():
             if row_id is not None:
                 supabase.table("feedback_gpt").update(eintrag).eq("ID", row_id).execute()
                 
-                # 2. Limesurvey-ID in die separate Gewinnspiel-Tabelle auslagern
+                # Limesurvey-ID in die separate Gewinnspiel-Tabelle auslagern
                 limesurvey_id = st.session_state.get("limesurvey_id")
                 if limesurvey_id:
                     try:
