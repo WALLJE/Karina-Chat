@@ -75,28 +75,27 @@ def student_feedback():
     if f4 >= 4:
         st.info("❗Was hat aus Ihrer Sicht den didaktischen Wert eingeschränkt? Bitte erläutern Sie uns Ihre Kritik.")
 
-    # --- ANGEPASSTES LAYOUT FÜR DIE FALLSCHWERE ---
     st.markdown("Wie bewerten Sie die Schwierigkeit des Falls?")
     st.markdown("**Fallschwere-Skala:** -2 = deutlich zu leicht, 0 = passend, +2 = deutlich zu schwer.")
     
     f5 = st.radio(
-        "Verstecktes Label für Fallschwere", # Dieser Text wird durch die nächste Zeile ausgeblendet
+        "Verstecktes Label für Fallschwere",
         [-2, -1, 0, 1, 2],
         index=2,
         horizontal=True,
-        label_visibility="collapsed" # Versteckt das Standard-Label, damit unsere eigene Struktur oben genutzt wird
+        label_visibility="collapsed"
     )
     
     fallschwere_begruendung = ""
     
-    if f5 == -2:
+    # Adaptive Logik ab -1 und +1, wie von Prof. Walldorf gewünscht
+    if f5 <= -1:
         fallschwere_begruendung = st.text_area("Ihre Vorschläge für mehr Anspruch:", key="schwere_leicht")
-    elif f5 == 2:
+    elif f5 >= 1:
         fallschwere_begruendung = st.text_area("Ihre Vorschläge zur Erleichterung:", key="schwere_schwer")
 
     st.markdown("---")
 
-    # Definition der Antwortmöglichkeiten für die Likert-Skalen
     likert_options = [
         "Trifft voll zu", 
         "Trifft eher zu", 
@@ -108,13 +107,18 @@ def student_feedback():
     # ---------------------------------------------------------
     # BLOCK 2: Safe Space & Lernatmosphäre
     # ---------------------------------------------------------
-    st.markdown("#### 2. Safe Space")
+    st.markdown("#### 2. Safe Space & Realismus")
+    
     eval_safespace_1 = st.radio(
-        "Die Simulation bietet mir eine sichere Lernumgebung, in der ich ohne Angst vor Fehlern klinische Entscheidungen treffen kann.", 
+        "Die Simulation bietet mir eine sichere Lernumgebung, in der ich das Treffen von klinischen Entscheidungen üben kann.", 
         likert_options, horizontal=True
     )
     eval_safespace_2 = st.radio(
         "In der Simulation kann ich klinische Situationen üben, ohne mich von anderen beobachtet oder bewertet zu fühlen.", 
+        likert_options, horizontal=True
+    )
+    eval_konsistenz = st.radio(
+        "Die Antworten der simulierten Patientin waren konsistent und medizinisch plausibel.", 
         likert_options, horizontal=True
     )
 
@@ -137,27 +141,40 @@ def student_feedback():
         likert_options, horizontal=True
     )
     eval_feedback_2 = st.radio(
-        "Das Feedback der KI hat mir geholfen, meine Fehler zu erkennen und zu verstehen.", 
+        "Das Feedback der KI hat mir geholfen, Stärken und Verbesserungsmöglichkeiten in meinem Vorgehen zu erkennen.", 
         likert_options, horizontal=True
     )
 
     st.markdown("---")
 
     # ---------------------------------------------------------
-    # BLOCK 4: Didaktische Integration
+    # BLOCK 4: Didaktische Integration & Motivation
     # ---------------------------------------------------------
     st.markdown("#### 4. Didaktische Integration")
     eval_integration = st.radio(
         "Ich empfinde die KI-Simulation als eine sinnvolle Ergänzung zum klassischen Unterricht.", 
         likert_options, horizontal=True
     )
+    eval_anforderungen = st.radio(
+        "Die Anforderungen der Simulation passten zu meinem bisherigen Ausbildungsstand.", 
+        likert_options, horizontal=True
+    )
+    eval_weitere_faelle = st.radio(
+        "Ich würde die Simulation auch zur Bearbeitung weiterer Fälle nutzen.", 
+        likert_options, horizontal=True
+    )
 
     st.markdown("---")
 
     # ---------------------------------------------------------
-    # BLOCK 5: Allgemeine Angaben & Kommentare
+    # BLOCK 5: Allgemeine Angaben & Technik
     # ---------------------------------------------------------
     st.markdown("#### 5. Allgemeine Angaben & Kommentare")
+    
+    tech_probleme = st.radio(
+        "Technische Probleme haben meinen Lernprozess beeinträchtigt.",
+        ["Ja", "Nein"], horizontal=True
+    )
     
     f7 = st.selectbox(
         "In welchem Semester befinden Sie sich aktuell?",
@@ -178,7 +195,7 @@ def student_feedback():
             st.info("🔌 Offline-Modus: Feedback konnte nicht gespeichert werden.")
             return
 
-        # Aktualisiertes Dictionary mit den neuen/angepassten Variablen
+        # 1. Das inhaltliche Feedback für die Haupttabelle zusammenstellen
         eintrag = {
             "note_bedienung": f_bedienung,
             "note_realismus": f1,
@@ -189,11 +206,15 @@ def student_feedback():
             "fallschwere_begruendung": fallschwere_begruendung,
             "eval_safespace_sicherheit": eval_safespace_1,
             "eval_safespace_beobachtung": eval_safespace_2,
+            "eval_konsistenz": eval_konsistenz,
             "eval_reasoning_denken": eval_reasoning_1,
             "eval_reasoning_vorbereitung": eval_reasoning_2,
             "eval_feedback_fachlich": eval_feedback_1,
             "eval_feedback_lerneffekt": eval_feedback_2,
             "eval_integration": eval_integration,
+            "eval_anforderungen_passen": eval_anforderungen,
+            "eval_weitere_faelle": eval_weitere_faelle,
+            "tech_probleme": tech_probleme,
             "semester": f7,
             "fall_bug": bugs,
             "kommentar": kommentar,
@@ -201,11 +222,24 @@ def student_feedback():
         }
 
         try:
+            # Update der Haupttabelle
             row_id = st.session_state.get("feedback_row_id")
             
             if row_id is not None:
                 supabase.table("feedback_gpt").update(eintrag).eq("ID", row_id).execute()
-                st.success("✅ Vielen Dank! Ihr Feedback wurde gespeichert.")
+                
+                # 2. Limesurvey-ID in die separate Gewinnspiel-Tabelle auslagern
+                limesurvey_id = st.session_state.get("limesurvey_id")
+                if limesurvey_id:
+                    try:
+                        gewinnspiel_eintrag = {
+                            "limesurvey_id": limesurvey_id
+                        }
+                        supabase.table("gewinnspiel_teilnehmer").insert(gewinnspiel_eintrag).execute()
+                    except Exception as err:
+                        st.error(f"⚠️ Das Feedback wurde gespeichert, aber bei der Gewinnspiel-Registrierung gab es ein Problem: {repr(err)}")
+
+                st.success("✅ Vielen Dank! Ihr Feedback wurde sicher und anonym gespeichert.")
                 st.session_state["student_evaluation_done"] = True
                 st.rerun()
             else:
