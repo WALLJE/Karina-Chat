@@ -4,7 +4,7 @@ from supabase import create_client, Client
 from cryptography.fernet import Fernet, InvalidToken
 from module.offline import is_offline
 
-# Supabase initialisieren (Erwartung: in st.secrets defined)
+# Supabase initialisieren (Erwartung: in st.secrets definiert)
 supabase_url = st.secrets["supabase"]["url"]
 supabase_key = st.secrets["supabase"]["key"]
 supabase: Client = create_client(supabase_url, supabase_key)
@@ -63,7 +63,7 @@ def student_feedback():
     negativ_antworten = ["Trifft eher nicht zu", "Trifft gar nicht zu"]
 
     # ---------------------------------------------------------
-    # GRUPPE 1: Simulation & Fall (OHNE Überschrift)
+    # BLOCK 1: Simulation & Fall (Ohne Überschriften)
     # ---------------------------------------------------------
     st.markdown("Bitte bewerten Sie die folgenden Aspekte zur Simulation:")
 
@@ -106,7 +106,7 @@ def student_feedback():
     st.markdown("---")
 
     # ---------------------------------------------------------
-    # GRUPPE 2: Safe Space & Psychological Safety
+    # BLOCK 2: Safe Space & Psychological Safety
     # ---------------------------------------------------------
     eval_safespace_umgebung = st.radio(
         "Die Simulation bietet eine geschützte Lernumgebung.", 
@@ -136,10 +136,10 @@ def student_feedback():
     st.markdown("---")
 
     # ---------------------------------------------------------
-    # GRUPPE 3: Clinical Reasoning
+    # BLOCK 3: Clinical Reasoning
     # ---------------------------------------------------------
     eval_reasoning_1 = st.radio(
-        "Das Training mit der App fosters mein strukturiertes klinisches Denken.", 
+        "Das Training mit der App fördert mein strukturiertes klinisches Denken.", 
         likert_options, horizontal=True
     )
     eval_reasoning_2 = st.radio(
@@ -158,7 +158,7 @@ def student_feedback():
     st.markdown("---")
 
     # ---------------------------------------------------------
-    # GRUPPE 4: Didaktische Integration
+    # BLOCK 4: Didaktische Integration
     # ---------------------------------------------------------
     eval_integration = st.radio(
         "Ich empfinde die KI-Simulation als eine sinnvolle Ergänzung zum klassischen Unterricht.", 
@@ -176,7 +176,7 @@ def student_feedback():
     st.markdown("---")
 
     # ---------------------------------------------------------
-    # GRUPPE 5: Technik & Allgemeine Angaben
+    # BLOCK 5: Allgemeine Angaben & Technik
     # ---------------------------------------------------------
     tech_probleme = st.radio(
         "Technische Probleme haben meinen Lernprozess beeinträchtigt.",
@@ -213,7 +213,6 @@ def student_feedback():
             st.info("🔌 Offline-Modus: Feedback konnte nicht gespeichert werden.")
             return
 
-        # Die Text-Strings werden jetzt direkt übergeben
         eintrag = {
             "note_bedienung": f_bedienung,
             "note_realismus": f1,
@@ -245,11 +244,13 @@ def student_feedback():
         }
 
         try:
+            # Update der Haupttabelle
             row_id = st.session_state.get("feedback_row_id")
             
             if row_id is not None:
                 supabase.table("feedback_gpt").update(eintrag).eq("ID", row_id).execute()
                 
+                # Limesurvey-ID in die separate Gewinnspiel-Tabelle auslagern
                 limesurvey_id = st.session_state.get("limesurvey_id")
                 if limesurvey_id:
                     try:
