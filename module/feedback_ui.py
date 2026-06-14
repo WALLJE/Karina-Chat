@@ -129,7 +129,7 @@ def student_feedback():
         likert_options, horizontal=True
     )
     eval_konsistenz = st.radio(
-        "Die Antworten der simulierten Patientin waren konsistent und medizinisch plausibel.", 
+        "Die Antworten der simulierten Patientin bzw. des simulierten Patienten waren konsistent und medizinisch plausibel.", 
         likert_options, horizontal=True
     )
 
