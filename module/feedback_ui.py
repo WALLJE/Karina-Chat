@@ -234,7 +234,7 @@ def student_feedback():
                             "limesurvey_id": limesurvey_id
                         }
                         supabase.table("gewinnspiel_teilnehmer").insert(gewinnspiel_eintrag).execute()
-                    except Exception err:
+                    except Exception as err:
                         st.error(f"⚠️ Das Feedback wurde gespeichert, aber bei der Gewinnspiel-Registrierung gab es ein Problem: {repr(err)}")
 
                 st.success("✅ Vielen Dank! Ihr Feedback wurde sicher und anonym gespeichert.")
