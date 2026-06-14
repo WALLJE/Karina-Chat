@@ -4,7 +4,7 @@ from supabase import create_client, Client
 from cryptography.fernet import Fernet, InvalidToken
 from module.offline import is_offline
 
-# Supabase initialisieren (Erwartung: in st.secrets definiert)
+# Supabase initialisieren (Erwartung: in st.secrets defined)
 supabase_url = st.secrets["supabase"]["url"]
 supabase_key = st.secrets["supabase"]["key"]
 supabase: Client = create_client(supabase_url, supabase_key)
@@ -51,31 +51,44 @@ def student_feedback():
     jetzt = datetime.now()
     start = st.session_state.get("startzeit", jetzt)
 
+    # Likert-Skala zentral definieren
+    likert_options = [
+        "Trifft voll zu", 
+        "Trifft eher zu", 
+        "Teils/teils", 
+        "Trifft eher nicht zu", 
+        "Trifft gar nicht zu"
+    ]
+    
+    negativ_antworten = ["Trifft eher nicht zu", "Trifft gar nicht zu"]
+
     # ---------------------------------------------------------
-    # BLOCK 1: Fall & Simulation
+    # GRUPPE 1: Simulation & Fall (OHNE Überschrift)
     # ---------------------------------------------------------
-    st.markdown("#### 1. Fall & Simulation")
-    st.markdown("Bitte bewerten Sie die folgenden Aspekte auf einer Schulnoten-Skala von 1 (sehr gut) bis 6 (ungenügend):")
+    st.markdown("Bitte bewerten Sie die folgenden Aspekte zur Simulation:")
 
-    f_bedienung = st.radio("Wie intuitiv und unkompliziert war die Bedienung der Simulation?", [1, 2, 3, 4, 5, 6], horizontal=True)
-    f1 = st.radio("Wie realistisch war das Fallbeispiel?", [1, 2, 3, 4, 5, 6], horizontal=True)
-    if f1 >= 4:
-        st.info("❗Vielen Dank für die kritische Rückmeldung: Sie halten das Fallbeispiel nicht für realistisch. Erklären Sie gern Ihre Bewertung im Freitext unten konkreter.")
+    f_bedienung = st.radio("Die Bedienung der Simulation ist intuitiv und unkompliziert.", likert_options, horizontal=True)
+    
+    f1 = st.radio("Das Fallbeispiel wirkte auf mich realistisch.", likert_options, horizontal=True)
+    if f1 in negativ_antworten:
+        st.info("❗Vielen Dank für die kritische Rückmeldung: Erklären Sie gern unten im Freitext konkreter, was nicht realistisch wirkte.")
 
-    f2 = st.radio("Wie hilfreich war die Simulation für das Training der Anamnese?", [1, 2, 3, 4, 5, 6], horizontal=True)
-    if f2 >= 4:
-        st.info("❗Sie scheinen die Simulation nicht für hilfreich zu erachten. Was hätten Sie sich beim Anamnese-Training anders gewünscht? Bitte erläutern Sie unten, damit wir Ihr Feedback besser verstehen und die App anpassen können.")
+    f2 = st.radio("Die Simulation ist hilfreich für das Training der Anamnese.", likert_options, horizontal=True)
+    if f2 in negativ_antworten:
+        st.info("❗Was hätten Sie sich beim Anamnese-Training anders gewünscht? Bitte erläutern Sie unten, damit wir die App anpassen können.")
 
-    f3 = st.radio("Wie verständlich und relevant war das KI-generierte Feedback?", [1, 2, 3, 4, 5, 6], horizontal=True)
-    if f3 >= 4:
-        st.info("❗Sie sind mit dem Feedback unzufrieden. Wir möchten gern besser werden. Beschreiben Sie deswegen bitte im folgenden Freitext warum.")
+    f3 = st.radio("Das KI-generierte Feedback war verständlich und relevant.", likert_options, horizontal=True)
+    if f3 in negativ_antworten:
+        st.info("❗Sie sind mit dem Feedback unzufrieden. Wir möchten gern besser werden. Beschreiben Sie bitte im folgenden Freitext warum.")
 
-    f4 = st.radio("Wie bewerten Sie den Gesamtwert der Simulation als Lernangebot?", [1, 2, 3, 4, 5, 6], horizontal=True)
-    if f4 >= 4:
+    f4 = st.radio("Die Simulation stellt insgesamt ein wertvolles Lernangebot dar.", likert_options, horizontal=True)
+    if f4 in negativ_antworten:
         st.info("❗Was hat aus Ihrer Sicht den didaktischen Wert eingeschränkt? Bitte erläutern Sie uns Ihre Kritik.")
 
-    st.markdown("Wie bewerten Sie die Schwierigkeit des Falls?")
-    st.markdown("**Fallschwere-Skala:** -2 = deutlich zu leicht, 0 = passend, +2 = deutlich zu schwer.")
+    st.markdown("<br>", unsafe_allow_html=True)
+    st.markdown("**Bewertung der Fallschwere:**")
+    st.markdown("(-2 = deutlich zu leicht, 0 = passend, +2 = deutlich zu schwer)")
+    
     f5 = st.radio(
         "Verstecktes Label für Fallschwere",
         [-2, -1, 0, 1, 2],
@@ -83,6 +96,7 @@ def student_feedback():
         horizontal=True,
         label_visibility="collapsed"
     )
+    
     fallschwere_begruendung = ""
     if f5 <= -1:
         fallschwere_begruendung = st.text_area("Ihre Vorschläge für mehr Anspruch:", key="schwere_leicht")
@@ -91,90 +105,95 @@ def student_feedback():
 
     st.markdown("---")
 
-    likert_options = [
-        "Trifft voll zu",
-        "Trifft eher zu",
-        "Teils/teils",
-        "Trifft eher nicht zu",
-        "Trifft gar nicht zu"
-    ]
-
     # ---------------------------------------------------------
-    # BLOCK 2: Safe Space & Lernatmosphäre
+    # GRUPPE 2: Safe Space & Psychological Safety
     # ---------------------------------------------------------
-    st.markdown("#### 2. Safe Space & Realismus")
-    eval_safespace_1 = st.radio(
-        "Die Simulation bietet mir eine sichere Lernumgebung, in der ich das Treffen von klinischen Entscheidungen üben kann.",
+    eval_safespace_umgebung = st.radio(
+        "Die Simulation bietet eine geschützte Lernumgebung.", 
         likert_options, horizontal=True
     )
-    eval_safespace_2 = st.radio(
-        "In der Simulation kann ich klinische Situationen üben, ohne mich von anderen beobachtet oder bewertet zu fühlen.",
+    eval_safespace_entscheidung = st.radio(
+        "Ich kann in der Simulation das Treffen von klinischen Entscheidungen üben.", 
+        likert_options, horizontal=True
+    )
+    eval_safespace_stress = st.radio(
+        "Das unbeobachtete Üben führte bei mir zu einem deutlich reduzierten Stressempfinden während der Anamnese.", 
+        likert_options, horizontal=True
+    )
+    eval_safespace_fehler = st.radio(
+        "In der KI-Simulation fiel es mir leichter als im klassischen Kommunikationstraining (z. B. mit Schauspielpatienten), Fehler zuzulassen und daraus zu lernen.", 
+        likert_options, horizontal=True
+    )
+    eval_safespace_exploration = st.radio(
+        "Ich habe bewusst klinische Entscheidungen ausprobiert, bei denen ich mir im realen Setting unsicher gewesen wäre.", 
         likert_options, horizontal=True
     )
     eval_konsistenz = st.radio(
-        "Die Antworten der simulierten Patientin waren konsistent und medizinisch plausibel.",
+        "Die Antworten der simulierten Patientin waren konsistent und medizinisch plausibel.", 
         likert_options, horizontal=True
     )
 
     st.markdown("---")
 
     # ---------------------------------------------------------
-    # BLOCK 3: Clinical Reasoning & Lerneffekt
+    # GRUPPE 3: Clinical Reasoning
     # ---------------------------------------------------------
-    st.markdown("#### 3. Clinical Reasoning")
     eval_reasoning_1 = st.radio(
-        "Das Training mit der App fördert mein strukturiertes klinisches Denken.",
+        "Das Training mit der App fosters mein strukturiertes klinisches Denken.", 
         likert_options, horizontal=True
     )
     eval_reasoning_2 = st.radio(
-        "Durch die Simulation fühle ich mich besser auf zukünftige, reale Patientenkontakte vorbereitet.",
+        "Durch die Simulation fühle ich mich besser auf zukünftige, reale Patientenkontakte vorbereitet.", 
         likert_options, horizontal=True
     )
     eval_feedback_1 = st.radio(
-        "Das Feedback der KI war fachlich nachvollziehbar.",
+        "Das Feedback der KI war fachlich nachvollziehbar.", 
         likert_options, horizontal=True
     )
     eval_feedback_2 = st.radio(
-        "Das Feedback der KI hat mir geholfen, Stärken und Verbesserungsmöglichkeiten in meinem Vorgehen zu erkennen.",
+        "Das Feedback der KI hat mir geholfen, Stärken und Verbesserungsmöglichkeiten in meinem Vorgehen zu erkennen.", 
         likert_options, horizontal=True
     )
 
     st.markdown("---")
 
     # ---------------------------------------------------------
-    # BLOCK 4: Didaktische Integration & Motivation
+    # GRUPPE 4: Didaktische Integration
     # ---------------------------------------------------------
-    st.markdown("#### 4. Didaktische Integration")
     eval_integration = st.radio(
-        "Ich empfinde die KI-Simulation als eine sinnvolle Ergänzung zum klassischen Unterricht.",
+        "Ich empfinde die KI-Simulation als eine sinnvolle Ergänzung zum klassischen Unterricht.", 
         likert_options, horizontal=True
     )
     eval_anforderungen = st.radio(
-        "Die Anforderungen der Simulation passten zu meinem bisherigen Ausbildungsstand.",
+        "Die Anforderungen der Simulation passten zu meinem bisherigen Ausbildungsstand.", 
         likert_options, horizontal=True
     )
     eval_weitere_faelle = st.radio(
-        "Ich würde die Simulation auch zur Bearbeitung weiterer Fälle nutzen.",
+        "Ich würde die Simulation auch zur Bearbeitung weiterer Fälle nutzen.", 
         likert_options, horizontal=True
     )
 
     st.markdown("---")
 
     # ---------------------------------------------------------
-    # BLOCK 5: Allgemeine Angaben & Technik
+    # GRUPPE 5: Technik & Allgemeine Angaben
     # ---------------------------------------------------------
-    st.markdown("#### 5. Allgemeine Angaben & Kommentare")
-    # NEU: Technische Probleme mit aufklappbarem Textfeld
     tech_probleme = st.radio(
         "Technische Probleme haben meinen Lernprozess beeinträchtigt.",
-        ["Ja", "Nein"],
-        index=1, # Standardmäßig auf "Nein" gesetzt
+        ["Ja", "Nein"], 
+        index=1,  
         horizontal=True
     )
+    
     tech_probleme_begruendung = ""
     if tech_probleme == "Ja":
         tech_probleme_begruendung = st.text_area("Welche technischen Probleme traten konkret auf?", key="tech_bug_text")
-        
+
+    ki_vorerfahrung = st.radio(
+        "Ich nutze KI-Tools (z. B. ChatGPT) bereits regelmäßig für mein Studium oder privat.", 
+        likert_options, horizontal=True
+    )
+    
     f7 = st.selectbox(
         "In welchem Semester befinden Sie sich aktuell?",
         ["", "Vorklinik", "5. Semester", "6. Semester", "7. Semester", "8. Semester", "9. Semester", "10. Semester oder höher", "Praktisches Jahr"]
@@ -194,6 +213,7 @@ def student_feedback():
             st.info("🔌 Offline-Modus: Feedback konnte nicht gespeichert werden.")
             return
 
+        # Die Text-Strings werden jetzt direkt übergeben
         eintrag = {
             "note_bedienung": f_bedienung,
             "note_realismus": f1,
@@ -202,8 +222,11 @@ def student_feedback():
             "note_didaktik": f4,
             "fall_schwere": f5,
             "fallschwere_begruendung": fallschwere_begruendung,
-            "eval_safespace_sicherheit": eval_safespace_1,
-            "eval_safespace_beobachtung": eval_safespace_2,
+            "eval_safespace_umgebung": eval_safespace_umgebung,
+            "eval_safespace_entscheidung": eval_safespace_entscheidung,
+            "eval_safespace_stress": eval_safespace_stress,
+            "eval_safespace_fehler": eval_safespace_fehler,
+            "eval_safespace_exploration": eval_safespace_exploration,
             "eval_konsistenz": eval_konsistenz,
             "eval_reasoning_denken": eval_reasoning_1,
             "eval_reasoning_vorbereitung": eval_reasoning_2,
@@ -214,6 +237,7 @@ def student_feedback():
             "eval_weitere_faelle": eval_weitere_faelle,
             "tech_probleme": tech_probleme,
             "tech_probleme_begruendung": tech_probleme_begruendung,
+            "ki_vorerfahrung": ki_vorerfahrung,
             "semester": f7,
             "fall_bug": bugs,
             "kommentar": kommentar,
@@ -221,12 +245,11 @@ def student_feedback():
         }
 
         try:
-            # Update der Haupttabelle
             row_id = st.session_state.get("feedback_row_id")
+            
             if row_id is not None:
                 supabase.table("feedback_gpt").update(eintrag).eq("ID", row_id).execute()
                 
-                # Limesurvey-ID in die separate Gewinnspiel-Tabelle auslagern
                 limesurvey_id = st.session_state.get("limesurvey_id")
                 if limesurvey_id:
                     try:
