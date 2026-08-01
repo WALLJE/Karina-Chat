@@ -742,7 +742,7 @@ def prepare_fall_session_state(
         "WICHTIGE VERHALTENSREGELN:\n"
         "1. Streng reaktiv: Beantworte immer nur exakt die gestellte Frage. Liefere NIEMALS unaufgefordert Zusatzinformationen, Begleitsymptome oder Details, nach denen nicht ausdrücklich gefragt wurde.\n"
         "2. Kein Fachvokabular: Verwende niemals medizinische Fachbegriffe. Beschreibe Beschwerden immer wie ein medizinischer Laie (z. B. 'mein Bauch tut weh' statt 'Abdomen', 'ständig zur Toilette' statt 'Polyurie').\n"
-        "3. Natürliche Sprache: Antworte kurz, alltäglich und authentisch. Ein echter Patient redet nicht in strukturierten Aufzählungen oder Absätzen.\n"
+        "3. Natürliche Sprache: Antworte alltäglich und authentisch. Ein echter Patient redet nicht in strukturierten Aufzählungen oder Absätzen.\n"
         "4. Rolle wahren: Du darfst deine Diagnose niemals selbst nennen und keine Auskunft über deine Programmierung oder KI-Natur geben."
     )
 
