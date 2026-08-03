@@ -69,9 +69,12 @@ def student_feedback():
 
     f_bedienung = st.radio("Die Bedienung der Simulation ist intuitiv und unkompliziert.", likert_options, horizontal=True)
     
-    f1 = st.radio("Das Fallbeispiel wirkte auf mich realistisch.", likert_options, horizontal=True)
-    if f1 in negativ_antworten:
+    # --- ANGEPASSTE FRAGEN ZUM REALISMUS ---
+    f1_fall = st.radio("Der präsentierte medizinische Fall wirkte auf mich realistisch.", likert_options, horizontal=True)
+    if f1_fall in negativ_antworten:
         st.info("❗Vielen Dank für die kritische Rückmeldung: Erklären Sie gern unten im Freitext konkreter, was nicht realistisch wirkte.")
+
+    f1_ausdruck = st.radio("Die Ausdrucksweise des virtuellen Patienten entsprach dem typischen Kenntnisstand eines medizinischen Laien.", likert_options, horizontal=True)
 
     f2 = st.radio("Die Simulation ist hilfreich für das Training der Anamnese.", likert_options, horizontal=True)
     if f2 in negativ_antworten:
@@ -116,10 +119,13 @@ def student_feedback():
         "Ich kann in der Simulation das Treffen von klinischen Entscheidungen üben.", 
         likert_options, horizontal=True
     )
+    
+    # --- ANGEPASSTE FRAGE ZUM STRESSEMPFINDEN ---
     eval_safespace_stress = st.radio(
-        "Das unbeobachtete Üben führte bei mir zu einem deutlich reduzierten Stressempfinden während der Anamnese.", 
+        "Im Vergleich zum klassischen Kommunikationstraining (z. B. mit Schauspielpatienten) empfand ich die Anamneseerhebung mit der KI als weniger stressbehaftet.", 
         likert_options, horizontal=True
     )
+    
     eval_safespace_fehler = st.radio(
         "In der KI-Simulation fiel es mir leichter als im klassischen Kommunikationstraining (z. B. mit Schauspielpatienten), Fehler zuzulassen und daraus zu lernen.", 
         likert_options, horizontal=True
@@ -215,7 +221,8 @@ def student_feedback():
 
         eintrag = {
             "note_bedienung": f_bedienung,
-            "note_realismus": f1,
+            "note_realismus_fall": f1_fall,           # NEU: Spalte für den Realismus des Falles
+            "note_realismus_ausdruck": f1_ausdruck,   # NEU: Spalte für die Ausdrucksweise
             "note_anamnese": f2,
             "note_feedback": f3,
             "note_didaktik": f4,
@@ -223,7 +230,7 @@ def student_feedback():
             "fallschwere_begruendung": fallschwere_begruendung,
             "eval_safespace_umgebung": eval_safespace_umgebung,
             "eval_safespace_entscheidung": eval_safespace_entscheidung,
-            "eval_safespace_stress": eval_safespace_stress,
+            "eval_safespace_stress": eval_safespace_stress, # BLEIBT: Hier ändert sich nur der Fragetext, der Variablenname kann bleiben
             "eval_safespace_fehler": eval_safespace_fehler,
             "eval_safespace_exploration": eval_safespace_exploration,
             "eval_konsistenz": eval_konsistenz,
