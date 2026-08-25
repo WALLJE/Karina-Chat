@@ -9,7 +9,6 @@ supabase_url = st.secrets["supabase"]["url"]
 supabase_key = st.secrets["supabase"]["key"]
 supabase: Client = create_client(supabase_url, supabase_key)
 
-
 def _encrypt_matrikel(matrikel: str) -> str | None:
     if not matrikel:
         return None
@@ -32,7 +31,6 @@ def _encrypt_matrikel(matrikel: str) -> str | None:
         st.error(f"🚫 Unerwarteter Fehler bei der Verschlüsselung: {repr(err)}")
 
     return None
-
 
 def student_feedback():
     st.markdown("---")
@@ -67,24 +65,24 @@ def student_feedback():
     # ---------------------------------------------------------
     st.markdown("Bitte bewerten Sie die folgenden Aspekte zur Simulation:")
 
-    f_bedienung = st.radio("Die Bedienung der Simulation ist intuitiv und unkompliziert.", likert_options, horizontal=True)
+    f_bedienung = st.radio("Die Bedienung der Simulation ist intuitiv und unkompliziert.", likert_options, horizontal=True, index=None)
     
     # --- ANGEPASSTE FRAGEN ZUM REALISMUS ---
-    f1_fall = st.radio("Der präsentierte medizinische Fall wirkte auf mich realistisch.", likert_options, horizontal=True)
+    f1_fall = st.radio("Der präsentierte medizinische Fall wirkte auf mich realistisch.", likert_options, horizontal=True, index=None)
     if f1_fall in negativ_antworten:
         st.info("❗Vielen Dank für die kritische Rückmeldung: Erklären Sie gern unten im Freitext konkreter, was nicht realistisch wirkte.")
 
-    f1_ausdruck = st.radio("Die Ausdrucksweise des virtuellen Patienten entsprach dem typischen Kenntnisstand eines medizinischen Laien.", likert_options, horizontal=True)
+    f1_ausdruck = st.radio("Die Ausdrucksweise des virtuellen Patienten entsprach dem typischen Kenntnisstand eines medizinischen Laien.", likert_options, horizontal=True, index=None)
 
-    f2 = st.radio("Die Simulation ist hilfreich für das Training der Anamnese.", likert_options, horizontal=True)
+    f2 = st.radio("Die Simulation ist hilfreich für das Training der Anamnese.", likert_options, horizontal=True, index=None)
     if f2 in negativ_antworten:
         st.info("❗Was hätten Sie sich beim Anamnese-Training anders gewünscht? Bitte erläutern Sie unten, damit wir die App anpassen können.")
 
-    f3 = st.radio("Das KI-generierte Feedback war verständlich und relevant.", likert_options, horizontal=True)
+    f3 = st.radio("Das KI-generierte Feedback war verständlich und relevant.", likert_options, horizontal=True, index=None)
     if f3 in negativ_antworten:
         st.info("❗Sie sind mit dem Feedback unzufrieden. Wir möchten gern besser werden. Beschreiben Sie bitte im folgenden Freitext warum.")
 
-    f4 = st.radio("Die Simulation stellt insgesamt ein wertvolles Lernangebot dar.", likert_options, horizontal=True)
+    f4 = st.radio("Die Simulation stellt insgesamt ein wertvolles Lernangebot dar.", likert_options, horizontal=True, index=None)
     if f4 in negativ_antworten:
         st.info("❗Was hat aus Ihrer Sicht den didaktischen Wert eingeschränkt? Bitte erläutern Sie uns Ihre Kritik.")
 
@@ -95,15 +93,16 @@ def student_feedback():
     f5 = st.radio(
         "Verstecktes Label für Fallschwere",
         [-2, -1, 0, 1, 2],
-        index=2,
+        index=None,  # <-- Hier wurde der Default-Wert (index=2) entfernt
         horizontal=True,
         label_visibility="collapsed"
     )
     
     fallschwere_begruendung = ""
-    if f5 <= -1:
+    # <-- Hier wurde 'is not None' ergänzt, um Fehler zu vermeiden, wenn noch nichts geklickt wurde
+    if f5 is not None and f5 <= -1: 
         fallschwere_begruendung = st.text_area("Ihre Vorschläge für mehr Anspruch:", key="schwere_leicht")
-    elif f5 >= 1:
+    elif f5 is not None and f5 >= 1:
         fallschwere_begruendung = st.text_area("Ihre Vorschläge zur Erleichterung:", key="schwere_schwer")
 
     st.markdown("---")
@@ -113,30 +112,30 @@ def student_feedback():
     # ---------------------------------------------------------
     eval_safespace_umgebung = st.radio(
         "Die Simulation bietet eine geschützte Lernumgebung.", 
-        likert_options, horizontal=True
+        likert_options, horizontal=True, index=None
     )
     eval_safespace_entscheidung = st.radio(
         "Ich kann in der Simulation das Treffen von klinischen Entscheidungen üben.", 
-        likert_options, horizontal=True
+        likert_options, horizontal=True, index=None
     )
     
     # --- ANGEPASSTE FRAGE ZUM STRESSEMPFINDEN ---
     eval_safespace_stress = st.radio(
         "Im Vergleich zum klassischen Kommunikationstraining (z. B. mit Schauspielpatienten) empfand ich die Anamneseerhebung mit der KI als weniger stressbehaftet.", 
-        likert_options, horizontal=True
+        likert_options, horizontal=True, index=None
     )
     
     eval_safespace_fehler = st.radio(
         "In der KI-Simulation fiel es mir leichter als im klassischen Kommunikationstraining (z. B. mit Schauspielpatienten), Fehler zuzulassen und daraus zu lernen.", 
-        likert_options, horizontal=True
+        likert_options, horizontal=True, index=None
     )
     eval_safespace_exploration = st.radio(
         "Ich habe bewusst klinische Entscheidungen ausprobiert, bei denen ich mir im realen Setting unsicher gewesen wäre.", 
-        likert_options, horizontal=True
+        likert_options, horizontal=True, index=None
     )
     eval_konsistenz = st.radio(
         "Die Antworten der simulierten Patientin bzw. des simulierten Patienten waren konsistent und medizinisch plausibel.", 
-        likert_options, horizontal=True
+        likert_options, horizontal=True, index=None
     )
 
     st.markdown("---")
@@ -146,19 +145,19 @@ def student_feedback():
     # ---------------------------------------------------------
     eval_reasoning_1 = st.radio(
         "Das Training mit der App fördert mein strukturiertes klinisches Denken.", 
-        likert_options, horizontal=True
+        likert_options, horizontal=True, index=None
     )
     eval_reasoning_2 = st.radio(
         "Durch die Simulation fühle ich mich besser auf zukünftige, reale Patientenkontakte vorbereitet.", 
-        likert_options, horizontal=True
+        likert_options, horizontal=True, index=None
     )
     eval_feedback_1 = st.radio(
         "Das Feedback der KI war fachlich nachvollziehbar.", 
-        likert_options, horizontal=True
+        likert_options, horizontal=True, index=None
     )
     eval_feedback_2 = st.radio(
         "Das Feedback der KI hat mir geholfen, Stärken und Verbesserungsmöglichkeiten in meinem Vorgehen zu erkennen.", 
-        likert_options, horizontal=True
+        likert_options, horizontal=True, index=None
     )
 
     st.markdown("---")
@@ -168,15 +167,15 @@ def student_feedback():
     # ---------------------------------------------------------
     eval_integration = st.radio(
         "Ich empfinde die KI-Simulation als eine sinnvolle Ergänzung zum klassischen Unterricht.", 
-        likert_options, horizontal=True
+        likert_options, horizontal=True, index=None
     )
     eval_anforderungen = st.radio(
         "Die Anforderungen der Simulation passten zu meinem bisherigen Ausbildungsstand.", 
-        likert_options, horizontal=True
+        likert_options, horizontal=True, index=None
     )
     eval_weitere_faelle = st.radio(
         "Ich würde die Simulation auch zur Bearbeitung weiterer Fälle nutzen.", 
-        likert_options, horizontal=True
+        likert_options, horizontal=True, index=None
     )
 
     st.markdown("---")
@@ -187,7 +186,7 @@ def student_feedback():
     tech_probleme = st.radio(
         "Technische Probleme haben meinen Lernprozess beeinträchtigt.",
         ["Ja", "Nein"], 
-        index=1,  
+        index=None,  # <-- Hier wurde der Default-Wert (Nein) entfernt
         horizontal=True
     )
     
@@ -197,12 +196,15 @@ def student_feedback():
 
     ki_vorerfahrung = st.radio(
         "Ich nutze KI-Tools (z. B. ChatGPT) bereits regelmäßig für mein Studium oder privat.", 
-        likert_options, horizontal=True
+        likert_options, horizontal=True, index=None
     )
     
+    # Modernere Umsetzung der Selectbox (Platzhalter statt leerem String)
     f7 = st.selectbox(
         "In welchem Semester befinden Sie sich aktuell?",
-        ["", "Vorklinik", "5. Semester", "6. Semester", "7. Semester", "8. Semester", "9. Semester", "10. Semester oder höher", "Praktisches Jahr"]
+        ["Vorklinik", "5. Semester", "6. Semester", "7. Semester", "8. Semester", "9. Semester", "10. Semester oder höher", "Praktisches Jahr"],
+        index=None,
+        placeholder="Bitte wählen..."
     )
 
     matrikelnummer = st.text_input(
@@ -221,8 +223,8 @@ def student_feedback():
 
         eintrag = {
             "note_bedienung": f_bedienung,
-            "note_realismus_fall": f1_fall,           # NEU: Spalte für den Realismus des Falles
-            "note_realismus_ausdruck": f1_ausdruck,   # NEU: Spalte für die Ausdrucksweise
+            "note_realismus_fall": f1_fall,
+            "note_realismus_ausdruck": f1_ausdruck,
             "note_anamnese": f2,
             "note_feedback": f3,
             "note_didaktik": f4,
@@ -230,7 +232,7 @@ def student_feedback():
             "fallschwere_begruendung": fallschwere_begruendung,
             "eval_safespace_umgebung": eval_safespace_umgebung,
             "eval_safespace_entscheidung": eval_safespace_entscheidung,
-            "eval_safespace_stress": eval_safespace_stress, # BLEIBT: Hier ändert sich nur der Fragetext, der Variablenname kann bleiben
+            "eval_safespace_stress": eval_safespace_stress,
             "eval_safespace_fehler": eval_safespace_fehler,
             "eval_safespace_exploration": eval_safespace_exploration,
             "eval_konsistenz": eval_konsistenz,
