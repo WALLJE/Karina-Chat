@@ -1,4 +1,4 @@
-"""Visualisiert parallele Aufgabenlisten mit einem Typewriter-Effekt.
+"""Visualisiert parallele Aufgabenlisten mit einem coolen Typewriter-Effekt.
 
 Nutzt st.status für den Haupt-Ladekreis oben und eine CSS-Animation
 für den Schreibmaschinen-Effekt der aktiven Unteraufgaben.
@@ -76,9 +76,9 @@ class _TaskTracker:
                     f"<span style='color: #64B5F6; margin-right: 8px; font-weight: bold;'>&gt;</span>"
                     f"<span class='typewriter'>{task}</span></div>"
                 )
-            else:
-                # AUSSTEHEND: Wird komplett ignoriert und bleibt unsichtbar
-                pass 
+            # ACHTUNG: Hier gibt es kein "else" mehr!
+            # Alles was einen höheren Index hat (also noch nicht dran ist),
+            # wird einfach ignoriert und nicht auf den Bildschirm geschrieben.
                 
         self.placeholder.markdown("".join(lines), unsafe_allow_html=True)
 
