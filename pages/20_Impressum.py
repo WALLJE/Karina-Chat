@@ -17,6 +17,7 @@ def show_impressum():
     Klinik für Innere Medizin I – Gastroenterologie  
     Ernst-Grube-Straße 40
     06120 Halle
+    
     E-Mail: jens.walldorf@uk-halle.de  
 
 
