@@ -25,6 +25,7 @@ def show_impressum():
     Julian Teubner  
     Universitätsklinikum Halle (Saale)  
     Klinik für Innere Medizin I  
+    
     E-Mail: julian.teubner@student.uni-halle.de
  
 
