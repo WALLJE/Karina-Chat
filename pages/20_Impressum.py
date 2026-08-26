@@ -17,7 +17,6 @@ def show_impressum():
     Klinik für Innere Medizin I – Gastroenterologie  
     Ernst-Grube-Straße 40
     06120 Halle
-     
     E-Mail: jens.walldorf@uk-halle.de  
 
 
@@ -25,7 +24,6 @@ def show_impressum():
     Julian Teubner  
     Universitätsklinikum Halle (Saale)  
     Klinik für Innere Medizin I  
-
     E-Mail: julian.teubner@student.uni-halle.de
  
 
