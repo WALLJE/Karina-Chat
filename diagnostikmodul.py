@@ -106,7 +106,7 @@ def diagnostik_und_befunde_routine(client: OpenAI, start_runde=2, weitere_diagno
                         "Analysiere Fallkontext",
                         "Erstelle ergänzenden Befund",
                     ]
-                    with task_spinner("GPT erstellt Befunde...", ladeaufgaben) as indikator:
+                    with task_spinner(f"Diagnostik für {st.session_state.get('patient_name', 'Patientin')} wird ausgewertet...", ladeaufgaben) as indikator:
                         indikator.advance(1)
                         befund = generiere_befund(client, szenario, neue_diagnostik)
                         indikator.advance(1)
