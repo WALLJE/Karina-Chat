@@ -46,7 +46,7 @@ def show_impressum():
     ---
 
 
-    Stand: August 2025
+    Stand: August 2026
     """)
 
     with st.form(key="admin_login_form"):
