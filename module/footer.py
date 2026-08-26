@@ -1,5 +1,6 @@
 """Hilfsfunktionen für die Fußzeile der Anwendung."""
 
+from datetime import datetime
 import streamlit as st
 
 from module.fall_config import get_behavior_fix_state, get_fall_fix_state
@@ -24,6 +25,8 @@ def copyright_footer() -> None:
     else:
         behavior_status_text = "Verhaltensstatus: Zufällig"
         behavior_status_class = "random"
+
+    aktuelles_jahr = datetime.now().year
 
     # Hinweis: Für Debugging lässt sich hier bei Bedarf ein `print` der beiden Statusvariablen aktivieren.
     # Die nachfolgende CSS-Definition sorgt für eine zweizeilige Darstellung der Fußzeile,
@@ -61,7 +64,7 @@ def copyright_footer() -> None:
         }}
         </style>
         <div class="footer">
-            <div class="footer-hinweis">&copy; 2025 – Diese Simulation dient ausschließlich zu Lehrzwecken.</div>
+            <div class="footer-hinweis">&copy; {aktuelles_jahr} – Diese Simulation dient ausschließlich zu Lehrzwecken.</div>
             <div class="statusbereich">
                 <span class="status-zeile {fall_status_class}">{fall_status_text}</span>
                 <span class="trenner"> - </span>
