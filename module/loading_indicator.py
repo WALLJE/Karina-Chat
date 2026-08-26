@@ -5,27 +5,30 @@ from contextlib import contextmanager
 from typing import Iterable
 import streamlit as st
 
-# Das CSS wird EINMALIG außerhalb der Schleife definiert.
-# So wird die Animation nicht bei jedem Fortschritt zurückgesetzt!
+# CSS mit einem echten, mathematisch perfekten Ladekreis statt eines Textzeichens
 SPINNER_CSS = """
 <style>
 @keyframes spin-animation {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
 }
-.spinning-icon {
+.css-spinner {
     display: inline-block;
-    animation: spin-animation 1.2s linear infinite;
-    transform-origin: 50% 45%; /* Zentriert die Drehung perfekt */
-    margin-right: 6px;
     width: 14px;
-    text-align: center;
+    height: 14px;
+    border: 2px solid rgba(100, 181, 246, 0.2); /* Halbtransparenter blauer Hintergrundring */
+    border-top-color: #64B5F6; /* Kräftiges AMBOSS-Blau für den rotierenden Teil */
+    border-radius: 50%; /* Macht das Viereck zu einem perfekten Kreis */
+    animation: spin-animation 0.85s linear infinite; /* Etwas schnellere, weiche Drehung */
+    margin-right: 8px;
+    vertical-align: -2px; /* Richtet den Kreis perfekt am Text aus */
 }
 .task-icon {
     display: inline-block;
-    margin-right: 6px;
+    margin-right: 8px;
     width: 14px;
     text-align: center;
+    font-weight: 600;
 }
 </style>
 """
@@ -49,19 +52,19 @@ class _TaskTracker:
         lines = []
         for index, task in enumerate(self.tasks):
             if index < self.current_index:
-                # ERLEDIGT
+                # ERLEDIGT: Grüner Haken
                 lines.append(
                     f"<div style='margin-bottom: 8px; color: #81C784; font-size: 0.95rem;'>"
                     f"<span class='task-icon'>✓</span> {task}</div>"
                 )
             elif index == self.current_index:
-                # AKTIV (Hier greift jetzt die ungestörte CSS-Klasse)
+                # AKTIV: Der neue, perfekte CSS-Spinner
                 lines.append(
                     f"<div style='margin-bottom: 8px; color: #E0E0E0; font-size: 0.95rem;'>"
-                    f"<span class='spinning-icon'>↻</span> {task}</div>"
+                    f"<span class='css-spinner'></span> {task}</div>"
                 )
             else:
-                # AUSSTEHEND
+                # AUSSTEHEND: Leerer Kreis
                 lines.append(
                     f"<div style='margin-bottom: 8px; color: #757575; font-size: 0.95rem;'>"
                     f"<span class='task-icon'>○</span> {task}</div>"
@@ -71,7 +74,6 @@ class _TaskTracker:
 
 @contextmanager
 def task_spinner(spinner_text: str, tasks: Iterable[str]):
-    # CSS wird nur einmal eingefügt
     st.markdown(SPINNER_CSS, unsafe_allow_html=True)
     
     with st.status(spinner_text, expanded=True) as status:
