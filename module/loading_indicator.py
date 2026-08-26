@@ -1,7 +1,7 @@
-"""Visualisiert parallele Aufgabenlisten im AMBOSS-Stil.
+"""Visualisiert parallele Aufgabenlisten im ruhigen, klinischen Design.
 
-Nutzt die native st.status-Komponente von Streamlit, um einen
-Ladekreis zu zeigen, der sich bei Abschluss in einen Haken verwandelt.
+Nutzt st.status für den Haupt-Ladekreis und eine eigene CSS-Animation
+für die drehenden Kreise der aktiven Unteraufgaben.
 """
 
 from __future__ import annotations
@@ -29,26 +29,48 @@ class _TaskTracker:
         self._render()
 
     def _render(self) -> None:
-        """Erzeugt die HTML-Liste, optimiert für den dunklen Modus."""
-        lines = []
+        """Erzeugt die HTML-Liste mit animiertem Kreis und unauffälligen Farben."""
+        
+        # CSS für die Rotations-Animation des aktiven Kreises
+        css = """
+        <style>
+        @keyframes spin-animation {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .spinning-icon {
+            display: inline-block;
+            animation: spin-animation 1.2s linear infinite;
+            margin-right: 6px;
+        }
+        .task-icon {
+            display: inline-block;
+            margin-right: 6px;
+            width: 14px;
+            text-align: center;
+        }
+        </style>
+        """
+        
+        lines = [css]
         for index, task in enumerate(self.tasks):
             if index < self.current_index:
-                # Erledigt (Grüner Haken)
+                # ERLEDIGT: Haken und unauffällige Farbe (gedecktes, ruhiges Grün)
                 lines.append(
-                    f"<div style='margin-bottom: 6px; color: #4CAF50; font-size: 0.95rem;'>"
-                    f"✓ {task}</div>"
+                    f"<div style='margin-bottom: 8px; color: #81C784; font-size: 0.95rem;'>"
+                    f"<span class='task-icon'>✓</span> {task}</div>"
                 )
             elif index == self.current_index:
-                # In Bearbeitung (Blau markiert, etwas dicker)
+                # AKTIV: Hellgrau mit sich drehendem Kreis
                 lines.append(
-                    f"<div style='margin-bottom: 6px; color: #64B5F6; font-size: 0.95rem; font-weight: 600;'>"
-                    f"↻ {task}</div>"
+                    f"<div style='margin-bottom: 8px; color: #E0E0E0; font-size: 0.95rem;'>"
+                    f"<span class='spinning-icon'>↻</span> {task}</div>"
                 )
             else:
-                # Ausstehend (Ausgegraut)
+                # AUSSTEHEND: Dunkleres Grau mit leerem Kreis
                 lines.append(
-                    f"<div style='margin-bottom: 6px; color: #888888; font-size: 0.95rem;'>"
-                    f"○ {task}</div>"
+                    f"<div style='margin-bottom: 8px; color: #757575; font-size: 0.95rem;'>"
+                    f"<span class='task-icon'>○</span> {task}</div>"
                 )
 
         self.placeholder.markdown("".join(lines), unsafe_allow_html=True)
@@ -58,8 +80,7 @@ class _TaskTracker:
 def task_spinner(spinner_text: str, tasks: Iterable[str]):
     """Kombiniert st.status mit der schrittweisen Aufgabenliste."""
     
-    # st.status erzeugt automatisch den drehenden Kreis.
-    # Bei Abschluss wird dieser durch Streamlit in einen Haken verwandelt.
+    # st.status erzeugt automatisch den Haupt-Ladekreis ganz oben neben dem Text
     with st.status(spinner_text, expanded=True) as status:
         placeholder = st.empty()
         tracker = _TaskTracker(list(tasks), placeholder)
@@ -69,4 +90,4 @@ def task_spinner(spinner_text: str, tasks: Iterable[str]):
         finally:
             # Nach Abschluss wird alles abgehakt und die Box automatisch eingeklappt.
             tracker.complete()
-            status.update(label="Antwort bereit", state="complete", expanded=False)
+            status.update(label="Abgeschlossen", state="complete", expanded=False)
