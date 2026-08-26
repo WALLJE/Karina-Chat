@@ -147,7 +147,7 @@ def zeige_instruktionen_vor_start(lade_callback: Optional[Callable[[], None]] = 
             )
 
             # Button Text hier angepasst
-            button_gedrueckt = st.button("🚀 Simulation starten", key="start_ok_button", type="primary")
+            button_gedrueckt = st.button("Simulation starten", key="start_ok_button", type="primary")
 
             if button_gedrueckt:
                 st.switch_page("pages/1_Anamnese.py")
