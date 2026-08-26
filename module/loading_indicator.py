@@ -2,6 +2,7 @@
 
 Nutzt st.status für den Haupt-Ladekreis oben und eine CSS-Animation
 für den Schreibmaschinen-Effekt der aktiven Unteraufgaben.
+Ausstehende Aufgaben bleiben komplett unsichtbar, bis sie an der Reihe sind.
 """
 
 from __future__ import annotations
@@ -9,8 +10,7 @@ from contextlib import contextmanager
 from typing import Iterable
 import streamlit as st
 
-# CSS für den Typewriter-Effekt (Schreibmaschine)
-# Nutzt max-width und steps(), um das Tippen von Buchstaben zu simulieren
+# CSS für den Typewriter-Effekt
 SPINNER_CSS = """
 <style>
 @keyframes type-in {
@@ -39,11 +39,6 @@ SPINNER_CSS = """
 }
 .task-active {
     color: #E0E0E0;
-    font-size: 0.95rem;
-    margin-bottom: 8px;
-}
-.task-pending {
-    color: #757575;
     font-size: 0.95rem;
     margin-bottom: 8px;
 }
@@ -82,11 +77,9 @@ class _TaskTracker:
                     f"<span class='typewriter'>{task}</span></div>"
                 )
             else:
-                # AUSSTEHEND: Ausgegraut, ohne Symbol davor (durch margin eingerückt)
-                lines.append(
-                    f"<div class='task-pending'>"
-                    f"<span style='visibility: hidden; margin-right: 8px;'>&gt;</span>{task}</div>"
-                )
+                # AUSSTEHEND: Wird komplett ignoriert und bleibt unsichtbar
+                pass 
+                
         self.placeholder.markdown("".join(lines), unsafe_allow_html=True)
 
 
@@ -94,7 +87,6 @@ class _TaskTracker:
 def task_spinner(spinner_text: str, tasks: Iterable[str]):
     st.markdown(SPINNER_CSS, unsafe_allow_html=True)
     
-    # Der native Streamlit-Status erzeugt oben weiterhin den sich drehenden Haupt-Kreis
     with st.status(spinner_text, expanded=True) as status:
         placeholder = st.empty()
         tracker = _TaskTracker(list(tasks), placeholder)
