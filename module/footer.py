@@ -26,6 +26,7 @@ def copyright_footer() -> None:
         behavior_status_text = "Verhaltensstatus: Zufällig"
         behavior_status_class = "random"
 
+    # Automatisches Auslesen des aktuellen Jahres
     aktuelles_jahr = datetime.now().year
 
     # Hinweis: Für Debugging lässt sich hier bei Bedarf ein `print` der beiden Statusvariablen aktivieren.
