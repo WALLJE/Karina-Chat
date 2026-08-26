@@ -20,6 +20,15 @@ def show_impressum():
      
     E-Mail: jens.walldorf@uk-halle.de  
 
+
+     **Wissenschaftliche Projektmitarbeit**  
+    Julian Teubner  
+    Universitätsklinikum Halle (Saale)  
+    Klinik für Innere Medizin I  
+
+    E-Mail: julian.teubner@student.uni-halle.de
+ 
+
     ---
     ⚠️ Bitte beachten Sie, dass Sie mit einem **experimentellen, KI-basierten, simulierten {patient_forms.compound("modell")}** kommunizieren, welches **ausschließlich zu Lehrzwecken** konzipiert ist.
     
