@@ -1,34 +1,51 @@
-"""Visualisiert parallele Aufgabenlisten im ruhigen, klinischen Design."""
+"""Visualisiert parallele Aufgabenlisten mit einem coolen Typewriter-Effekt.
+
+Nutzt st.status für den Haupt-Ladekreis oben und eine CSS-Animation
+für den Schreibmaschinen-Effekt der aktiven Unteraufgaben.
+"""
 
 from __future__ import annotations
 from contextlib import contextmanager
 from typing import Iterable
 import streamlit as st
 
-# CSS mit einem echten, mathematisch perfekten Ladekreis statt eines Textzeichens
+# CSS für den Typewriter-Effekt (Schreibmaschine)
+# Nutzt max-width und steps(), um das Tippen von Buchstaben zu simulieren
 SPINNER_CSS = """
 <style>
-@keyframes spin-animation {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+@keyframes type-in {
+    from { max-width: 0; }
+    to { max-width: 100%; }
 }
-.css-spinner {
-    display: inline-block;
-    width: 14px;
-    height: 14px;
-    border: 2px solid rgba(100, 181, 246, 0.2); /* Halbtransparenter blauer Hintergrundring */
-    border-top-color: #64B5F6; /* Kräftiges AMBOSS-Blau für den rotierenden Teil */
-    border-radius: 50%; /* Macht das Viereck zu einem perfekten Kreis */
-    animation: spin-animation 0.85s linear infinite; /* Etwas schnellere, weiche Drehung */
-    margin-right: 8px;
-    vertical-align: -2px; /* Richtet den Kreis perfekt am Text aus */
+@keyframes blink-cursor {
+    50% { border-color: transparent; }
 }
-.task-icon {
+.typewriter {
     display: inline-block;
-    margin-right: 8px;
-    width: 14px;
-    text-align: center;
-    font-weight: 600;
+    overflow: hidden;
+    white-space: nowrap;
+    vertical-align: bottom;
+    /* Der blinkende Cursor am Ende des Textes */
+    border-right: 2px solid #64B5F6; 
+    /* Animation: 1.2 Sekunden Tippen (in 40 Stufen) + unendliches Blinken */
+    animation: 
+        type-in 1.2s steps(40, end) forwards, 
+        blink-cursor 0.7s step-end infinite;
+}
+.task-done {
+    color: #81C784;
+    font-size: 0.95rem;
+    margin-bottom: 8px;
+}
+.task-active {
+    color: #E0E0E0;
+    font-size: 0.95rem;
+    margin-bottom: 8px;
+}
+.task-pending {
+    color: #757575;
+    font-size: 0.95rem;
+    margin-bottom: 8px;
 }
 </style>
 """
@@ -52,22 +69,23 @@ class _TaskTracker:
         lines = []
         for index, task in enumerate(self.tasks):
             if index < self.current_index:
-                # ERLEDIGT: Grüner Haken
+                # ERLEDIGT: Grüner Haken, Text ist voll sichtbar
                 lines.append(
-                    f"<div style='margin-bottom: 8px; color: #81C784; font-size: 0.95rem;'>"
-                    f"<span class='task-icon'>✓</span> {task}</div>"
+                    f"<div class='task-done'>"
+                    f"<span style='margin-right: 8px;'>✓</span>{task}</div>"
                 )
             elif index == self.current_index:
-                # AKTIV: Der neue, perfekte CSS-Spinner
+                # AKTIV: Blaue Pfeil-Klammer und Typewriter-Animation
                 lines.append(
-                    f"<div style='margin-bottom: 8px; color: #E0E0E0; font-size: 0.95rem;'>"
-                    f"<span class='css-spinner'></span> {task}</div>"
+                    f"<div class='task-active'>"
+                    f"<span style='color: #64B5F6; margin-right: 8px; font-weight: bold;'>&gt;</span>"
+                    f"<span class='typewriter'>{task}</span></div>"
                 )
             else:
-                # AUSSTEHEND: Leerer Kreis
+                # AUSSTEHEND: Ausgegraut, ohne Symbol davor (durch margin eingerückt)
                 lines.append(
-                    f"<div style='margin-bottom: 8px; color: #757575; font-size: 0.95rem;'>"
-                    f"<span class='task-icon'>○</span> {task}</div>"
+                    f"<div class='task-pending'>"
+                    f"<span style='visibility: hidden; margin-right: 8px;'>&gt;</span>{task}</div>"
                 )
         self.placeholder.markdown("".join(lines), unsafe_allow_html=True)
 
@@ -76,6 +94,7 @@ class _TaskTracker:
 def task_spinner(spinner_text: str, tasks: Iterable[str]):
     st.markdown(SPINNER_CSS, unsafe_allow_html=True)
     
+    # Der native Streamlit-Status erzeugt oben weiterhin den sich drehenden Haupt-Kreis
     with st.status(spinner_text, expanded=True) as status:
         placeholder = st.empty()
         tracker = _TaskTracker(list(tasks), placeholder)
