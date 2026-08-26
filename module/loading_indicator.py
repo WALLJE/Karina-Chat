@@ -1,4 +1,4 @@
-"""Visualisiert parallele Aufgabenlisten mit einem coolen Typewriter-Effekt.
+"""Visualisiert parallele Aufgabenlisten mit einem Typewriter-Effekt.
 
 Nutzt st.status für den Haupt-Ladekreis oben und eine CSS-Animation
 für den Schreibmaschinen-Effekt der aktiven Unteraufgaben.
